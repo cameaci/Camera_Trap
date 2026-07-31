@@ -1,0 +1,522 @@
+{
+ "images": [
+  {
+   "file": "1db0b447-39ba-4301-b2d6-d104d312847a.JPG",
+   "detections": [
+    {
+     "category": "2",
+     "conf": 0.0162,
+     "bbox": [
+      0.2112,
+      0.4944,
+      0.03125,
+      0.2477
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.0179,
+     "bbox": [
+      0.7137,
+      0.5244,
+      0.02875,
+      0.03888
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.0196,
+     "bbox": [
+      0.4731,
+      0.5044,
+      0.01125,
+      0.05777
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.0223,
+     "bbox": [
+      0.2256,
+      0.5033,
+      0.01499,
+      0.02777
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.0231,
+     "bbox": [
+      0.5062,
+      0.4922,
+      0.01687,
+      0.05888
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.0292,
+     "bbox": [
+      0.9531,
+      0.5088,
+      0.01687,
+      0.05555
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.0454,
+     "bbox": [
+      0.71,
+      0.52,
+      0.01812,
+      0.03888
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.0667,
+     "bbox": [
+      0.3606,
+      0.4844,
+      0.02624,
+      0.1011
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.0872,
+     "bbox": [
+      0.6737,
+      0.5111,
+      0.01062,
+      0.04444
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.106,
+     "bbox": [
+      0.7787,
+      0.5322,
+      0.01062,
+      0.02666
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.107,
+     "bbox": [
+      0.7787,
+      0.5322,
+      0.01062,
+      0.02666
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.108,
+     "bbox": [
+      0.825,
+      0.5233,
+      0.01312,
+      0.03555
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.232,
+     "bbox": [
+      0.825,
+      0.5233,
+      0.0125,
+      0.03555
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.523,
+     "bbox": [
+      0.8712,
+      0.5022,
+      0.01374,
+      0.06111
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.579,
+     "bbox": [
+      0.3606,
+      0.4844,
+      0.03624,
+      0.2033
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.799,
+     "bbox": [
+      0.5068,
+      0.4911,
+      0.035,
+      0.1277
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.858,
+     "bbox": [
+      0.3243,
+      0.4755,
+      0.07625,
+      0.3144
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.874,
+     "bbox": [
+      0.6131,
+      0.4488,
+      0.06187,
+      0.3633
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.878,
+     "bbox": [
+      0.4349,
+      0.46,
+      0.04125,
+      0.2066
+     ]
+    },
+    {
+     "category": "2",
+     "conf": 0.921,
+     "bbox": [
+      0.2112,
+      0.46,
+      0.08874,
+      0.3544
+     ]
+    }
+   ]
+  },
+  {
+   "file": "AdobeStock_139807715.jpeg",
+   "detections": []
+  },
+  {
+   "file": "AdobeStock_167520209.jpeg",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.0195,
+     "bbox": [
+      0.1819,
+      0.219,
+      0.006944,
+      0.01015
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.889,
+     "bbox": [
+      0.6543,
+      0.4458,
+      0.06284,
+      0.119
+     ]
+    }
+   ]
+  },
+  {
+   "file": "AdobeStock_224942592.jpeg",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.0197,
+     "bbox": [
+      0.241,
+      0.5978,
+      0.3686,
+      0.1709
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.0472,
+     "bbox": [
+      0.02655,
+      0.5173,
+      0.5749,
+      0.2478
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.0631,
+     "bbox": [
+      0,
+      0.811,
+      0.1247,
+      0.1885
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.839,
+     "bbox": [
+      0.0578,
+      0.04978,
+      0.53,
+      0.2658
+     ]
+    },
+    {
+     "category": "1",
+     "conf": 0.84,
+     "bbox": [
+      0.02866,
+      0.2976,
+      0.7481,
+      0.4555
+     ]
+    }
+   ]
+  },
+  {
+   "file": "AdobeStock_225788868.jpg",
+   "detections": []
+  },
+  {
+   "file": "AdobeStock_227824000.jpeg",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.0453,
+     "bbox": [
+      0.7386,
+      0.5829,
+      0.01307,
+      0.04939
+     ]
+    }
+   ]
+  },
+  {
+   "file": "AdobeStock_254560450.jpeg",
+   "detections": []
+  },
+  {
+   "file": "AdobeStock_271171992.jpeg",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.694,
+     "bbox": [
+      0.2426,
+      0.1452,
+      0.352,
+      0.336
+     ]
+    }
+   ]
+  },
+  {
+   "file": "AdobeStock_297069027.jpeg",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.919,
+     "bbox": [
+      0.3483,
+      0.22,
+      0.188,
+      0.7776
+     ]
+    }
+   ]
+  },
+  {
+   "file": "AdobeStock_310204443.jpeg",
+   "detections": [
+    {
+     "category": "3",
+     "conf": 0.353,
+     "bbox": [
+      0.04425,
+      0.3838,
+      0.8852,
+      0.4268
+     ]
+    }
+   ]
+  },
+  {
+   "file": "AdobeStock_423921874.jpeg",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.923,
+     "bbox": [
+      0.2095,
+      0.3034,
+      0.3074,
+      0.2468
+     ]
+    }
+   ]
+  },
+  {
+   "file": "Image (4).jpg",
+   "detections": [
+    {
+     "category": "2",
+     "conf": 0.819,
+     "bbox": [
+      0.3051,
+      0.135,
+      0.3825,
+      0.7481
+     ]
+    }
+   ]
+  },
+  {
+   "file": "graphs/activity-patterns/hour-of-day/class-specific/animal.png",
+   "detections": []
+  },
+  {
+   "file": "graphs/activity-patterns/hour-of-day/class-specific/person.png",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.0243,
+     "bbox": [
+      0.035,
+      0.415,
+      0.008,
+      0.01999
+     ]
+    }
+   ]
+  },
+  {
+   "file": "graphs/activity-patterns/hour-of-day/combined.png",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.0266,
+     "bbox": [
+      0.035,
+      0.415,
+      0.008,
+      0.01999
+     ]
+    }
+   ]
+  },
+  {
+   "file": "graphs/activity-patterns/month-of-year/class-specific/animal.png",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.0127,
+     "bbox": [
+      0.6849,
+      0.06,
+      0.293,
+      0.8133
+     ]
+    }
+   ]
+  },
+  {
+   "file": "graphs/activity-patterns/month-of-year/class-specific/person.png",
+   "detections": []
+  },
+  {
+   "file": "graphs/activity-patterns/month-of-year/combined.png",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.011,
+     "bbox": [
+      0.035,
+      0.425,
+      0.008,
+      0.01833
+     ]
+    }
+   ]
+  },
+  {
+   "file": "graphs/bar-charts/grouped-by-year/class-specific/animal.png",
+   "detections": []
+  },
+  {
+   "file": "graphs/bar-charts/grouped-by-year/class-specific/person.png",
+   "detections": []
+  },
+  {
+   "file": "graphs/bar-charts/grouped-by-year/combined-multi-layer.png",
+   "detections": [
+    {
+     "category": "1",
+     "conf": 0.0133,
+     "bbox": [
+      0.035,
+      0.72,
+      0.008,
+      0.02166
+     ]
+    }
+   ]
+  },
+  {
+   "file": "graphs/bar-charts/grouped-by-year/combined-single-layer.png",
+   "detections": []
+  },
+  {
+   "file": "graphs/pie-charts/distribution-detections.png",
+   "detections": []
+  },
+  {
+   "file": "graphs/pie-charts/distribution-files.png",
+   "detections": []
+  },
+  {
+   "file": "graphs/temporal-heatmaps/grouped-by-year/absolute/temporal-heatmap.png",
+   "detections": []
+  },
+  {
+   "file": "graphs/temporal-heatmaps/grouped-by-year/relative/temporal-heatmap.png",
+   "detections": []
+  }
+ ],
+ "detection_categories": {
+  "1": "animal",
+  "2": "person",
+  "3": "vehicle"
+ },
+ "info": {
+  "detection_completion_time": "2025-02-03 13:41:09",
+  "format_version": "1.4",
+  "detector": "md_v5a.0.0.pt",
+  "detector_metadata": {
+   "megadetector_version": "v5a.0.0",
+   "typical_detection_threshold": 0.2,
+   "conservative_detection_threshold": 0.05
+  },
+  "ecoassist_metadata": {
+   "version": "5.29",
+   "custom_model": false,
+   "custom_model_info": {}
+  }
+ }
+}

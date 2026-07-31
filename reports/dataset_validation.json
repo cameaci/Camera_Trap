@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "counts": {
+    "train": {
+      "badger": 600,
+      "otter": 600,
+      "other": 600
+    },
+    "val": {
+      "badger": 150,
+      "otter": 150,
+      "other": 150
+    },
+    "test": {
+      "badger": 150,
+      "otter": 150,
+      "other": 150
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "duplicates_across_splits": [],
+  "checked_images": 2700
+}
