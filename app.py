@@ -325,6 +325,7 @@ def batch_path_detection(tgt_folder_path, det_conf_thres):
         pw_utils.save_detection_json(det_res, json_save, categories=detection_model.CLASS_NAMES)
     return json_save
 
+
 def video_detection(video, det_conf_thres, clf_conf_thres, target_fps, codec):
     def cb(frame, i):
         return single_image_detection(frame, det_conf_thres, clf_conf_thres, img_index=i)
