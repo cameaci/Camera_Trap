@@ -96,6 +96,26 @@ jobs:
         working-directory: backend
         run: python -m PyInstaller backend.spec --clean
 
+      # The frozen backend must start and answer /health, with the app's
+      # bundled catalog and config, before it goes into an installer.
+      - name: Smoke-test the frozen backend
+        env:
+          WSP_API_PORT: '8799'
+          WSP_ENV_PACK_URL: http://127.0.0.1:9/none
+        run: |
+          ./backend/dist/backend/backend.exe > backend-smoke.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8799/health; then
+              echo; curl -fsS http://127.0.0.1:8799/api/ml/models/detection | head -c 600; echo
+              kill $PID || true
+              exit 0
+            fi
+            sleep 2
+          done
+          cat backend-smoke.log
+          exit 1
+
       - name: Import signing certificate (optional)
         env:
           CERT_BASE64: ${{ secrets.WSP_PFX_BASE64 }}
