@@ -24,8 +24,12 @@ let lastBackendExit: { code: number | null; signal: string | null } | null = nul
 // dir without fighting a dev instance for the port. `spawnBackend`
 // passes the same value to the backend as ADDAXAI_API_PORT, so the two agree in
 // both dev and packaged builds from this one setting.
-const BACKEND_PORT = Number(process.env.ADDAXAI_BACKEND_PORT) || 8000;
+// WSP: not AddaxAI's 8000, so both apps can run side by side without one
+// treating the other's backend as its own stale process.
+const BACKEND_PORT = Number(process.env.ADDAXAI_BACKEND_PORT) || 8765;
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
+// WSP: the repository WSP CameraTrap is built and released from.
+const PROJECT_URL = 'https://github.com/cameaci/Camera_Trap';
 
 /**
  * The user data directory, resolved the same way the backend resolves
@@ -40,7 +44,7 @@ const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
  * against a throwaway database.
  */
 function resolveUserDataDir(): string {
-  const fallback = path.join(os.homedir(), 'AddaxAI');
+  const fallback = path.join(os.homedir(), 'WSP-CameraTrap'); // WSP
   const raw = (process.env.ADDAXAI_USER_DATA_DIR ?? '').trim();
   if (!raw) return fallback;
   if (!path.isAbsolute(raw)) {
@@ -101,8 +105,8 @@ try {
   fs.mkdirSync(CRASH_DUMP_DIR, { recursive: true });
   app.setPath('crashDumps', CRASH_DUMP_DIR);
   crashReporter.start({
-    productName: 'AddaxAI',
-    companyName: 'AddaxAI',
+    productName: 'WSP CameraTrap',
+    companyName: 'WSP',
     submitURL: 'https://invalid.invalid/never-uploaded',
     uploadToServer: false,
     ignoreSystemCrashHandler: false,
@@ -547,7 +551,7 @@ async function ensureBackend(): Promise<void> {
     // option when it is a service that restarts on every boot.
     throw new Error(
       `Port ${BACKEND_PORT} is in use by another application. Quit ` +
-        `whatever is using it and relaunch AddaxAI, or set ` +
+        `whatever is using it and relaunch WSP CameraTrap, or set ` +
         `ADDAXAI_BACKEND_PORT to a free port.`,
     );
   }
@@ -561,9 +565,9 @@ async function ensureBackend(): Promise<void> {
   const expected = app.getVersion();
   if (health?.version && health.version !== expected) {
     throw new Error(
-      `A different AddaxAI backend (version ${health.version}) is running ` +
+      `A different WSP CameraTrap backend (version ${health.version}) is running ` +
         `on port ${BACKEND_PORT} and could not be replaced. Fully quit any ` +
-        `other AddaxAI window and relaunch.`,
+        `other WSP CameraTrap window and relaunch.`,
     );
   }
   console.log('[Electron] Backend is ready');
@@ -786,7 +790,7 @@ function splashHtml(): string {
     ? 'First launch can take a minute while it sets things up.'
     : 'This usually takes a few seconds.';
   return shellPage(
-    `<div class="spinner"></div><h1>Starting AddaxAI…</h1>` +
+    `<div class="spinner"></div><h1>Starting WSP CameraTrap…</h1>` +
       `<p class="msg">${msg}</p>`,
   );
 }
@@ -807,7 +811,7 @@ function stillWorkingHtml(): string {
   const logsArg = JSON.stringify(LOGS_DIR).replace(/"/g, '&quot;');
   return shellPage(
     `<div class="spinner"></div><h1>Still working…</h1>` +
-      `<p class="msg">AddaxAI is taking longer than usual to start. If you ` +
+      `<p class="msg">WSP CameraTrap is taking longer than usual to start. If you ` +
       `have a large library, upgrading the database can take several ` +
       `minutes.</p>` +
       `<p class="msg">You can leave this running.</p>` +
@@ -844,7 +848,7 @@ function errorHtml(message: string, recoverable: boolean): string {
       `<button onclick="window.electronAPI.resetDatabase()">Delete database and start fresh…</button>`
     : '';
   return shellPage(
-    `<h1>AddaxAI could not start</h1>` +
+    `<h1>WSP CameraTrap could not start</h1>` +
       `<p class="msg reason">${safe}</p>` +
       `<p class="path">${pathText}</p>` +
       `<div class="actions">${recovery}` +
@@ -876,7 +880,7 @@ async function createWindow(): Promise<void> {
     height: 900,
     minWidth: 1024,
     minHeight: 768,
-    title: `AddaxAI v${app.getVersion()}`,
+    title: `WSP CameraTrap v${app.getVersion()}`,
     // Show our custom application menu bar on Windows / Linux (built in
     // setupApplicationMenu). It holds every app-wide action: File (data
     // folders, backup/restore, quit), View (reload, species names), and
@@ -1028,7 +1032,7 @@ function preflightUserDataDir(): string | null {
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
     return (
-      `AddaxAI cannot write to its data folder at ${USER_DATA_DIR}. ` +
+      `WSP CameraTrap cannot write to its data folder at ${USER_DATA_DIR}. ` +
       `The folder must exist (or be creatable) and be writable by your user account. ` +
       `If the ADDAXAI_USER_DATA_DIR environment variable is set, check that it points to a ` +
       `folder you have permission to write to, then click Retry.\n\n(${detail})`
@@ -1107,7 +1111,7 @@ function buildMenuTemplate(): Electron.MenuItemConstructorOptions[] {
   const isMac = process.platform === 'darwin';
 
   const aboutItem: Electron.MenuItemConstructorOptions = {
-    label: 'About AddaxAI',
+    label: 'About WSP CameraTrap',
     click: () => sendMenuCommand('about'),
   };
   const checkForUpdatesItem: Electron.MenuItemConstructorOptions = {
@@ -1119,7 +1123,7 @@ function buildMenuTemplate(): Electron.MenuItemConstructorOptions[] {
 
   if (isMac) {
     template.push({
-      label: 'AddaxAI',
+      label: 'WSP CameraTrap',
       submenu: [
         aboutItem,
         checkForUpdatesItem,
@@ -1208,28 +1212,20 @@ function buildMenuTemplate(): Electron.MenuItemConstructorOptions[] {
     role: 'help',
     label: 'Help',
     submenu: [
+      // WSP: help lives in this app's own repository, not on addaxai.com.
       {
-        label: 'Documentation',
-        click: () => shell.openExternal('https://docs.addaxai.com'),
+        label: 'User guide',
+        click: () => shell.openExternal(`${PROJECT_URL}/blob/main/wsp/docs/USER_GUIDE.md`),
       },
       {
-        label: 'Video tutorials',
-        click: () =>
-          shell.openExternal('https://docs.addaxai.com/docs/category/guides/'),
+        label: 'Report a problem',
+        click: () => shell.openExternal(`${PROJECT_URL}/issues`),
       },
       { type: 'separator' },
-      {
-        label: 'Troubleshooting',
-        click: () =>
-          shell.openExternal(
-            'https://docs.addaxai.com/docs/help/troubleshooting',
-          ),
-      },
       { label: 'Export diagnostic report', click: () => sendMenuCommand('export-diagnostic') },
       { type: 'separator' },
-      // Not setup-gated: an old AddaxAI can be cleared out at any point,
-      // and this is the way back for anyone who skipped the prompt.
-      { label: 'Remove old AddaxAI…', click: () => sendMenuCommand('remove-legacy') },
+      // WSP: no "Remove old AddaxAI…" item. A legacy AddaxAI on the machine
+      // is another app, not an old version of this one.
       { label: 'Reset application…', click: () => sendMenuCommand('reset') },
       // About lives in the app menu on macOS; fold it into Help elsewhere.
       ...(isMac ? [] : ([{ type: 'separator' }, aboutItem] as Electron.MenuItemConstructorOptions[])),
@@ -1399,7 +1395,7 @@ ipcMain.handle('db:restore', async (event) => {
     // The app's own snapshots live here and are the files most likely
     // to work, so start the picker where they are.
     defaultPath: BACKUPS_DIR,
-    filters: [{ name: 'AddaxAI database', extensions: ['db'] }],
+    filters: [{ name: 'WSP CameraTrap database', extensions: ['db'] }],
   };
   const result = win
     ? await dialog.showOpenDialog(win, options)
@@ -1424,7 +1420,7 @@ ipcMain.handle('db:reset', async (event) => {
     defaultId: 0,
     cancelId: 0,
     title: 'Delete database and start fresh',
-    message: 'Delete the AddaxAI database?',
+    message: 'Delete the WSP CameraTrap database?',
     detail:
       'Your projects, deployments and verifications are stored in this ' +
       'database and will be gone. Images and videos on disk are not ' +

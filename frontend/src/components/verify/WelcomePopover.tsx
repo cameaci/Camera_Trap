@@ -5,8 +5,9 @@
 
 import { CircleHelp, ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
+import { USER_GUIDE_URL } from "@/lib/wsp";
 
-const GUIDE_URL = "https://docs.addaxai.com/docs/guides/confirm-counts/";
+const GUIDE_URL = USER_GUIDE_URL; // WSP
 
 interface WelcomePopoverProps {
   open: boolean;

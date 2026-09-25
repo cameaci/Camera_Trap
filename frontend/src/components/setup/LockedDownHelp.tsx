@@ -10,9 +10,10 @@
  */
 
 import { ExternalLink } from "lucide-react";
+import { USER_GUIDE_URL } from "@/lib/wsp";
 
-export const LOCKED_DOWN_HELP_URL =
-  "https://docs.addaxai.com/docs/help/locked-down-computers";
+// WSP: the troubleshooting section of this app's own user guide.
+export const LOCKED_DOWN_HELP_URL = `${USER_GUIDE_URL}#troubleshooting`;
 
 interface LockedDownHelpProps {
   /** The backend's `error_kind` for the failure on screen, or null. */
@@ -21,12 +22,10 @@ interface LockedDownHelpProps {
 
 export function LockedDownHelp({ errorKind }: LockedDownHelpProps) {
   const blocked = errorKind === "network_blocked";
-  const href = blocked
-    ? `${LOCKED_DOWN_HELP_URL}#only-the-models-are-blocked`
-    : LOCKED_DOWN_HELP_URL;
+  const href = LOCKED_DOWN_HELP_URL;
   const lead = blocked
-    ? "Your IT team can allow the download servers, or you can bring the models over from another computer."
-    : "On a work or university computer?";
+    ? "Models come from the WSP model library on OneDrive. Check that the 'WSP CameraTrap' folder is synced."
+    : "Setup stuck on a WSP laptop?";
   const label = blocked
     ? "Read how"
     : "Read how to set up on a locked-down machine or network";

@@ -11,10 +11,11 @@ import type { ComponentType, ReactNode, SVGProps } from "react";
 import { CircleHelp } from "lucide-react";
 
 import { cn } from "../../lib/utils";
+import { USER_GUIDE_URL } from "@/lib/wsp";
 
 const GUIDE_URLS = {
-  labels: "https://docs.addaxai.com/docs/guides/check-labels/",
-  counts: "https://docs.addaxai.com/docs/guides/confirm-counts/",
+  labels: USER_GUIDE_URL, // WSP
+  counts: USER_GUIDE_URL,
 } as const;
 
 interface VerifyToolbarProps {
@@ -44,7 +45,7 @@ export const VERIFY_TOOLBAR_ICON_CLASS =
   "text-muted-foreground transition-colors hover:bg-muted " +
   "hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed";
 
-/** The (?) icon: opens the step's guide on docs.addaxai.com, where the
+/** The (?) icon: opens the WSP CameraTrap user guide, where the
  * workflow explanation and the video tutorial live. Same chrome as the
  * icon buttons so it sits on the same line. The keys stay in the app,
  * in the keyboard popover next to it. */

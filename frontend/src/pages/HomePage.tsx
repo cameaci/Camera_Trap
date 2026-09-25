@@ -30,11 +30,12 @@ import { ArrowRight, ExternalLink, LayoutDashboard, FolderOpen } from "lucide-re
 import { buttonVariants } from "../components/ui/button";
 import { LogoPlate } from "../components/layout/LogoPlate";
 import { cn } from "../lib/utils";
+import { USER_GUIDE_URL } from "@/lib/wsp";
 
 // The guides index: every guide carries its video tutorial at the top,
 // and the first two (analyse a folder, build a project) answer the very
 // question this screen asks. Same target as Help > Video tutorials.
-const TUTORIALS_URL = "https://docs.addaxai.com/docs/category/guides/";
+const TUTORIALS_URL = USER_GUIDE_URL; // WSP
 
 // Frosted-glass surface. backdrop-filter is set inline so the look does
 // not depend on the Tailwind backdrop-blur utilities being enabled.

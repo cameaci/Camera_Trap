@@ -19,6 +19,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { RELEASES_URL } from "@/lib/wsp";
 
 interface ModelInfoSheetProps {
   modelId: string | null;
@@ -262,7 +263,7 @@ export function ModelInfoSheet({ modelId, open, onOpenChange }: ModelInfoSheetPr
                         <>
                           Please{" "}
                           <a
-                            href="https://addaxdatascience.com/addaxai/#install"
+                            href={RELEASES_URL}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-primary hover:opacity-80 underline inline-flex items-center gap-1"

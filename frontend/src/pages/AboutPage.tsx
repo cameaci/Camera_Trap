@@ -16,9 +16,9 @@ import { HomeButton } from "../components/layout/HomeButton";
 import { useQuery } from "@tanstack/react-query";
 import { Tag } from "lucide-react";
 import { formatVersion } from "@/lib/version";
+import { ISSUES_URL, PRODUCT_NAME, PROJECT_URL, REPO } from "@/lib/wsp";
 
-const REPO = "PetervanLunteren/AddaxAI";
-const LICENSE_URL = `https://github.com/${REPO}?tab=MIT-1-ov-file#readme`;
+const LICENSE_URL = `${PROJECT_URL}/blob/main/LICENSE`;
 
 interface GithubContributor {
   login: string;
@@ -67,7 +67,7 @@ export default function AboutPage() {
             <HomeButton />
             <img
               src="/branding/logo-mark.png"
-              alt="AddaxAI"
+              alt={PRODUCT_NAME}
               className="h-12 w-12 shrink-0"
             />
             <div>
@@ -83,42 +83,23 @@ export default function AboutPage() {
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
         <section className="rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold tracking-tight">What is AddaxAI</h2>
+          <h2 className="text-lg font-semibold tracking-tight">What is {PRODUCT_NAME}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            AddaxAI is an open-source project that makes camera trap
-            image analysis accessible to all conservationists, with no
-            paywalls. The app is released under the MIT license, giving
-            you full freedom to use, modify, and share it. Your data
-            stays on your machine. Your verification work remains
-            private. You stay in complete control of what gets analysed
-            and where the results go. AddaxAI also functions as a model
-            hub, where developers can share and host classification
-            models for others to use, at no cost. The aim is simple:
-            help ecologists spend more time on meaningful work, and
-            less time on repetitive tasks.
+            {PRODUCT_NAME} is WSP's camera trap analysis app. It detects
+            animals, people and vehicles with MegaDetector and identifies
+            species with SpeciesNet and WSP's own models, which are shared
+            through the WSP model library on OneDrive. Your images and
+            results stay on your computer.
           </p>
         </section>
 
         <section className="rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold tracking-tight">Created by</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Support</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Built and maintained by Peter van Lunteren (
-            <a
-              href="https://addaxdatascience.com"
-              className="text-primary hover:underline"
-            >
-              Addax Data Science
+            Questions, problems and ideas:{" "}
+            <a href={ISSUES_URL} className="text-primary hover:underline">
+              {ISSUES_URL.replace("https://", "")}
             </a>
-            ,{" "}
-            <a
-              href="mailto:peter@addaxdatascience.com"
-              className="text-primary hover:underline"
-            >
-              peter@addaxdatascience.com
-            </a>
-            ). None of it would look the way it does without Dan
-            Morris, who has been a key collaborator and a generous
-            adviser on all the difficult stuff.
           </p>
 
           {contributors && contributors.length > 0 && (
@@ -162,74 +143,28 @@ export default function AboutPage() {
           <h2 className="text-lg font-semibold tracking-tight">Source and license</h2>
           <div className="mt-2 text-sm text-muted-foreground space-y-2">
             <div>
-              AddaxAI source code:{" "}
-              <a
-                href={`https://github.com/${REPO}`}
-                className="text-primary hover:underline"
-              >
+              Source code:{" "}
+              <a href={PROJECT_URL} className="text-primary hover:underline">
                 github.com/{REPO}
               </a>
             </div>
             <div>
-              AddaxAI license:{" "}
-              <a
-                href={LICENSE_URL}
-                className="text-primary hover:underline"
-              >
+              License:{" "}
+              <a href={LICENSE_URL} className="text-primary hover:underline">
                 MIT
               </a>
+              . {PRODUCT_NAME} is built on AddaxAI by Peter van Lunteren
+              (Addax Data Science), released under the MIT license.
             </div>
             <p>
-              AddaxAI also ships with detection, classification, and
-              embedding models from various developers. These models
-              are not all created or owned by AddaxAI: each one has its
-              own developer, license, citation, and intended use. You
-              are responsible for using each model in line with its
-              license. Open the{" "}
-              <span className="font-medium">Model details</span> link
-              below each model in the project settings for the full
-              information.
+              The detection and classification models come from various
+              developers (MegaDetector: Dan Morris; SpeciesNet: Google).
+              Each has its own license, citation and intended use; see the{" "}
+              <span className="font-medium">Model details</span> link below
+              each model in the project settings.
             </p>
           </div>
         </section>
-
-        <section className="rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold tracking-tight">Citation</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            If AddaxAI was useful in a publication, please cite it as:
-          </p>
-          {/* Hanging indent for bibliography-style citation: the
-              first line sits flush, wrapped lines indent under the
-              citation body. */}
-          <p className="mt-3 pl-[1.75em] -indent-[1.75em] text-sm text-muted-foreground">
-            van Lunteren, P., (2023). AddaxAI: A no-code platform to
-            train and deploy custom YOLOv5 object detection models.{" "}
-            <em>Journal of Open Source Software</em>, 8(88), 5581,{" "}
-            <a
-              href="https://doi.org/10.21105/joss.05581"
-              className="text-primary hover:underline"
-            >
-              https://doi.org/10.21105/joss.05581
-            </a>
-          </p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            To cite a specific version of the software, use the archived
-            release on Zenodo:{" "}
-            <a
-              href="https://doi.org/10.5281/zenodo.7223363"
-              className="text-primary hover:underline"
-            >
-              https://doi.org/10.5281/zenodo.7223363
-            </a>
-          </p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Citations for the individual models you used (MegaDetector,
-            DINOv2, classification models, etc.) are available via the{" "}
-            <span className="font-medium">Model details</span> link below
-            each model in the project settings.
-          </p>
-        </section>
-
       </main>
     </div>
   );

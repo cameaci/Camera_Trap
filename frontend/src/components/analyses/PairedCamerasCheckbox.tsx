@@ -9,13 +9,14 @@
 
 import { ExternalLink } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { USER_GUIDE_URL } from "@/lib/wsp";
 
 export const PAIRED_CAMERAS_CAPTION =
   "One subfolder per camera, for dependent cameras that trigger on the same animals. Their files form one event and the trap nights count once.";
 
 /** The docs section that explains the folder layout and what the tick changes. */
 export const PAIRED_CAMERAS_DOCS_URL =
-  "https://docs.addaxai.com/docs/understanding/how-a-project-is-organised#paired-cameras";
+  USER_GUIDE_URL; // WSP
 
 interface PairedCamerasCheckboxProps {
   checked: boolean;

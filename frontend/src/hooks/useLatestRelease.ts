@@ -10,6 +10,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { compareVersions, parseVersion } from "@/lib/version";
+import { RELEASES_URL, REPO } from "@/lib/wsp";
 
 export interface GitHubRelease {
   tag_name: string;
@@ -26,19 +27,18 @@ export interface GitHubRelease {
 // build. We ship betas, so take the newest release whatever its flag.
 // Drafts are not returned to unauthenticated callers, so they cannot
 // leak in.
-const RELEASES_API =
-  "https://api.github.com/repos/PetervanLunteren/AddaxAI/releases?per_page=1";
+// WSP: releases of this app's own repository.
+const RELEASES_API = `https://api.github.com/repos/${REPO}/releases?per_page=1`;
 
 // Where a user goes to get the new version. Not the GitHub release
 // page: that is a wall of assets and checksums written for developers,
 // and most people running AddaxAI are ecologists. The site owns the
 // download story and can change it without an app release.
-export const DOWNLOAD_URL = "https://addaxai.com";
+export const DOWNLOAD_URL = RELEASES_URL; // WSP
 
 // Full changelog for users several versions behind. The releases list
 // is mostly the notes themselves, unlike a single release page.
-export const ALL_RELEASE_NOTES_URL =
-  "https://github.com/PetervanLunteren/AddaxAI/releases";
+export const ALL_RELEASE_NOTES_URL = RELEASES_URL; // WSP
 
 function normalize(v: string): string {
   return v.replace(/^v/, "").trim();
