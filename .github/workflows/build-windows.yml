@@ -5,6 +5,10 @@ name: Build Windows installer
 # Triggers:
 # - a pushed tag v* (e.g. v1.0.0): builds the installer and publishes it as
 #   a GitHub release of that tag (a pre-release when the tag has a "-").
+# - a push that changes VERSION on main or a claude/** branch: same, for
+#   tag v<VERSION>, created on that commit. Releasing is then just a commit
+#   that bumps VERSION. A "-dev" version publishes nothing (a change to
+#   this file then just builds the installer as a workflow artifact).
 # - release.published: builds the installer and attaches it to the release.
 # - workflow_dispatch: builds it as a workflow artifact (kept 14 days).
 #
@@ -14,6 +18,8 @@ name: Build Windows installer
 on:
   push:
     tags: ["v*"]
+    branches: [main, "claude/**"]
+    paths: ["VERSION", ".github/workflows/build-windows.yml"]
   release:
     types: [published]
   workflow_dispatch:
@@ -68,6 +74,8 @@ jobs:
             TAG="${{ github.event.release.tag_name }}"
           elif [ "${{ github.ref_type }}" = "tag" ]; then
             TAG="${{ github.ref_name }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            TAG="v$(tr -d '[:space:]' < VERSION)"
           else
             TAG="$(git describe --tags --exact-match HEAD 2>/dev/null || true)"
           fi
@@ -76,6 +84,7 @@ jobs:
             exit 0
           fi
           VERSION="${TAG#v}"
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
           printf '%s\n' "$VERSION" > VERSION
           (cd electron && npm version "$VERSION" --no-git-tag-version --allow-same-version)
 
@@ -121,16 +130,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.event.release.tag_name }}" electron/dist-build/*.exe --clobber
 
-      - name: Publish the release for a pushed tag
-        if: github.event_name == 'push' && github.ref_type == 'tag'
+      - name: Publish the release for a pushed tag or VERSION
+        if: github.event_name == 'push' && !endsWith(env.RELEASE_TAG, '-dev')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="$RELEASE_TAG"
           FLAGS=""
           case "$TAG" in *-*) FLAGS="--prerelease" ;; esac
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" $FLAGS --title "WSP CameraTrap ${TAG#v}" \
+            gh release create "$TAG" $FLAGS --target "${{ github.sha }}" --title "WSP CameraTrap ${TAG#v}" \
               --notes "Windows installer for WSP CameraTrap ${TAG#v}. Download WSP-CameraTrap-Setup-${TAG#v}.exe and run it; no admin rights needed."
           fi
           gh release upload "$TAG" electron/dist-build/*.exe --clobber
