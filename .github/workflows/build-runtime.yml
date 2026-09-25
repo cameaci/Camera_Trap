@@ -1,0 +1,95 @@
+name: Build runtime downloads
+
+# Publishes what the app downloads on first launch to this repository's
+# "runtime" release, so WSP laptops never fetch Python packages or model
+# weights from anywhere else:
+#
+# - the prebuilt analysis environment (env-wsp-base, Windows), built with
+#   the app's own EnvironmentManager and split into parts under 2 GB;
+# - MegaDetector v5a (md_v5a.0.0.pt), the fallback when the WSP model
+#   library does not have it.
+#
+# The environment's asset names carry the hash of its YAML, so an app only
+# installs a pack built from the YAML it ships; a changed YAML publishes a
+# new pack next to the old ones.
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "backend/app/ml/envs/wsp-base/**"
+      - "backend/app/ml/env_pack.py"
+      - "backend/app/ml/environment_manager.py"
+      - ".github/workflows/build-runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  env-pack:
+    name: Environment pack (Windows)
+    runs-on: windows-2022
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Build the environment and pack it
+        working-directory: backend
+        env:
+          PYTHONUTF8: "1"
+        run: python -m app.ml.env_pack build --env wsp-base --out ../dist-runtime
+
+      - name: Show the pack
+        run: ls -la dist-runtime
+
+      - name: Publish to the runtime release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view runtime >/dev/null 2>&1; then
+            gh release create runtime --target "${{ github.sha }}" --prerelease \
+              --title "Runtime downloads" \
+              --notes "Downloaded by WSP CameraTrap on first launch: the prebuilt analysis environment and MegaDetector. Do not delete."
+          fi
+          gh release upload runtime dist-runtime/* --clobber
+
+  megadetector:
+    name: MegaDetector mirror
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mirror md_v5a.0.0.pt into the runtime release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view runtime >/dev/null 2>&1; then
+            gh release create runtime --target "${{ github.sha }}" --prerelease \
+              --title "Runtime downloads" \
+              --notes "Downloaded by WSP CameraTrap on first launch: the prebuilt analysis environment and MegaDetector. Do not delete." || true
+          fi
+          if gh release view runtime --json assets --jq '.assets[].name' | grep -qx md_v5a.0.0.pt; then
+            echo "Already mirrored."
+            exit 0
+          fi
+          curl -fL --retry 3 -o md_v5a.0.0.pt \
+            https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt
+          ls -la md_v5a.0.0.pt
+          gh release upload runtime md_v5a.0.0.pt --clobber

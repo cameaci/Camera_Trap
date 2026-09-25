@@ -19,6 +19,10 @@ Examples:
     python wsp/tools/wsp_library.py add-speciesnet LIB path/to/speciesnet-pytorch-v4.0.2a
     python wsp/tools/wsp_library.py add-model LIB --checkpoint training/wsp_uk_v1.pth \\
         --id WSP-UK-v1 --name "WSP UK mammals v1" --taxonomy uk_taxonomy.csv
+    python wsp/tools/wsp_library.py bundle LIB WSP-CameraTrap-models.zip
+
+`bundle` packs the library into the single .zip that the app downloads
+from a OneDrive share link (see wsp/config.json).
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ import hashlib
 import json
 import shutil
 import sys
+import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -197,7 +202,7 @@ def cmd_add_model(args) -> int:
         "model_id": args.id,
         "friendly_name": args.name or args.id,
         "emoji": "🇬🇧",
-        "env": "pytorch",
+        "env": "wsp-base",
         "model_fname": "model.pt",
         "description": args.description
         or f"WSP classifier trained on WSP camera trap data. Classes: {', '.join(names)}.",
@@ -212,6 +217,25 @@ def cmd_add_model(args) -> int:
     _upsert(catalog, "cls", entry)
     _save_catalog(lib, catalog)
     print(f"Published {args.id} (sha256 {_sha256(dst / 'model.pt')[:12]}…)")
+    return 0
+
+
+def cmd_bundle(args) -> int:
+    """Zip the library as models/..., the layout the app expects behind a link."""
+    lib, out = Path(args.library), Path(args.output)
+    if not (lib / "models.json").is_file():
+        print(f"{lib} has no models.json; run init first", file=sys.stderr)
+        return 1
+    out.parent.mkdir(parents=True, exist_ok=True)
+    files = sorted(p for p in lib.rglob("*") if p.is_file() and not p.name.endswith(".tmp"))
+    # Weights do not compress; storing them keeps building and unpacking fast.
+    with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as z:
+        for path in files:
+            z.write(path, "models/" + path.relative_to(lib).as_posix())
+    size_mb = out.stat().st_size / 1e6
+    print(f"Wrote {out} ({len(files)} files, {size_mb:.0f} MB). Upload it to OneDrive,")
+    print("share it with 'Anyone with the link can view' and put the link in")
+    print("wsp/config.json (model_library_url) or File > WSP model library.")
     return 0
 
 
@@ -245,6 +269,11 @@ def main(argv: list[str] | None = None) -> int:
                    choices=["global", "africa", "americas", "asia", "europe", "oceania"])
     p.add_argument("--replace", action="store_true")
     p.set_defaults(func=cmd_add_model)
+
+    p = sub.add_parser("bundle", help="zip the library for a OneDrive share link")
+    p.add_argument("library")
+    p.add_argument("output", help="e.g. WSP-CameraTrap-models.zip")
+    p.set_defaults(func=cmd_bundle)
 
     args = parser.parse_args(argv)
     return args.func(args)

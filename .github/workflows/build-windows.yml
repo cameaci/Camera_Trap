@@ -3,6 +3,8 @@ name: Build Windows installer
 # WSP CameraTrap Windows installer (per-user NSIS, no admin rights needed).
 #
 # Triggers:
+# - a pushed tag v* (e.g. v1.0.0): builds the installer and publishes it as
+#   a GitHub release of that tag (a pre-release when the tag has a "-").
 # - release.published: builds the installer and attaches it to the release.
 # - workflow_dispatch: builds it as a workflow artifact (kept 14 days).
 #
@@ -10,6 +12,8 @@ name: Build Windows installer
 # WSP_PFX_BASE64 (the .pfx file, base64) and WSP_PFX_PASSWORD, the app and
 # installer are Authenticode-signed; without them the installer is unsigned.
 on:
+  push:
+    tags: ["v*"]
   release:
     types: [published]
   workflow_dispatch:
@@ -62,6 +66,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
           else
             TAG="$(git describe --tags --exact-match HEAD 2>/dev/null || true)"
           fi
@@ -114,3 +120,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.event.release.tag_name }}" electron/dist-build/*.exe --clobber
+
+      - name: Publish the release for a pushed tag
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          FLAGS=""
+          case "$TAG" in *-*) FLAGS="--prerelease" ;; esac
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" $FLAGS --title "WSP CameraTrap ${TAG#v}" \
+              --notes "Windows installer for WSP CameraTrap ${TAG#v}. Download WSP-CameraTrap-Setup-${TAG#v}.exe and run it; no admin rights needed."
+          fi
+          gh release upload "$TAG" electron/dist-build/*.exe --clobber

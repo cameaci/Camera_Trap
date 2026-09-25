@@ -26,7 +26,7 @@ def env_manager(envs_dir: Path) -> EnvironmentManager:
     the real micromamba download.
     """
     with patch.object(
-        EnvironmentManager, "_ensure_runtime_dirs", lambda self: None
+        EnvironmentManager, "_ensure_runtime_dirs", lambda self, **kw: None
     ):
         return EnvironmentManager(envs_dir=envs_dir)
 

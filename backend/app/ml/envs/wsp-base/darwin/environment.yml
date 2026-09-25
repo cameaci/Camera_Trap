@@ -20,6 +20,8 @@ dependencies:
   - exiftool
   - pip:
     # Image processing and metadata
+    # SpeciesNet and the WSP classifiers run in this environment too.
+    - onnx2torch
     - exifread
     - piexif
     - gpsphoto

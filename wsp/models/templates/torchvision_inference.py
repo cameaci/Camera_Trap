@@ -4,7 +4,7 @@ WSP classifier trained with training/train_species_classifier.py.
 Copied into a WSP model folder by `wsp/tools/wsp_library.py add-model`,
 next to the checkpoint (saved as model.pt). The checkpoint is the dict the
 trainer writes: state_dict, class_names, arch, input_size, normalization.
-Runs in the app's "pytorch" environment (torch + torchvision only).
+Runs in the app's "wsp-base" environment (torch + torchvision only).
 """
 
 from __future__ import annotations

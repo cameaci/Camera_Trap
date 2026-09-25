@@ -28,6 +28,7 @@ from typing import ClassVar
 from app.core.config import get_settings
 from app.core.job_cancellation import JobCancelledError, is_cancel_requested
 from app.core.logging_config import get_logger
+from app.ml.env_pack import EnvPackError, install_env_pack
 from app.ml.schemas.model_manifest import ModelManifest
 from app.utils.subprocess_env import clean_python_env
 from app.utils.subprocess_runner import log_subprocess_failure, stream_with_tail
@@ -407,9 +408,12 @@ class EnvironmentManager:
         micromamba_name = "micromamba.exe" if platform.system() == "Windows" else "micromamba"
         self.micromamba_path = micromamba_path or (bin_dir / micromamba_name)
 
-        self._ensure_runtime_dirs()
+        # Directories only: micromamba is fetched when an environment is
+        # actually built. With a prebuilt environment it is never needed, and
+        # a network that blocks its host must not break e.g. the model list.
+        self._ensure_runtime_dirs(fetch_micromamba=False)
 
-    def _ensure_runtime_dirs(self) -> None:
+    def _ensure_runtime_dirs(self, fetch_micromamba: bool = True) -> None:
         """
         Make sure the on-disk state this manager depends on actually exists.
         Called at construction time and again before any micromamba invocation
@@ -420,7 +424,7 @@ class EnvironmentManager:
         """
         self.envs_dir.mkdir(parents=True, exist_ok=True)
         self.micromamba_path.parent.mkdir(parents=True, exist_ok=True)
-        if not self.micromamba_path.exists():
+        if fetch_micromamba and not self.micromamba_path.exists():
             logger.info("Micromamba not found, downloading...")
             self._download_micromamba()
 
@@ -603,6 +607,19 @@ class EnvironmentManager:
                 logger.warning(
                     f"Removing invalid/incomplete environment at {env_path}"
                 )
+                self._safe_rmtree(env_path)
+
+            # A prebuilt environment from this repository's releases, when
+            # one is published for this YAML: no package downloads from
+            # conda-forge, PyPI or pytorch.org on the user's machine.
+            try:
+                if install_env_pack(
+                    env_name, env_path, hash_yaml_file(yaml_path), progress_callback
+                ) and self._validate_env(env_path):
+                    return env_path
+            except EnvPackError as e:
+                logger.warning(f"Prebuilt environment not installed ({e}); building it")
+            if env_path.exists():
                 self._safe_rmtree(env_path)
 
             logger.info(f"Creating environment {env_name} from {yaml_path}")

@@ -10,7 +10,7 @@ next to the files of Google's SpeciesNet PyTorch release v4.0.2a:
     taxonomy.csv            (written by wsp/tools/wsp_library.py add-speciesnet)
     inference.py            (this file)
 
-It runs in the app's "pytorch" environment and needs only torch,
+It runs in the app's "wsp-base" environment and needs only torch,
 torchvision and onnx2torch (the classifier is a torch.fx GraphModule that
 pickled onnx2torch operators). Preprocessing follows the speciesnet
 package's SpeciesNetClassifier exactly: crop the MegaDetector box, resize

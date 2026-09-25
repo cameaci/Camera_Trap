@@ -32,6 +32,9 @@ os.environ.setdefault("WSP_DISABLE_MODEL_UPDATES", "true")
 # Never scan this machine's OneDrive for a model library or download one.
 os.environ.setdefault("WSP_MODEL_LIBRARY_AUTODETECT", "false")
 os.environ.setdefault("WSP_MODEL_LIBRARY_URL", "")
+# Never download a prebuilt environment: a closed local port fails at once
+# and the environment tests build (or fake) their own.
+os.environ.setdefault("WSP_ENV_PACK_URL", "http://127.0.0.1:9/no-env-packs")
 
 import pytest
 from fastapi.testclient import TestClient

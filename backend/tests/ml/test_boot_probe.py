@@ -25,7 +25,7 @@ def env_manager(tmp_path: Path) -> EnvironmentManager:
     is patched out to avoid the real micromamba download.
     """
     with patch.object(
-        EnvironmentManager, "_ensure_runtime_dirs", lambda self: None
+        EnvironmentManager, "_ensure_runtime_dirs", lambda self, **kw: None
     ):
         return EnvironmentManager(envs_dir=tmp_path / "envs")
 
