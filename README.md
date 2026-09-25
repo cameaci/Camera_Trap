@@ -1,38 +1,29 @@
+# WSP CameraTrap
 
-<p align="center">
-  <img src="https://github.com/PetervanLunteren/EcoAssist-metadata/blob/main/AddaxAI-logo/logo_incl_text_side.png" width=45% height="auto" />
-</p>
+Camera trap image and video analysis for WSP ecologists: MegaDetector finds
+animals, people and vehicles; SpeciesNet and WSP's own models identify the
+species. Models are distributed through the WSP model library on OneDrive,
+so nothing is downloaded from HuggingFace or Kaggle.
 
-<div align="center">
+- **Ecologists:** [user guide](wsp/docs/USER_GUIDE.md)
+- **Maintainer (models, releases):** [admin guide](wsp/docs/ADMIN_GUIDE.md)
+- **Design and plan:** [wsp/docs/WSP_PLAN.md](wsp/docs/WSP_PLAN.md)
 
-[![status](https://joss.theoj.org/papers/dabe3753aae2692d9908166a7ce80e6e/status.svg)](https://joss.theoj.org/papers/dabe3753aae2692d9908166a7ce80e6e)
-[![Project Status: Active The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-![GitHub](https://img.shields.io/github/license/PetervanLunteren/AddaxAI)
-![GitHub last commit](https://img.shields.io/github/last-commit/PetervanLunteren/AddaxAI)
+## Repository layout
 
-</div>
+| Folder | What |
+|---|---|
+| `backend/` | FastAPI backend and ML workers (from AddaxAI) |
+| `frontend/` | React user interface (from AddaxAI) |
+| `electron/` | Desktop shell and Windows installer |
+| `wsp/` | WSP additions: shipped model catalog, SpeciesNet and WSP model `inference.py`, the model library tool, docs |
+| `training/` | WSP dataset preparation and classifier training |
 
----
+Developer notes for the app itself are in [DEVELOPERS.md](DEVELOPERS.md).
 
-<div align="center">
+## Credits and license
 
-<h3>
-  
-Website: https://www.addaxai.com/
-
-Documentation: https://docs.addaxai.com/
-
-Forum: https://forum.addaxai.com/
-
-</h3>
-
-</div>
-
-AddaxAI is an application designed to streamline the work of ecologists dealing with camera trap images. It’s an AI platform that allows you to analyse images with machine learning models for automatic detection, offering ecologists a way to save time and focus on conservation efforts.
-
-<p align="center">
-  <img src="https://github.com/PetervanLunteren/EcoAssist-metadata/blob/main/imgs/teaser_animal.jpg" width=45% height="auto" />
-  <img src="https://github.com/PetervanLunteren/EcoAssist-metadata/blob/main/imgs/teaser_red_fox.JPG" width=45% height="auto" />
-  <img src="https://github.com/PetervanLunteren/EcoAssist-metadata/blob/main/imgs/teaser_ocelot.JPG" width=45% height="auto" /> 
-  <img src="https://github.com/PetervanLunteren/EcoAssist-metadata/blob/main/imgs/teaser_tinamou.JPG" width=45% height="auto" /> 
-</p>
+WSP CameraTrap is built on [AddaxAI](https://github.com/PetervanLunteren/AddaxAI)
+by Peter van Lunteren (Addax Data Science), MIT license. The models have
+their own licenses: MegaDetector (MIT, Dan Morris), SpeciesNet (Apache-2.0,
+Google). See [LICENSE](LICENSE).

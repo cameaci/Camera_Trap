@@ -1,6 +1,6 @@
 # WSP CameraTrap: AddaxAI incelemesi, mimari ve uygulama planı
 
-> Durum: **ONAY BEKLİYOR**. Onaydan sonra 3. bölümdeki fazlar sırayla uygulanacak.
+> Durum: **ONAYLANDI, uygulanıyor.** Güncel kullanım: `USER_GUIDE.md` ve `ADMIN_GUIDE.md`.
 > İncelenen upstream: `PetervanLunteren/AddaxAI` `main`, commit `b8b75e2` (23 Eylül 2026), MIT lisanslı.
 
 ---
