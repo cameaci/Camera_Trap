@@ -30,8 +30,9 @@ import { BackupNowDialog } from "../diagnostics/BackupNowDialog";
 import { RestoreBackupDialog } from "../diagnostics/RestoreBackupDialog";
 import { CheckForUpdatesDialog } from "../diagnostics/CheckForUpdatesDialog";
 import { RemoveLegacyDialog } from "../diagnostics/RemoveLegacyDialog";
+import { ModelLibraryDialog } from "../diagnostics/ModelLibraryDialog";
 
-type DialogId = "reset" | "updates" | "backup" | "restore" | "legacy" | null;
+type DialogId = "reset" | "updates" | "backup" | "restore" | "legacy" | "model-library" | null;
 
 const FALLBACK_VERSION = "(dev)";
 
@@ -235,6 +236,9 @@ export function MenuCommands() {
         case "remove-legacy":
           setDialog("legacy");
           break;
+        case "model-library": // WSP
+          setDialog("model-library");
+          break;
         case "open-user-data":
           void openUserDataFolder();
           break;
@@ -272,6 +276,10 @@ export function MenuCommands() {
         open={dialog === "updates"}
         onOpenChange={(o) => setDialog(o ? "updates" : null)}
         currentVersion={version}
+      />
+      <ModelLibraryDialog
+        open={dialog === "model-library"}
+        onOpenChange={(o) => setDialog(o ? "model-library" : null)}
       />
       <RemoveLegacyDialog
         open={dialog === "legacy"}

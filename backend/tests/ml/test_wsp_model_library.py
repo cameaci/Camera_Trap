@@ -246,16 +246,16 @@ def test_library_endpoint_saves_and_reports_the_folder(client, tmp_path, monkeyp
     lib = tmp_path / "WSP CameraTrap" / "models"
     _put(lib, "models.json", json.dumps({"models": {"det": [], "cls": []}}).encode())
 
-    body = client.put("/api/wsp/library", json={"library_dir": str(lib)}).json()
+    body = client.post("/api/wsp/library", json={"library_dir": str(lib)}).json()
     assert body["library_dir"] == str(lib)
     assert body["source"] == "settings"
     assert client.get("/api/wsp/library").json()["library_dir"] == str(lib)
 
-    client.put("/api/wsp/library", json={"library_dir": None})
+    client.post("/api/wsp/library", json={"library_dir": None})
     assert client.get("/api/wsp/library").json()["library_dir"] is None
 
 
 def test_library_endpoint_rejects_a_folder_that_is_not_a_library(client, tmp_path):
-    response = client.put("/api/wsp/library", json={"library_dir": str(tmp_path)})
+    response = client.post("/api/wsp/library", json={"library_dir": str(tmp_path)})
     assert response.status_code == 400
     assert "models.json" in response.json()["detail"]

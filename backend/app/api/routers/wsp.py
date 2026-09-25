@@ -62,7 +62,7 @@ def get_library() -> LibraryStatus:
     return _status()
 
 
-@router.put("/library", response_model=LibraryStatus)
+@router.post("/library", response_model=LibraryStatus)
 async def set_library(update: LibraryUpdate, request: Request) -> LibraryStatus:
     raw = (update.library_dir or "").strip()
     if raw:
