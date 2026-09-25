@@ -281,6 +281,9 @@ def test_path_home_only_in_allowed_modules() -> None:
     allowed = {
         Path("app/core/config.py"),
         Path("app/services/legacy_install.py"),
+        # WSP: looks for the synced OneDrive/SharePoint model library,
+        # which lives in the real home folder, not in USER_DATA_DIR.
+        Path("app/ml/model_library.py"),
     }
     backend_root = Path(__file__).resolve().parents[1]
     offenders = []

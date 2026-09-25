@@ -20,7 +20,6 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 # WSP: our own data folder, so WSP CameraTrap never shares (or deletes)
 # the data of an AddaxAI install on the same machine.
 USER_DATA_DIR_NAME = "WSP-CameraTrap"
