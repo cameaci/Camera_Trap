@@ -1,3 +1,0 @@
-# Test tooling for CameraTrap.
--r requirements.txt
-pytest==9.1.1

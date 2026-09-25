@@ -111,3 +111,10 @@ skills/send-draft-model/
 
 # Personal to-do list
 TODO.md
+# WSP: model weights and training outputs never go into git
+*.pth
+*.pt
+*.pth.metrics.json
+dataset_uk_species/
+prep_work/
+review_and_label.csv

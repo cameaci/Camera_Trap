@@ -1,0 +1,26 @@
+# CameraTrap direct runtime dependencies
+# Verified with Python 3.13.0 on 2026-09-15.
+#
+# This file covers the WSP dataset preparation/validation scripts, the
+# PyTorch transfer-learning trainer, SpeciesNet inference, and the existing
+# Gradio demo application.
+
+# WSP dataset preparation, validation, and image handling
+numpy==2.3.5
+Pillow==12.3.0
+
+# Model training and inference
+torch==2.14.0
+torchvision==0.29.0
+speciesnet==5.0.5
+
+# Existing Gradio demo and detector integrations
+opencv-python==5.0.0.93
+# PytorchWildlife 1.3.0 requires this Supervision release.
+supervision==0.23.0
+gradio==6.27.0
+ultralytics==8.4.152
+PytorchWildlife==1.3.0
+# PytorchWildlife imports its bioacoustics modules at package import time.
+soundfile==0.14.0
+librosa==1.0.0
