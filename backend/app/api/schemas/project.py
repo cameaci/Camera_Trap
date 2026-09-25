@@ -51,8 +51,9 @@ class ProjectBase(BaseModel):
     classification_model_id: str | None = Field(
         None, description="Classification model ID or null for detection-only"
     )
+    # WSP: no embedding model ships in the WSP catalog, so none by default.
     embedding_model_id: str | None = Field(
-        "DINOV2-VITS14", description="Embedding model ID or null to skip embeddings"
+        None, description="Embedding model ID or null to skip embeddings"
     )
     excluded_classes: list[str] = Field(
         default_factory=list, description="Species classes to exclude from classification"

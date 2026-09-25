@@ -97,6 +97,21 @@ def test_a_damaged_download_is_refused(served, tmp_path):
     assert not target.exists()
 
 
+def test_a_cancelled_download_leaves_nothing(served, tmp_path):
+    from app.core.job_cancellation import JobCancelledError
+
+    prefix = "C:\\build\\.env-wsp-base.tmp"
+    built = _fake_env(tmp_path / "build", prefix)
+    env_pack.write_pack(built, "env-wsp-base", "c" * 16, "win-64", prefix, served)
+
+    target = tmp_path / "user" / "env-wsp-base"
+    target.parent.mkdir(parents=True)
+    with pytest.raises(JobCancelledError):
+        env_pack.install_env_pack("env-wsp-base", target, "c" * 16, should_cancel=lambda: True)
+    assert not target.exists()
+    assert not list(target.parent.glob(".*.pack"))
+
+
 def test_platforms_without_packs_skip_the_download(monkeypatch, tmp_path):
     monkeypatch.setattr(env_pack, "platform_tag", lambda: None)
     assert env_pack.install_env_pack("env-wsp-base", tmp_path / "env", "0" * 16) is False

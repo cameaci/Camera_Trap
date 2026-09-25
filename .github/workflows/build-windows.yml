@@ -158,7 +158,15 @@ jobs:
           TAG="$RELEASE_TAG"
           FLAGS=""
           case "$TAG" in *-*) FLAGS="--prerelease" ;; esac
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # A branch push that did not bump VERSION (e.g. a change to this
+            # file) must not replace the installer of an existing release
+            # with one built from a different commit.
+            if [ "${{ github.ref_type }}" != "tag" ]; then
+              echo "Release $TAG already exists; bump VERSION to publish a new one."
+              exit 0
+            fi
+          else
             gh release create "$TAG" $FLAGS --target "${{ github.sha }}" --title "WSP CameraTrap ${TAG#v}" \
               --notes "Windows installer for WSP CameraTrap ${TAG#v}. Download WSP-CameraTrap-Setup-${TAG#v}.exe and run it; no admin rights needed."
           fi

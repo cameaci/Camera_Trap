@@ -339,13 +339,25 @@ def run_setup(
         )
         if weight.is_file():
             continue
-        if model_library.library_model_dir(spec["type_dir"], spec["model_id"]) is None:
+        # A linked library is only downloaded by the step above, so it
+        # cannot be checked yet; the step re-checks once it runs.
+        if (
+            not model_library.get_library_url()
+            and model_library.library_model_dir(spec["type_dir"], spec["model_id"])
+            is None
+        ):
             continue
         manifest = _build_default_model_manifest(spec)
 
         def _optional_model_step(
-            cb: Callable[[str, float], None], _m: ModelManifest = manifest
+            cb: Callable[[str, float], None],
+            _m: ModelManifest = manifest,
+            _type_dir: str = spec["type_dir"],
         ) -> None:
+            if model_library.library_model_dir(_type_dir, _m.model_id) is None:
+                logger.info(f"Optional model {_m.model_id} is not in the library; skipped")
+                cb("Not in the WSP model library; skipped", 1.0)
+                return
             try:
                 storage.download_weights(_m, cb)
             except JobCancelledError:

@@ -98,7 +98,7 @@ class Settings(BaseSettings):
     model_library_url: str | None = None
 
     # Where prebuilt analysis environments are downloaded from. Unset
-    # means the address in wsp/config.json (this repository's releases).
+    # means RUNTIME_RELEASE_URL (this repository's "runtime" release).
     env_pack_url: str | None = None
 
     # Model catalog sync

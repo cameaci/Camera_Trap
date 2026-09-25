@@ -126,7 +126,8 @@ export function CreateProjectDialog({
       description: "",
       detection_model_id: "MD5A-0-0",
       classification_model_id: lastSelection?.classification_model_id ?? null,
-      embedding_model_id: lastSelection?.embedding_model_id ?? "DINOV2-VITS14",
+      // WSP: no embedding model ships in the WSP catalog, so none by default.
+      embedding_model_id: lastSelection?.embedding_model_id ?? null,
       excluded_classes: lastSelection?.excluded_classes ?? [],
       country_code: lastSelection?.country_code ?? null,
       state_code: lastSelection?.state_code ?? null,

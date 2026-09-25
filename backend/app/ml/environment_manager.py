@@ -616,7 +616,13 @@ class EnvironmentManager:
             # conda-forge, PyPI or pytorch.org on the user's machine.
             try:
                 if install_env_pack(
-                    env_name, env_path, hash_yaml_file(yaml_path), progress_callback
+                    env_name,
+                    env_path,
+                    hash_yaml_file(yaml_path),
+                    progress_callback,
+                    should_cancel=(
+                        (lambda: is_cancel_requested(job_id)) if job_id is not None else None
+                    ),
                 ) and self._validate_env(env_path):
                     return env_path
             except EnvPackError as e:

@@ -144,7 +144,8 @@ const NO_EMBEDDING = "none";
 // Default embedding model for brand-new users (no saved settings yet).
 // Returning users get their last-used choice from localStorage, and
 // resumed runs seed from the project row.
-const DEFAULT_EMBEDDING = "DINOV2-VITS14";
+// WSP: no embedding model ships in the WSP catalog, so none by default.
+const DEFAULT_EMBEDDING = NO_EMBEDDING;
 
 const settingsSchema = z.object({
   folder_path: z.string().min(1, "Pick a folder"),

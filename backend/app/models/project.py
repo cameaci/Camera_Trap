@@ -60,7 +60,7 @@ class Project(Base):
         String(100), nullable=True
     )
     embedding_model_id: Mapped[str | None] = mapped_column(
-        String(100), nullable=True, default="DINOV2-VITS14"
+        String(100), nullable=True
     )
     excluded_classes: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list

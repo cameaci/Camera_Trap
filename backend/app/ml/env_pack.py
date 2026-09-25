@@ -36,6 +36,7 @@ from pathlib import Path
 import requests
 
 from app.core.config import RUNTIME_RELEASE_URL, get_settings
+from app.core.job_cancellation import JobCancelledError
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -91,13 +92,16 @@ def install_env_pack(
     yaml_sha: str,
     progress_callback: ProgressCallback | None = None,
     timeout: float = 60.0,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> bool:
     """
     Install a prebuilt environment at `env_path`.
 
     Returns False when there is no pack for this platform and YAML (the
     caller then builds the environment itself). Raises EnvPackError when a
-    pack exists but cannot be installed; nothing is left at `env_path`.
+    pack exists but cannot be installed, and JobCancelledError when
+    `should_cancel` says so during the download; either way nothing is
+    left at `env_path`.
     """
     tag = platform_tag()
     if tag is None:
@@ -137,6 +141,8 @@ def install_env_pack(
                     if r.status_code >= 400:
                         raise EnvPackError(f"Downloading {part} failed: HTTP {r.status_code}")
                     for chunk in r.iter_content(chunk_size=_CHUNK):
+                        if should_cancel is not None and should_cancel():
+                            raise JobCancelledError("Environment download cancelled")
                         out.write(chunk)
                         digest.update(chunk)
                         done += len(chunk)

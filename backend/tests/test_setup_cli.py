@@ -141,3 +141,13 @@ def test_install_env_blocking_records_error(monkeypatch):
     setup_router._install_env_blocking()
     assert setup_router._install_state.error == "boom"
     assert setup_router._install_state.in_progress is False
+
+
+def test_sync_catalog_writes_the_shipped_manifests(monkeypatch, tmp_path):
+    """The real catalog sync runs (the other tests stub it out)."""
+    from app.core.config import get_settings
+
+    setup_cli._sync_catalog()
+
+    models_dir = get_settings().models_dir
+    assert (models_dir / "det" / "MD5A-0-0" / "manifest.json").is_file()

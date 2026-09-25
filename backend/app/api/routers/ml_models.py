@@ -295,9 +295,11 @@ async def prepare_model_weights(model_id: str, request: Request) -> ModelPrepare
 async def update_model(model_id: str, request: Request) -> ModelUpdateResponse:
     """
     Copy again the files of an installed model that no longer match
-    the WSP model library, and nothing else. The weights are never fetched, so this
-    is a few kilobytes and finishes while the user waits, which is why it
-    answers when the work is done rather than returning 202.
+    the WSP model library, and nothing else. It answers when the work is
+    done rather than returning 202: the changed files are normally the
+    small ones (inference.py, taxonomy.csv), since a new weights file is
+    published under a new model id (see wsp/docs/ADMIN_GUIDE.md). A weights
+    file changed in place is copied too, which then takes a while.
 
     `model_id` is the only thing the client gets to choose. Which files
     are stale is recomputed here, so a caller can never name a path.

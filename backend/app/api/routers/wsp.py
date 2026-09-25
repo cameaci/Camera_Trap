@@ -32,21 +32,33 @@ class _DownloadState:
         self.progress = 0.0
         self.message = ""
         self.error: str | None = None
+        # Set when a download is asked for while one is running (a new
+        # link was saved mid-download), so the running task goes again.
+        self._again = False
         self._lock = threading.Lock()
 
     def start(self) -> bool:
+        """True when the caller should start the task; else it reruns."""
         with self._lock:
             if self.in_progress:
+                self._again = True
                 return False
             self.in_progress, self.progress, self.message, self.error = True, 0.0, "", None
+            self._again = False
             return True
 
     def update(self, message: str, progress: float) -> None:
         self.message, self.progress = message, progress
 
-    def finish(self, error: str | None = None) -> None:
+    def finish(self, error: str | None = None) -> bool:
+        """End the download, or return True when another pass was asked for."""
         with self._lock:
+            if self._again:
+                self._again = False
+                self.progress, self.message = 0.0, ""
+                return True
             self.in_progress, self.error = False, error
+            return False
 
 
 _download = _DownloadState()
@@ -112,13 +124,38 @@ async def _resync(request: Request) -> None:
         logger.error(f"Catalog sync after a library change failed: {e}", exc_info=True)
 
 
-def _download_blocking() -> None:
-    try:
-        model_library.sync_library_url(_download.update)
-        _download.finish()
-    except Exception as e:
-        logger.error(f"WSP model library download failed: {e}")
-        _download.finish(str(e))
+# Strong references to the running download tasks: the event loop keeps
+# only a weak one, so an unreferenced task can be collected mid-run.
+_tasks: set[asyncio.Task] = set()
+
+
+def _start_download(request: Request) -> None:
+    """
+    Download the linked library in the background, then re-read the
+    catalog. The status reports the download as running until the catalog
+    is re-read, so the dialog refreshes the model lists only once the new
+    models are there. A request while one runs makes it go once more.
+    """
+    if not model_library.get_library_url() or not _download.start():
+        return
+
+    async def run() -> None:
+        again = True
+        while again:
+            error = None
+            try:
+                await asyncio.to_thread(model_library.sync_library_url, _download.update)
+            except Exception as e:
+                logger.error(f"WSP model library download failed: {e}")
+                error = str(e)
+            try:
+                await _resync(request)
+            finally:
+                again = _download.finish(error)
+
+    task = asyncio.create_task(run())
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
 
 
 @router.get("/library", response_model=LibraryStatus)
@@ -159,13 +196,8 @@ async def set_library(update: LibraryUpdate, request: Request) -> LibraryStatus:
         model_library.write_library_dir(None)
         model_library.write_library_url(None)
 
-    if model_library.get_library_url() and _download.start():
-
-        async def run() -> None:
-            await asyncio.to_thread(_download_blocking)
-            await _resync(request)
-
-        asyncio.create_task(run())
+    if model_library.get_library_url():
+        _start_download(request)
     else:
         await _resync(request)
     return _status()
@@ -174,11 +206,5 @@ async def set_library(update: LibraryUpdate, request: Request) -> LibraryStatus:
 @router.post("/library/refresh", response_model=LibraryStatus)
 async def refresh_library(request: Request) -> LibraryStatus:
     """Check the library link again (downloads only when the file changed)."""
-    if model_library.get_library_url() and _download.start():
-
-        async def run() -> None:
-            await asyncio.to_thread(_download_blocking)
-            await _resync(request)
-
-        asyncio.create_task(run())
+    _start_download(request)
     return _status()

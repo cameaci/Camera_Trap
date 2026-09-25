@@ -42,9 +42,8 @@ def _sync_catalog() -> None:
     """
     from app.ml.catalog_updater import ModelCatalogUpdater
 
-    updater = ModelCatalogUpdater(catalog_url=get_settings().model_catalog_url)
     try:
-        asyncio.run(updater.sync())
+        asyncio.run(ModelCatalogUpdater().sync())
     except Exception as e:
         logger.warning(f"Model catalog sync failed: {e}")
         print(f"Warning: could not refresh the model catalog: {e}", file=sys.stderr)

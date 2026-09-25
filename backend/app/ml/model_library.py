@@ -236,6 +236,12 @@ def autodetect_library_dir() -> Path | None:
     return None
 
 
+def _configured_dir() -> Path | None:
+    """The folder set by WSP_MODEL_LIBRARY_DIR or saved in the app, or None."""
+    configured = get_settings().model_library_dir or read_config().get("model_library_dir")
+    return Path(configured).expanduser() if configured else None
+
+
 def get_library_dir() -> Path | None:
     """
     The WSP model library folder, or None.
@@ -247,10 +253,9 @@ def get_library_dir() -> Path | None:
     than silently replaced by a guess.
     """
     settings = get_settings()
-    configured = settings.model_library_dir or read_config().get("model_library_dir")
-    if configured:
-        path = Path(configured).expanduser()
-        return path if is_library_dir(path) else None
+    configured = _configured_dir()
+    if configured is not None:
+        return configured if is_library_dir(configured) else None
     if get_library_url():
         cached = library_cache_dir()
         if is_library_dir(cached):
@@ -356,7 +361,9 @@ def sync_library_url(
     """
     Download the linked library if the file behind the link changed.
 
-    Returns the unpacked library folder, or None when no link is set.
+    Returns the unpacked library folder, or None when no link is set or
+    a configured folder wins over it (see get_library_dir), in which case
+    the download would never be used.
     Skips the download when the link, ETag, Last-Modified and size all
     match the last download. Keeps the previous copy until a new one is
     complete, so a failed download never loses a working library.
@@ -365,7 +372,7 @@ def sync_library_url(
         LibraryDownloadError: the link does not serve a library bundle.
     """
     url = get_library_url()
-    if not url:
+    if not url or _configured_dir() is not None:
         return None
     direct = normalize_share_url(url)
     target = library_cache_dir()

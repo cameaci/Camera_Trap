@@ -46,7 +46,24 @@ def _validate_catalog(catalog: Any) -> dict[str, Any] | None:
     if "det" not in catalog["models"] or "cls" not in catalog["models"]:
         logger.error("Invalid catalog structure: missing 'det' or 'cls' in models")
         return None
-    return catalog
+    # One malformed entry (a hand-edited library models.json) must not take
+    # the whole sync down, the shipped models included: drop it and go on.
+    models: dict[str, list[dict[str, Any]]] = {}
+    for model_type, entries in catalog["models"].items():
+        if not isinstance(entries, list):
+            logger.error(f"Invalid catalog structure: '{model_type}' is not a list")
+            return None
+        models[model_type] = []
+        for entry in entries:
+            if (
+                isinstance(entry, dict)
+                and isinstance(entry.get("model_id"), str)
+                and isinstance(entry.get("model_fname"), str)
+            ):
+                models[model_type].append(entry)
+            else:
+                logger.error(f"Skipping a catalog entry without model_id/model_fname: {entry!r}")
+    return {**catalog, "models": models}
 
 # Names of envs whose drift we surface in the toast. Kept here rather
 # than in EnvironmentManager because env_manager treats env_name as an

@@ -229,6 +229,21 @@ def test_linked_library_is_not_downloaded_again_when_unchanged(server, monkeypat
     assert (lib / "cls" / "NEW" / "model.pt").is_file()
 
 
+def test_a_configured_folder_wins_over_the_link(server, tmp_path, monkeypatch):
+    """The link is not downloaded when a folder takes priority over it."""
+    folder = tmp_path / "synced"
+    _put(folder, "models.json", b'{"models": {"det": [], "cls": []}}')
+    monkeypatch.setenv("WSP_MODEL_LIBRARY_DIR", str(folder))
+
+    def no_request(*args, **kwargs):
+        raise AssertionError("the link must not be requested")
+
+    monkeypatch.setattr(model_library.requests, "get", no_request)
+
+    assert model_library.sync_library_url() is None
+    assert model_library.get_library_dir() == folder
+
+
 def test_a_sign_in_page_is_reported_and_keeps_the_old_copy(server):
     server.body = _bundle({"models.json": b'{"models": {"det": [], "cls": []}}'})
     model_library.sync_library_url()
@@ -417,6 +432,20 @@ def test_library_catalog_adds_and_overrides_shipped_entries(library, tmp_path):
     assert det["MD5A-0-0"]["friendly_name"] == "MD from library"
 
 
+def test_a_malformed_library_entry_is_skipped(library, tmp_path):
+    """One bad hand-edited entry must not drop the rest of the catalog."""
+    broken = {k: v for k, v in _entry("BROKEN").items() if k != "model_id"}
+    catalog = {"models": {"det": [], "cls": [broken, _entry()]}}
+    _put(library, "models.json", json.dumps(catalog).encode())
+
+    merged = ModelCatalogUpdater(tmp_path / "models").fetch_catalog()
+
+    cls_ids = [m["model_id"] for m in merged["models"]["cls"]]
+    assert "WSP-UK-v1" in cls_ids
+    assert "SPECIESNET-v4-0-2-A" in cls_ids
+    assert [m["model_id"] for m in merged["models"]["det"]] == ["MD5A-0-0"]
+
+
 def test_shipped_catalog_is_used_without_a_library(tmp_path, monkeypatch):
     monkeypatch.delenv("WSP_MODEL_LIBRARY_DIR", raising=False)
     catalog = ModelCatalogUpdater(tmp_path / "models").fetch_catalog()
@@ -507,3 +536,39 @@ def test_library_endpoint_rejects_a_folder_that_is_not_a_library(client, tmp_pat
 def test_library_endpoint_rejects_a_link_that_is_not_a_url(client):
     response = client.post("/api/wsp/library", json={"library_url": "OneDrive folder"})
     assert response.status_code == 400
+
+
+def test_a_link_saved_mid_download_runs_the_download_again():
+    """Saving a new link while one downloads must not be dropped."""
+    from app.api.routers.wsp import _DownloadState
+
+    state = _DownloadState()
+    assert state.start() is True
+    assert state.start() is False  # the running task will go again
+    assert state.finish() is True  # ... so it does
+    assert state.in_progress
+    assert state.finish("boom") is False
+    assert not state.in_progress and state.error == "boom"
+
+
+def test_first_setup_installs_speciesnet_from_a_linked_library(server, tmp_path, monkeypatch):
+    """The linked library is only downloaded during setup, so SpeciesNet
+    must not be ruled out before that download has run."""
+    from app.api.routers import setup as setup_router
+
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path / "user"))
+    monkeypatch.setattr(setup_router, "_env_present", lambda: True)
+    monkeypatch.setattr(setup_router, "_get_env_manager", lambda: None)
+    monkeypatch.setattr(setup_router, "_refresh_catalog", lambda: None)
+    sn = "always_crop_99710272_22x8_v12_epoch_00148.pt"
+    server.body = _bundle({
+        "models.json": json.dumps({"models": {"det": [], "cls": []}}).encode(),
+        "det/MD5A-0-0/md_v5a.0.0.pt": b"md",
+        f"cls/SPECIESNET-v4-0-2-A/{sn}": b"sn",
+    })
+
+    setup_router.run_setup(lambda m, p: None)
+
+    models = tmp_path / "user" / "models"
+    assert (models / "det" / "MD5A-0-0" / "md_v5a.0.0.pt").read_bytes() == b"md"
+    assert (models / "cls" / "SPECIESNET-v4-0-2-A" / sn).read_bytes() == b"sn"
