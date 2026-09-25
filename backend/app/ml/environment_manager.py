@@ -178,9 +178,11 @@ def hash_yaml_file(yaml_path: Path) -> str:
     """
     Full byte-level SHA-256 of an environment.yml. Comments and
     formatting count: any meaningful edit changes the bytes and we'd
-    rather over-trigger a rebuild than miss one.
+    rather over-trigger a rebuild than miss one. Line endings do not:
+    a Windows checkout turns LF into CRLF, and the prebuilt environment
+    packs are named by this hash, so it must match across checkouts.
     """
-    return hashlib.sha256(yaml_path.read_bytes()).hexdigest()
+    return hashlib.sha256(yaml_path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 # Pre-conda baseline: matches the explicit "Starting package installation"

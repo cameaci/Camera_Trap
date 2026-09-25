@@ -51,6 +51,14 @@ def test_hash_yaml_file_changes_on_any_byte_edit(tmp_path: Path) -> None:
     assert before != after
 
 
+def test_hash_yaml_file_ignores_line_endings(tmp_path: Path) -> None:
+    """A Windows checkout (CRLF) must name the same env pack as LF."""
+    lf, crlf = tmp_path / "lf.yml", tmp_path / "crlf.yml"
+    lf.write_bytes(b"name: test\ndependencies:\n  - python=3.11\n")
+    crlf.write_bytes(b"name: test\r\ndependencies:\r\n  - python=3.11\r\n")
+    assert hash_yaml_file(lf) == hash_yaml_file(crlf)
+
+
 def test_check_yaml_drift_returns_none_for_missing_env(
     env_manager: EnvironmentManager,
 ) -> None:
