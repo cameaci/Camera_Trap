@@ -20,6 +20,7 @@ from huggingface_hub.errors import RepositoryNotFoundError
 from app.core.config import get_settings
 from app.core.job_cancellation import JobCancelledError
 from app.core.logging_config import get_logger
+from app.ml import model_library
 from app.ml.hf_downloader import HuggingFaceRepoDownloader, NetworkBlockedError
 from app.ml.schemas.model_manifest import ModelManifest, resolve_hf_repo
 from app.utils.fs_remove import safe_rmtree
@@ -311,6 +312,11 @@ class ModelStorage:
                 progress_callback("Model already cached", 1.0)
             return model_path
 
+        if get_settings().model_source == "library":  # WSP
+            return self._install_from_wsp_sources(
+                manifest, model_type, model_path, progress_callback, should_cancel
+            )
+
         # Determine HF repo
         hf_repo = resolve_hf_repo(manifest.model_id, manifest.hf_repo)
         logger.info(f"Downloading {hf_repo} to {model_path}")
@@ -383,6 +389,63 @@ class ModelStorage:
                 f"from {hf_repo}: {e}"
             ) from e
 
+    def _install_from_wsp_sources(
+        self,
+        manifest: ModelManifest,
+        model_type: str,
+        model_path: Path,
+        progress_callback: Callable[[str, float], None] | None,
+        should_cancel: Callable[[], bool] | None,
+    ) -> Path:
+        """
+        WSP: install a model from the WSP model library, else from its
+        download_url. Same failure rules as the HuggingFace path: a failure
+        keeps what was copied so a retry only fetches what is missing, a
+        cancel removes it (manifest.json survives).
+        """
+        src = model_library.library_model_dir(model_type, manifest.model_id)
+        try:
+            if src is not None:
+                logger.info(f"Copying {manifest.model_id} from the library at {src}")
+                model_library.copy_model(
+                    src, model_path, progress_callback, should_cancel
+                )
+            elif manifest.download_url:
+                logger.info(f"Downloading {manifest.model_id} from {manifest.download_url}")
+                if progress_callback:
+                    progress_callback(f"Downloading {manifest.friendly_name}...", 0.0)
+                model_library.download_url(
+                    manifest.download_url,
+                    model_path / manifest.model_fname,
+                    progress_callback,
+                    should_cancel,
+                )
+            else:
+                raise model_library.ModelSourceMissingError(
+                    manifest.model_id, manifest.friendly_name, model_path
+                )
+        except JobCancelledError:
+            logger.info(f"Cleaning up cancelled install at {model_path}")
+            _clear_downloaded_files(model_path)
+            raise
+        except model_library.ModelSourceMissingError:
+            raise
+        except Exception as e:
+            source = src or manifest.download_url
+            raise RuntimeError(
+                f"Failed to install {manifest.model_id} from {source}: {e}"
+            ) from e
+
+        if not self.check_weights_ready(manifest):
+            raise RuntimeError(
+                f"{manifest.model_id} was installed but {manifest.model_fname} "
+                f"is missing from {model_path}. Check the model folder in the library."
+            )
+        logger.info(f"Installed {manifest.model_id} at {model_path}")
+        if progress_callback:
+            progress_callback("Install complete", 1.0)
+        return model_path
+
     def update_stale_files(self, manifest: ModelManifest) -> list[str]:
         """
         Re-download only the repo files whose local copy differs from
@@ -402,6 +465,24 @@ class ModelStorage:
         # Raises FileNotFoundError with a message aimed at the user when the
         # model directory or the weights file is absent.
         model_dir = self.get_model_file(manifest).parent
+
+        if get_settings().model_source == "library":  # WSP
+            model_type = model_dir.parent.name
+            src = model_library.library_model_dir(model_type, manifest.model_id)
+            if src is None:
+                raise ConnectionError(
+                    f"The WSP model library has no folder for {manifest.model_id}"
+                )
+            stale = model_library.find_stale_files(model_dir, src)
+            if stale is None:
+                raise ConnectionError(f"Could not read {src} to check for updates")
+            if stale:
+                model_library.copy_model(src, model_dir, include=stale, overwrite=True)
+                logger.info(
+                    f"Updated {len(stale)} file(s) for {manifest.model_id}: {', '.join(stale)}"
+                )
+            return stale
+
         hf_repo = resolve_hf_repo(manifest.model_id, manifest.hf_repo)
 
         stale = find_stale_files(model_dir, hf_repo)

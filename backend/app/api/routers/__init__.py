@@ -17,6 +17,7 @@ from .setup import router as setup_router
 from .sites import router as sites_router
 from .statistics import router as statistics_router
 from .websocket import router as websocket_router
+from .wsp import router as wsp_router
 
 __all__ = [
     "backup_router",
@@ -36,4 +37,5 @@ __all__ = [
     "sites_router",
     "statistics_router",
     "websocket_router",
+    "wsp_router",
 ]

@@ -23,6 +23,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # WSP: our own data folder, so WSP CameraTrap never shares (or deletes)
 # the data of an AddaxAI install on the same machine.
 USER_DATA_DIR_NAME = "WSP-CameraTrap"
+# WSP: the repository this app is built and released from.
+PROJECT_URL = "https://github.com/cameaci/Camera_Trap"
 
 
 def get_default_user_data_dir() -> Path:

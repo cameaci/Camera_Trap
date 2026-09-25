@@ -29,6 +29,11 @@ _TEST_DIR = Path(tempfile.mkdtemp(prefix="addaxai_test_"))
 os.environ.setdefault("ADDAXAI_USER_DATA_DIR", str(_TEST_DIR))
 os.environ.setdefault("ADDAXAI_ENVIRONMENT", "test")
 os.environ.setdefault("ADDAXAI_DISABLE_MODEL_UPDATES", "true")
+# WSP: the upstream suite covers the HuggingFace model source; the WSP
+# library source is covered by tests/ml/test_wsp_model_library.py, which
+# switches it on per test. Never scan this machine's OneDrive for a library.
+os.environ.setdefault("ADDAXAI_MODEL_SOURCE", "huggingface")
+os.environ.setdefault("ADDAXAI_MODEL_LIBRARY_AUTODETECT", "false")
 
 import pytest
 from fastapi.testclient import TestClient

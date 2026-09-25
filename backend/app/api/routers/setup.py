@@ -26,8 +26,10 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from app.core.config import get_settings
+from app.core.config import PROJECT_URL, get_settings
+from app.core.job_cancellation import JobCancelledError
 from app.core.logging_config import get_logger
+from app.ml import model_library
 from app.ml.environment_manager import (
     EnvironmentManager,
     TlsRevocationCheckError,
@@ -46,6 +48,10 @@ router = APIRouter(prefix="/api/setup", tags=["Setup"])
 # than read from the catalog so first-run setup works even if the catalog
 # updater is still running or unreachable. The HF repos sit under the
 # Addax-Data-Science org (same convention ModelStorage falls back to).
+# WSP: MegaDetector is the one model setup must install; it comes from the
+# WSP model library or, failing that, from its GitHub release. The DINOv2
+# embedding model (similarity search) is optional and installed from the
+# Models page when the library has it.
 _DEFAULT_MODELS: tuple[dict, ...] = (
     {
         "type_dir": "det",
@@ -55,15 +61,25 @@ _DEFAULT_MODELS: tuple[dict, ...] = (
         "emoji": "🦌",
         "model_fname": "md_v5a.0.0.pt",
         "hf_repo": "Addax-Data-Science/MD5A-0-0",
+        "download_url": (
+            "https://github.com/agentmorris/MegaDetector/releases/download/"
+            "v5.0/md_v5a.0.0.pt"
+        ),
     },
+)
+
+# WSP: installed by setup when the WSP model library has them, skipped
+# otherwise. Setup does not wait for them, so a colleague without the
+# library still gets a working detector.
+_OPTIONAL_DEFAULT_MODELS: tuple[dict, ...] = (
     {
-        "type_dir": "emb",
-        "category": "embedding",
-        "model_id": "DINOV2-VITS14",
-        "friendly_name": "DINOv2 ViT-S/14",
-        "emoji": "🧠",
-        "model_fname": "dinov2_vits14_pretrain.pth",
-        "hf_repo": "Addax-Data-Science/DINOV2-VITS14",
+        "type_dir": "cls",
+        "category": "classification",
+        "model_id": "SPECIESNET-v4-0-2-A",
+        "friendly_name": "SpeciesNet 4.0.2a",
+        "emoji": "🌏",
+        "model_fname": "always_crop_99710272_22x8_v12_epoch_00148.pt",
+        "env": "pytorch",
     },
 )
 
@@ -197,8 +213,8 @@ def _build_env_manifest(env_name: str = _REQUIRED_ENV) -> ModelManifest:
         env=env_name,
         model_fname="setup-stub",
         description="Synthetic manifest used by the first-run setup wizard.",
-        developer="AddaxAI",
-        info_url="https://github.com/PetervanLunteren/AddaxAI",
+        developer="WSP",
+        info_url=PROJECT_URL,
         min_app_version="0.1.0",
     )
 
@@ -213,12 +229,13 @@ def _build_default_model_manifest(spec: dict) -> ModelManifest:
         model_id=spec["model_id"],
         friendly_name=spec["friendly_name"],
         emoji=spec["emoji"],
-        env=_REQUIRED_ENV,
+        env=spec.get("env", _REQUIRED_ENV),
         model_fname=spec["model_fname"],
-        hf_repo=spec["hf_repo"],
+        hf_repo=spec.get("hf_repo"),
+        download_url=spec.get("download_url"),
         description=f"Default {spec['category']} model installed by the setup wizard.",
-        developer="AddaxAI",
-        info_url="https://github.com/PetervanLunteren/AddaxAI",
+        developer="WSP",
+        info_url=PROJECT_URL,
         min_app_version="0.1.0",
     )
     m.model_category = spec["category"]
@@ -310,6 +327,30 @@ def run_setup(
             storage.download_weights(_m, cb)
 
         steps.append((spec["friendly_name"], _model_step))
+
+    # WSP: optional defaults, only when the model library can provide them.
+    for spec in _OPTIONAL_DEFAULT_MODELS:
+        weight = (
+            models_dir / spec["type_dir"] / spec["model_id"] / spec["model_fname"]
+        )
+        if weight.is_file():
+            continue
+        if model_library.library_model_dir(spec["type_dir"], spec["model_id"]) is None:
+            continue
+        manifest = _build_default_model_manifest(spec)
+
+        def _optional_model_step(
+            cb: Callable[[str, float], None], _m: ModelManifest = manifest
+        ) -> None:
+            try:
+                storage.download_weights(_m, cb)
+            except JobCancelledError:
+                raise
+            except Exception as e:
+                # Optional: the Models page can install it later.
+                logger.warning(f"Skipped optional model {_m.model_id}: {e}")
+
+        steps.append((spec["friendly_name"], _optional_model_step))
 
     if not steps:
         return

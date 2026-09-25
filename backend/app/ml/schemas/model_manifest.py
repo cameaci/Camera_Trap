@@ -62,6 +62,9 @@ class ModelManifest(BaseModel):
     env: str
     model_fname: str
     hf_repo: str | None = None
+    # WSP: public URL of a single-file model (weights only, e.g. a GitHub
+    # release asset). Used when the model is not in the WSP model library.
+    download_url: str | None = None
     # A local manifest.json holds nothing beyond its catalog entry. Whether
     # an install still matches upstream is answered by comparing the files
     # themselves (model_storage.find_stale_files), so there is no recorded

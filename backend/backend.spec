@@ -36,6 +36,7 @@ datas = [
     # cannot be reached. Without it a firewalled first launch ends with no
     # manifests, and a model with no manifest is invisible to the app.
     ('../models.json', '.'),
+    ('../wsp/models.json', 'wsp'),  # WSP catalog
 ]
 
 # Collect data files from packages

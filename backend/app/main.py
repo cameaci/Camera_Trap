@@ -36,6 +36,7 @@ from app.api.routers import (
     sites_router,
     statistics_router,
     websocket_router,
+    wsp_router,
 )
 from app.core.config import get_settings
 from app.core.logging_config import get_logger, setup_logging
@@ -587,6 +588,7 @@ def create_app() -> FastAPI:
     app.include_router(labels_router)
     app.include_router(statistics_router)
     app.include_router(websocket_router)
+    app.include_router(wsp_router)  # WSP
 
     # Health check endpoint
     @app.get("/health", tags=["Health"])

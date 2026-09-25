@@ -17,6 +17,7 @@ from typing import Any
 
 from app.core.config import get_settings
 from app.core.logging_config import get_logger
+from app.ml import model_library
 from app.ml.hf_downloader import hf_auth_headers
 from app.ml.model_storage import find_stale_files
 from app.ml.schemas.model_manifest import resolve_hf_repo
@@ -33,9 +34,16 @@ def _bundled_catalog_path() -> Path | None:
     source.
     """
     candidates: list[Path] = []
-    if hasattr(sys, "_MEIPASS"):
-        candidates.append(Path(sys._MEIPASS) / "models.json")
-    candidates.append(Path(__file__).resolve().parents[3] / "models.json")
+    if get_settings().model_source == "library":
+        # WSP: the catalog shipped with WSP CameraTrap (wsp/models.json),
+        # never the upstream AddaxAI one, whose models live on HuggingFace.
+        if hasattr(sys, "_MEIPASS"):
+            candidates.append(Path(sys._MEIPASS) / "wsp" / "models.json")
+        candidates.append(Path(__file__).resolve().parents[3] / "wsp" / "models.json")
+    else:
+        if hasattr(sys, "_MEIPASS"):
+            candidates.append(Path(sys._MEIPASS) / "models.json")
+        candidates.append(Path(__file__).resolve().parents[3] / "models.json")
     for path in candidates:
         if path.is_file():
             return path
@@ -136,6 +144,9 @@ class ModelCatalogUpdater:
         Raises:
             Never raises - logs errors and returns None
         """
+        if get_settings().model_source == "library":  # WSP
+            return self._library_catalog()
+
         try:
             logger.info(f"Fetching model catalog from {self.catalog_url}")
 
@@ -161,6 +172,34 @@ class ModelCatalogUpdater:
             logger.error(f"Unexpected error fetching model catalog: {e}", exc_info=True)
 
         return self._bundled_catalog()
+
+    def _library_catalog(self) -> dict[str, Any] | None:
+        """
+        WSP: the WSP model library's models.json, falling back to the
+        catalog shipped with the app. Entries in the library override
+        shipped entries with the same model_id, and the library can add
+        models the app has never heard of (a new WSP model), which is how
+        a model is published without a new app release.
+        """
+        bundled = self._bundled_catalog()
+        library = _validate_catalog(model_library.read_library_catalog())
+        if library is None:
+            return bundled
+        if bundled is None:
+            return library
+        merged: dict[str, Any] = {"models": {}}
+        for model_type in ("det", "cls", "emb"):
+            entries = {
+                m["model_id"]: m for m in bundled["models"].get(model_type, [])
+            }
+            for m in library["models"].get(model_type, []):
+                entries[m["model_id"]] = m
+            merged["models"][model_type] = list(entries.values())
+        logger.info(
+            "Using the WSP model library catalog: "
+            + ", ".join(f"{len(v)} {k}" for k, v in merged["models"].items())
+        )
+        return merged
 
     def _bundled_catalog(self) -> dict[str, Any] | None:
         """The catalog shipped with the app, or None if it cannot be read."""
@@ -217,6 +256,17 @@ class ModelCatalogUpdater:
         Raises:
             Never raises - logs errors and continues
         """
+        if get_settings().model_source == "library":  # WSP
+            model_type = model_dir.parent.name
+            src = model_library.library_model_dir(model_type, model_id)
+            if src is not None and (src / "taxonomy.csv").is_file():
+                try:
+                    model_library.copy_model(src, model_dir, include={"taxonomy.csv"})
+                    logger.info(f"Copied taxonomy.csv for {model_id} from the library")
+                except Exception as e:
+                    logger.warning(f"Failed to copy taxonomy.csv for {model_id}: {e}")
+            return
+
         taxonomy_url = (
             f"{get_settings().hf_base_url}/{resolve_hf_repo(model_id, hf_repo)}"
             f"/resolve/main/taxonomy.csv?download=true"
@@ -334,6 +384,12 @@ class ModelCatalogUpdater:
         model_dir = self.models_dir / model_type / manifest_data["model_id"]
         if not (model_dir / manifest_data["model_fname"]).is_file():
             return None
+
+        if get_settings().model_source == "library":  # WSP
+            src = model_library.library_model_dir(model_type, manifest_data["model_id"])
+            if src is None:
+                return None
+            return await asyncio.to_thread(model_library.find_stale_files, model_dir, src)
 
         hf_repo = resolve_hf_repo(
             manifest_data["model_id"], manifest_data.get("hf_repo")
