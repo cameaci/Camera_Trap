@@ -22,6 +22,12 @@ dependencies:
     # Image processing and metadata
     # SpeciesNet and the WSP classifiers run in this environment too.
     - onnx2torch
+    # onnx 1.17 is the newest release whose protobuf floor (>=3.20.2) fits
+    # megadetector's yolov5 cap (the bundled wheel allows <=3.20.3), and it
+    # ships wheels for every platform. Unpinned, pip backtracks to onnx
+    # 1.12, which has no cp311 wheel and needs a C++ toolchain to build.
+    - onnx==1.17.0
+    - protobuf==3.20.3
     - exifread
     - piexif
     - gpsphoto
@@ -46,7 +52,7 @@ dependencies:
     # from GitHub at build time; that crashes on machines where Python
     # cannot load the Windows certificate store (ssl ASN1 error, beta
     # report 2026-06-10). Installing a wheel skips setup.py entirely.
-    - ultralytics-yolov5 @ https://github.com/cameaci/Camera_Trap/raw/main/backend/app/ml/pip-wheels/ultralytics_yolov5-0.1.1-py3-none-any.whl#sha256=d532e62d6d7cd6c7381e4453810f31f10fd269cf9f237494bc570e74168dc2e1
+    - ultralytics-yolov5 @ https://github.com/cameaci/Camera_Trap/raw/main/backend/app/ml/pip-wheels/ultralytics_yolov5-0.1.1-py3-none-any.whl#sha256=d3a16a7f0b3b027e4ee4ddce4834730711f1c4db9d34129ee4b8c65b89e19a19
     - megadetector==10.0.24
     # MDv1000-cedar is the only model in the zoo with a YOLOv9 architecture,
     # and megadetector loads it through this package. Upstream treats each

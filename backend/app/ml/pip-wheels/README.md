@@ -7,8 +7,8 @@ reaching them over the network.
 
 | | |
 |---|---|
-| Size | 862,408 bytes |
-| sha256 | `d532e62d6d7cd6c7381e4453810f31f10fd269cf9f237494bc570e74168dc2e1` |
+| Size | 862,410 bytes |
+| sha256 | `d3a16a7f0b3b027e4ee4ddce4834730711f1c4db9d34129ee4b8c65b89e19a19` |
 | Upstream | https://github.com/ultralytics/yolov5 |
 
 **Why a wheel at all.** `megadetector` depends on `ultralytics-yolov5==0.1.1`,
@@ -16,6 +16,14 @@ whose PyPI release is sdist-only. That sdist's `setup.py` downloads a README
 from GitHub at build time, which crashes on machines where Python cannot load
 the Windows certificate store (ssl ASN1 error, beta report 2026-06-10).
 Installing a wheel skips `setup.py` entirely.
+
+**One metadata change.** Upstream's wheel metadata caps `protobuf<=3.20.1`.
+This copy says `protobuf<=3.20.3` (METADATA and its RECORD line; no code
+changed). SpeciesNet needs `onnx`, and no onnx release with a Python 3.11
+Windows wheel accepts protobuf 3.20.1: the cap made pip backtrack to onnx 1.12
+and try to compile it. 3.20.2 and 3.20.3 are patch releases of the same
+protobuf line, and yolov5 only touches protobuf through TensorBoard logging,
+which inference never uses.
 
 **Why bundled instead of downloaded.** The env YAMLs pin it by direct URL, and
 pip has no index setting that can redirect a direct-URL requirement:
@@ -31,7 +39,7 @@ so they still record where the file came from and pip still verifies the
 **Licence.** The package metadata declares `License: Apache` and the Apache
 classifier, but the `LICENSE` file inside the wheel is the GNU General Public
 License v3. Upstream YOLOv5 was GPL-3.0 at the time of this release and is
-AGPL-3.0 today. We redistribute the wheel unmodified, its licence text travels
+AGPL-3.0 today. We redistribute the wheel with only the metadata change above, its licence text travels
 inside it, and the corresponding source is at the upstream repository above and
 on PyPI. It is installed into a separate analysis environment and run as a
 separate program; no WSP CameraTrap code links against it.
