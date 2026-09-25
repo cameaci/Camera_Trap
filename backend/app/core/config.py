@@ -99,6 +99,19 @@ class Settings(BaseSettings):
     # Models directory
     models_dir: Path = Field(default_factory=get_default_models_dir)
 
+    # WSP: where models come from. "library" (the default) installs them
+    # from the local models folder, the WSP model library folder and
+    # public URLs such as GitHub Releases, and never contacts
+    # HuggingFace, which WSP networks block. "huggingface" is the
+    # upstream AddaxAI behaviour, kept so upstream tests keep running.
+    model_source: Literal["library", "huggingface"] = "library"
+
+    # WSP: the model library folder (a synced SharePoint/OneDrive folder
+    # or a network share). Unset means the folder saved from Settings,
+    # then the usual OneDrive locations (see app/ml/model_library.py).
+    model_library_dir: Path | None = None
+    model_library_autodetect: bool = True
+
     # Model catalog sync
     model_catalog_url: str = Field(
         default="https://raw.githubusercontent.com/PetervanLunteren/AddaxAI/main/models.json",
