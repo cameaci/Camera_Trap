@@ -751,7 +751,7 @@ function shellPage(bodyHtml: string): string {
          with overflow set. */
       display: flex; align-items: safe center; justify-content: center;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: #0f6064; color: #ffffff; text-align: center; padding: 2rem;
+      background: #E02F28; color: #ffffff; text-align: center; padding: 2rem;
       overflow: auto;
     }
     .box { max-width: 32rem; }

@@ -307,9 +307,9 @@ function ResultPanel({ results, deploymentsById, siteNames }: ResultPanelProps) 
         <div
           className="rounded-lg border p-3"
           style={{
-            color: "#0f6064",
-            backgroundColor: "#0f60641a",
-            borderColor: "#0f606433",
+            color: "#E02F28",
+            backgroundColor: "#E02F281a",
+            borderColor: "#E02F2833",
           }}
         >
           <div className="flex items-center gap-2 text-sm font-medium">

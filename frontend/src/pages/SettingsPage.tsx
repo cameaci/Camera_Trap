@@ -1344,7 +1344,7 @@ export default function SettingsPage() {
                       <span
                         aria-hidden="true"
                         className="inline-block h-2 w-2 rounded-full"
-                        style={{ backgroundColor: "#71b7ba" }}
+                        style={{ backgroundColor: "#F4A19D" }}
                       />
                       You have unsaved changes
                     </>

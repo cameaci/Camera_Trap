@@ -2,12 +2,12 @@
  * StatusBadgeCluster - top-right corner cluster of status badges for
  * Files / Events cards.
  *
- * Three booleans drive up to three circular badges: confirmed (teal),
- * favorited (dark red), flagged (light teal). Stacked right-to-left with
+ * Three booleans drive up to three circular badges: confirmed (red),
+ * favorited (dark red), flagged (light red). Stacked right-to-left with
  * an overlapping ring-2 ring-background treatment so the badges protrude
  * from the card's corner. Matches the web companion app's ImagesPage pattern
  * (services/frontend/src/pages/ImagesPage.tsx:306-334) and WebUI's status
- * colour palette (#882000 / #71b7ba / #0f6064).
+ * colour palette (#882000 / #F4A19D / #E02F28).
  *
  * The parent Card must be `overflow-visible` for the -top-2 -right-2
  * offset to protrude. Keep any inner image wrapper with its own
@@ -34,7 +34,7 @@ export function StatusBadgeCluster({
       {confirmed && (
         <div
           className="relative z-30 w-6 h-6 rounded-full flex items-center justify-center ring-2 ring-background"
-          style={{ backgroundColor: "#0f6064" }}
+          style={{ backgroundColor: "#E02F28" }}
           title="Confirmed"
         >
           <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
@@ -55,7 +55,7 @@ export function StatusBadgeCluster({
       {flagged && (
         <div
           className="relative z-10 w-6 h-6 rounded-full flex items-center justify-center ring-2 ring-background"
-          style={{ backgroundColor: "#71b7ba" }}
+          style={{ backgroundColor: "#F4A19D" }}
           title="Flagged"
         >
           <Flag

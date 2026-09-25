@@ -188,7 +188,7 @@ function SpeciesLegend({ species, swatchColor, commonName }: SpeciesLegendProps)
           style={{
             backgroundColor: SAMPLE_WARNING_CRITICAL[warning]
               ? "#882000"
-              : "#71b7ba",
+              : "#F4A19D",
           }}
         >
           {SAMPLE_WARNING_LABEL[warning]}
@@ -198,7 +198,7 @@ function SpeciesLegend({ species, swatchColor, commonName }: SpeciesLegendProps)
         <Badge
           variant="outline"
           className="border-transparent text-white"
-          style={{ backgroundColor: "#71b7ba" }}
+          style={{ backgroundColor: "#F4A19D" }}
         >
           {species.dropped_polar} dropped (polar date)
         </Badge>

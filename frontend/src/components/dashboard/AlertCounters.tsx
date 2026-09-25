@@ -25,9 +25,9 @@ interface CounterConfig {
 }
 
 const COUNTERS: CounterConfig[] = [
-  { label: "Animals", icon: PawPrint, color: "#0f6064", key: "animal_count" },
+  { label: "Animals", icon: PawPrint, color: "#E02F28", key: "animal_count" },
   { label: "People", icon: User, color: "#ff8945", key: "person_count" },
-  { label: "Vehicles", icon: Car, color: "#71b7ba", key: "vehicle_count" },
+  { label: "Vehicles", icon: Car, color: "#F4A19D", key: "vehicle_count" },
   { label: "Empties", icon: ImageOff, color: "#882000", key: "empty_count" },
 ];
 

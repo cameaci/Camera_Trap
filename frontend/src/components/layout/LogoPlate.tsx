@@ -1,7 +1,7 @@
 /**
  * The WSP CameraTrap wordmark on a frosted plate.
  *
- * The wordmark is teal on a transparent background, so over a photo it
+ * The wordmark is red on a transparent background, so over a photo it
  * sinks into the picture. The plate is what keeps it readable. Shared by
  * the home screen and the setup screen, which are the two screens that
  * put the logo on a photo, so the two cannot drift apart.

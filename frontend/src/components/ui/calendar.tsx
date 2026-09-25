@@ -2,7 +2,7 @@
  * Calendar primitive built on react-day-picker v9.
  *
  * Uses the library's default stylesheet (imported globally in index.css)
- * with two CSS variables overridden to tint the selection in our teal
+ * with two CSS variables overridden to tint the selection in the WSP red
  * brand. Only the chevron icons are swapped to lucide for consistency.
  *
  * Custom Tailwind class overrides on v9's `classNames` API turned out to

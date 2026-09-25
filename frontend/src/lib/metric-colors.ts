@@ -1,10 +1,10 @@
 /**
  * Colour helpers for the confusion matrix and classification report.
  *
- * The matrix uses a single-hue teal intensity ramp (low to #0f6064)
+ * The matrix uses a single-hue red intensity ramp (low to #E02F28)
  * applied per row. Intensity only — no good/bad judgment on individual
  * cells. The F1 column uses the project status palette as a diverging
- * scale: #882000 (bad) through #71b7ba (middle) to #0f6064 (good).
+ * scale: #882000 (bad) through #F4A19D (middle) to #2C2A2A (good).
  */
 
 export interface SwatchStyle {
@@ -12,12 +12,12 @@ export interface SwatchStyle {
   color: string;
 }
 
-const TEAL_LOW: [number, number, number] = [227, 240, 240]; // #e3f0f0
-const TEAL_HIGH: [number, number, number] = [15, 96, 100]; // #0f6064
+const RAMP_LOW: [number, number, number] = [253, 236, 235]; // #FDECEB
+const RAMP_HIGH: [number, number, number] = [224, 47, 40]; // #E02F28
 
 const STATUS_BAD: [number, number, number] = [136, 32, 0]; // #882000
-const STATUS_MID: [number, number, number] = [113, 183, 186]; // #71b7ba
-const STATUS_GOOD: [number, number, number] = [15, 96, 100]; // #0f6064
+const STATUS_MID: [number, number, number] = [244, 161, 157]; // #F4A19D
+const STATUS_GOOD: [number, number, number] = [44, 42, 42]; // #2C2A2A
 
 function clamp01(v: number): number {
   if (Number.isNaN(v)) return 0;
@@ -59,7 +59,7 @@ export function matrixCellColor(valuePerRow: number): SwatchStyle {
   if (t === 0) {
     return { background: "transparent", color: "var(--color-muted-foreground)" };
   }
-  const rgbTuple = lerp(TEAL_LOW, TEAL_HIGH, t);
+  const rgbTuple = lerp(RAMP_LOW, RAMP_HIGH, t);
   return { background: rgb(rgbTuple), color: textOn(rgbTuple) };
 }
 

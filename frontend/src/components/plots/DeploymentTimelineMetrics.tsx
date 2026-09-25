@@ -22,7 +22,7 @@ interface DeploymentTimelineMetricsProps {
   loading: boolean;
 }
 
-const CARD_COLOR = "#0f6064";
+const CARD_COLOR = "#E02F28";
 
 function compact(n: number): string {
   if (n >= 1_000_000) return `${+(n / 1_000_000).toFixed(1)}M`;

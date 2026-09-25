@@ -144,11 +144,11 @@ export function getDetectionDisplayName(detection: {
 export function getCategoryColor(category: string): string {
   switch (category) {
     case "animal":
-      return "#0f6064"; // teal brand
+      return "#E02F28"; // WSP red
     case "person":
       return "#ff8945"; // orange
     case "vehicle":
-      return "#71b7ba"; // light teal
+      return "#F4A19D"; // light red
     default:
       return "#882000"; // dark red
   }

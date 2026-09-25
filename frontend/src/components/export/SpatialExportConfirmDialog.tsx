@@ -51,7 +51,7 @@ export function SpatialExportConfirmDialog({
 
         <div
           className="rounded-md border px-3 py-2 text-sm"
-          style={{ backgroundColor: "#71b7ba22", borderColor: "#71b7ba" }}
+          style={{ backgroundColor: "#F4A19D22", borderColor: "#F4A19D" }}
         >
           {count} {depWord} in this project have no camera site, so they
           have no coordinates. They will be excluded from the{" "}

@@ -16,10 +16,10 @@ export function Checkbox({ checked, onCheckedChange, indeterminate, className }:
     }
   }, [indeterminate]);
 
-  // Teal colors: #0f6064 (primary - full), #8bb3b4 (lighter - half/indeterminate)
+  // WSP red colors: #E02F28 (primary - full), #F4A19D (lighter - half/indeterminate)
   const checkboxStyle = indeterminate
-    ? { accentColor: '#8bb3b4' }
-    : { accentColor: '#0f6064' };
+    ? { accentColor: '#F4A19D' }
+    : { accentColor: '#E02F28' };
 
   return (
     <input
@@ -28,7 +28,7 @@ export function Checkbox({ checked, onCheckedChange, indeterminate, className }:
       checked={checked}
       onChange={(e) => onCheckedChange(e.target.checked)}
       style={checkboxStyle}
-      className={`h-4 w-4 shrink-0 rounded border-gray-300 focus:ring-2 focus:ring-[#0f6064] focus:ring-offset-2 ${className || ""}`}
+      className={`h-4 w-4 shrink-0 rounded border-gray-300 focus:ring-2 focus:ring-[#E02F28] focus:ring-offset-2 ${className || ""}`}
     />
   );
 }

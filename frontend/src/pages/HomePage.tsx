@@ -152,7 +152,7 @@ function ChoiceCard({ icon, title, lead, body, cta, onClick }: ChoiceCardProps) 
       <span
         className={cn(
           buttonVariants({ size: "lg" }),
-          "mt-6 self-start bg-[#f4f0e3] text-[#0a4044] shadow-lg transition-transform",
+          "mt-6 self-start bg-[#f4f0e3] text-[#B72520] shadow-lg transition-transform",
           "group-hover:translate-x-0.5 group-hover:bg-white",
         )}
       >

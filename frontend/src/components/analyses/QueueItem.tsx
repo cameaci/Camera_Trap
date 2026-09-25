@@ -61,7 +61,7 @@ export function QueueItem({ entry, onDelete }: QueueItemProps) {
         };
       case "processing":
         return {
-          classes: `${baseClasses} bg-teal-50 text-teal-700`,
+          classes: `${baseClasses} bg-red-50 text-red-700`,
           label: "Processing"
         };
       case "completed":

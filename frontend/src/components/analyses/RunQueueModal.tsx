@@ -568,7 +568,7 @@ export function RunQueueModal({
               ? '#882000'
               : warningCount > 0
                 ? '#b45309'
-                : '#156065';
+                : '#C92A24';
 
             return (
               <div className="flex items-start gap-3">
@@ -756,7 +756,7 @@ export function RunQueueModal({
 
               {showSpinner && (
                 <div className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin" style={{ color: '#0f6064' }} />
+                  <Loader2 className="h-5 w-5 animate-spin" style={{ color: '#E02F28' }} />
                   <span className="text-sm font-medium">{message || "Initializing..."}</span>
                 </div>
               )}

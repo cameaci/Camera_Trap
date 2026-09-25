@@ -28,9 +28,9 @@ import type { DateRange } from "./index";
 // (astral, backend) so the dawn/day/dusk/night boundaries reflect
 // the real sun position at the project's site lat/lon for the
 // filter date range.
-const NIGHT_COLOR = "#0f6064";
+const NIGHT_COLOR = "#E02F28";
 const TWILIGHT_COLOR = "#ff8945";
-const DAY_COLOR = "#71b7ba";
+const DAY_COLOR = "#F4A19D";
 
 /**
  * Pick a color for a given hour based on the project's sun bands.

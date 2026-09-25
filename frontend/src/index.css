@@ -26,10 +26,10 @@ html, body {
 /* react-day-picker v9 brand overrides. The library's default
    stylesheet is imported via the Calendar component in TypeScript
    (where Vite's bundler resolves the node-modules path directly).
-   Two CSS variables tint the selection to our teal brand. */
+   Two CSS variables tint the selection to the WSP red. */
 .rdp-root {
-  --rdp-accent-color: #0f6064;
-  --rdp-accent-background-color: #e4ecee;
+  --rdp-accent-color: #E02F28;
+  --rdp-accent-background-color: #F3F3F3;
   --rdp-day-height: 2rem;
   --rdp-day-width: 2rem;
   --rdp-day_button-height: 1.75rem;
@@ -57,7 +57,7 @@ html, body {
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 183 74% 23%;           /* #0f6064 - Teal brand color */
+    --primary: 2 75% 52%;           /* #E02F28 - WSP red */
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -69,7 +69,7 @@ html, body {
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 183 74% 23%;              /* Match primary color */
+    --ring: 2 75% 52%;              /* Match primary color */
     --radius: 0.5rem;
   }
 
@@ -80,7 +80,7 @@ html, body {
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 183 74% 23%;               /* #0f6064 - Same teal as light mode */
+    --primary: 2 75% 52%;               /* #E02F28 - Same WSP red as light mode */
     --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;

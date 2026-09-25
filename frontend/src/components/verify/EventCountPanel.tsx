@@ -312,11 +312,11 @@ export function EventCountPanel({
           {visible.length}
         </Badge>
         {/* Persistent confirmed cue: clearer than the Confirm button's
-            fill change, and uses the same teal/check as the grid badge. */}
+            fill change, and uses the same red/check as the grid badge. */}
         {confirmed && (
           <span
             className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white"
-            style={{ backgroundColor: "#0f6064" }}
+            style={{ backgroundColor: "#E02F28" }}
           >
             <Check className="h-3 w-3" strokeWidth={3} />
             Confirmed

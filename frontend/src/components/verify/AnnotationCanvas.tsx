@@ -770,7 +770,7 @@ export function AnnotationCanvas({
               y={drawingBox.y}
               width={drawingBox.width}
               height={drawingBox.height}
-              stroke="#0f6064"
+              stroke="#E02F28"
               strokeWidth={2}
               dash={[5, 5]}
               listening={false}
@@ -793,8 +793,8 @@ export function AnnotationCanvas({
               "top-center",
               "bottom-center",
             ]}
-            borderStroke="#0f6064"
-            anchorFill="#0f6064"
+            borderStroke="#E02F28"
+            anchorFill="#E02F28"
             anchorSize={8}
           />
         </Layer>

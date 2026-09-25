@@ -55,8 +55,8 @@ import { resolveSpeciesName } from "../../lib/species-name-mode";
 // One colour for every bar, matching the web companion app's species chart:
 // the species name is already on the axis, so per-bar colours read as
 // meaning something when they don't.
-const BAR_FILL = "rgba(15, 96, 100, 0.18)";
-const BAR_BORDER = "#0f6064";
+const BAR_FILL = "rgba(224, 47, 40, 0.18)";
+const BAR_BORDER = "#E02F28";
 import { RANK_OPTIONS } from "../../lib/taxonomic-rank";
 import {
   type DateRange,
@@ -217,13 +217,13 @@ export function DashboardView({ projectId }: { projectId: string }) {
     ...(isFolderRun
       ? []
       : [
-          { title: "Sites", value: overview?.total_sites ?? 0, icon: MapPin, color: "#0f6064" },
-          { title: "Deployments", value: overview?.total_deployments ?? 0, icon: FolderOpen, color: "#0f6064" },
+          { title: "Sites", value: overview?.total_sites ?? 0, icon: MapPin, color: "#E02F28" },
+          { title: "Deployments", value: overview?.total_deployments ?? 0, icon: FolderOpen, color: "#E02F28" },
         ]),
-    { title: "Trap nights", value: overview?.trap_nights ?? 0, icon: CalendarDays, color: "#0f6064" },
-    { title: "Events", value: overview?.total_events ?? 0, icon: Layers, color: "#0f6064" },
-    { title: "Files", value: overview?.total_files ?? 0, icon: FileImage, color: "#0f6064" },
-    { title: "Observations", value: overview?.total_observations ?? 0, icon: Eye, color: "#0f6064" },
+    { title: "Trap nights", value: overview?.trap_nights ?? 0, icon: CalendarDays, color: "#E02F28" },
+    { title: "Events", value: overview?.total_events ?? 0, icon: Layers, color: "#E02F28" },
+    { title: "Files", value: overview?.total_files ?? 0, icon: FileImage, color: "#E02F28" },
+    { title: "Observations", value: overview?.total_observations ?? 0, icon: Eye, color: "#E02F28" },
   ];
 
   const speciesAxisLabel =

@@ -69,7 +69,7 @@ interface VerifyToolbarIconProps {
   title: string;
   onClick: () => void;
   disabled?: boolean;
-  /** Toggle icons pass this so an enabled state reads as "on" (teal),
+  /** Toggle icons pass this so an enabled state reads as "on" (red),
    *  not just a swapped glyph the user has to hunt for. */
   active?: boolean;
 }
@@ -123,7 +123,7 @@ export function VerifyProgressPill({
       <div className="relative h-2 w-20 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full transition-all duration-500 ease-out rounded-full"
-          style={{ width: `${clamped}%`, backgroundColor: "#0f6064" }}
+          style={{ width: `${clamped}%`, backgroundColor: "#E02F28" }}
         />
       </div>
       {Math.round(clamped)}% {label}

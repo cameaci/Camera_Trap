@@ -52,8 +52,8 @@ ChartJS.register(
 
 // Species colors pinned to slots A and B so the picker swatches, the
 // chart curves, and the legend badges always agree. Picked to match
-// the WSP CameraTrap palette (teal + accent orange).
-export const SPECIES_A_COLOR = "#0f6064";
+// the WSP CameraTrap palette (red + accent orange).
+export const SPECIES_A_COLOR = "#E02F28";
 export const SPECIES_B_COLOR = "#ff8945";
 const OVERLAP_FILL = "rgba(120, 120, 120, 0.28)";
 const RUG_HEIGHT_PX = 6;

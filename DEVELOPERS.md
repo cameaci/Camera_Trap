@@ -261,25 +261,14 @@ Four kinds of snapshot:
 
 Pre-init backups in lifespan are best-effort. If `~/WSP-CameraTrap/` is read-only or the disk is full, the failed snapshot is logged at error level and startup continues, so the user can at least open the app to see the diagnostic banner and react.
 
-## Background photos
+## Brand assets
 
-Two screens sit on a full-bleed photo: the home screen (`home-background.webp`) and the setup screen (`setup-background.webp`), both in `frontend/public/`. Both are heavily blurred, which is what keeps them cheap: there is no fine detail left for the encoder to spend bits on, and because the result is soft, the browser stretching the image across a much wider window is invisible. That is why these land in the tens of KB while the phone photos they came from are several hundred.
-
-Recipe, from a source photo that never enters the repo:
-
-```python
-im = ImageOps.exif_transpose(Image.open(src)).convert("RGB")   # phone photos carry rotation
-im = crop_to_3_2(im)
-im = im.resize((1024, 683), Image.LANCZOS)
-im = im.filter(ImageFilter.GaussianBlur(1.92))                 # 3.0 at 1600px wide, scaled
-im.save(out, "WEBP", quality=55, method=6)
-```
-
-Blur first, then encode; the order is the whole trick. Resolution is the cheapest knob: measured against a 1600px reference, dropping to 1024px costs almost nothing once the image is blurred, and halves the file. Do not skip `exif_transpose`, or a portrait photo silently ships on its side.
-
-The scrim over the photo is a CSS gradient, not baked into the image, so darkening or lightening it later costs no re-encode. Keep it that way.
-
-Both screens put the teal wordmark on a frosted plate (`components/layout/LogoPlate.tsx`), because the wordmark is teal on transparent and disappears straight into a forest without one.
+Every image (app icon, in-app logos, favicons, home and setup backgrounds) is
+generated from the WSP logo in `wsp/brand/wsp-logo-red.svg` by
+`wsp/tools/make_brand_assets.py` (needs Pillow and cairosvg). Colours follow
+the WSP palette: accessible red `#E02F28` as the primary (`--primary` in
+`frontend/src/index.css`), WSP greys for surfaces. Re-run the script after
+changing the logo; do not edit the PNGs by hand.
 
 ## Linting (CI enforcement)
 

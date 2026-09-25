@@ -276,7 +276,7 @@ export function DeploymentTimelinePage() {
                 into a specific range.
               </p>
               <p>
-                Bars view answers when a site was monitored. Each teal bar
+                Bars view answers when a site was monitored. Each red bar
                 is a folder-aware trap-night interval: the camera's first
                 file to its last file in one subfolder. Whitespace between
                 bars on the same row is time the site was not monitored.
@@ -284,7 +284,7 @@ export function DeploymentTimelinePage() {
               <p>
                 Heatmap view answers how much each site captured. One cell
                 per day, coloured pale yellow for few files through dark
-                teal for many. The faint band behind the cells is the
+                red for many. The faint band behind the cells is the
                 deployment's configured period, so a stretch of band with
                 no cells is a camera that was deployed and recorded
                 nothing, which the bars cannot show.
@@ -294,7 +294,7 @@ export function DeploymentTimelinePage() {
           how={
             <>
               <p>
-                Each teal bar is one continuous camera session: the span
+                Each red bar is one continuous camera session: the span
                 from that camera's first capture to its last. Quiet days
                 inside a session still count as active trap-nights, matching
                 the standard convention used across the camera-trap

@@ -18,7 +18,7 @@ const badgeVariants = cva(
         future:
           "border-blue-200 bg-blue-50 text-blue-700",
         existing:
-          "border-teal-200 bg-teal-50 text-teal-700",
+          "border-red-200 bg-red-50 text-red-700",
       },
     },
     defaultVariants: {

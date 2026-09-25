@@ -257,18 +257,18 @@ export const DetectionTrendChart: React.FC<DetectionTrendChartProps> = ({
     [normalizedValues, smoothingWindow],
   );
 
-  // One series at a time, so the color carries no information: always teal.
+  // One series at a time, so the color carries no information: always the WSP red.
   // Species colors from species-colors.ts are for charts where several
   // species appear together; the light end of that gradient is barely
   // visible as a single line on the white card.
-  const lineColor = "#0f6064";
+  const lineColor = "#E02F28";
 
   // Build gradient fill for the line
   const createGradient = useCallback(
     (ctx: CanvasRenderingContext2D, chartArea: { top: number; bottom: number }) => {
       const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-      gradient.addColorStop(0, "rgba(15, 96, 100, 0.4)");
-      gradient.addColorStop(1, "rgba(15, 96, 100, 0.02)");
+      gradient.addColorStop(0, "rgba(224, 47, 40, 0.4)");
+      gradient.addColorStop(1, "rgba(224, 47, 40, 0.02)");
       return gradient;
     },
     [],
@@ -284,7 +284,7 @@ export const DetectionTrendChart: React.FC<DetectionTrendChartProps> = ({
           borderColor: lineColor,
           backgroundColor: (context: { chart: ChartJS }) => {
             const { chart } = context;
-            if (!chart.chartArea) return "rgba(15, 96, 100, 0.2)";
+            if (!chart.chartArea) return "rgba(224, 47, 40, 0.2)";
             return createGradient(chart.ctx, chart.chartArea);
           },
           fill: true,

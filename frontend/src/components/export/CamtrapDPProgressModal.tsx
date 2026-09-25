@@ -77,7 +77,7 @@ export function CamtrapDPProgressModal({
           <div className="flex items-center gap-3">
             <Loader2
               className="h-5 w-5 animate-spin shrink-0"
-              style={{ color: "#0f6064" }}
+              style={{ color: "#E02F28" }}
             />
             <span className="text-sm font-medium text-gray-900">
               {total > 0

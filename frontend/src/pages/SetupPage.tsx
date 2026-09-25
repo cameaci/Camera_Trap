@@ -207,7 +207,7 @@ export default function SetupPage() {
         )}
 
         {status.ready && (
-          <div className="mt-6 text-sm text-[#0f6064]">
+          <div className="mt-6 text-sm text-[#E02F28]">
             Setup complete. Opening WSP CameraTrap...
           </div>
         )}
@@ -225,7 +225,7 @@ function Row({ label, ok }: RowProps) {
   return (
     <div className="flex items-center justify-between">
       <span>{label}</span>
-      <span className={ok ? "text-[#0f6064]" : "text-muted-foreground"}>
+      <span className={ok ? "text-[#E02F28]" : "text-muted-foreground"}>
         {ok ? "Ready" : "Not ready"}
       </span>
     </div>

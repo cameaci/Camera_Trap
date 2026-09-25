@@ -40,8 +40,8 @@ export function SiteLocationMap({
           center={[latitude, longitude]}
           radius={7}
           pathOptions={{
-            color: "#0f6064",
-            fillColor: "#0f6064",
+            color: "#E02F28",
+            fillColor: "#E02F28",
             fillOpacity: 0.8,
             weight: 2,
           }}

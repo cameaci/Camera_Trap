@@ -30,7 +30,7 @@ export function MapLegend({ domain }: MapLegendProps) {
       div.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
 
       const middleValue = domain.max / 2;
-      const gradientColors = ["#0f6064", "#f9f871"].join(", ");
+      const gradientColors = ["#E02F28", "#f9f871"].join(", ");
 
       div.innerHTML = `
         <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; line-height: 1.3;">

@@ -21,9 +21,9 @@ export interface SetupStatus {
    * Names a failure the UI can offer a specific remedy for.
    * "tls_revocation": the environment build died because Windows could
    * not check certificate revocation and the user has not already
-   * accepted skipping it. "network_blocked": a model download was
-   * answered with a web filter's block page. Null for every ordinary
-   * failure.
+   * accepted skipping it. "model_library": a model could not be
+   * installed because the WSP model library is not connected. Null for
+   * every ordinary failure.
    */
   error_kind: string | null;
   user_data_dir: string;

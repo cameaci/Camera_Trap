@@ -42,9 +42,9 @@ import {
   type RateScaleDomain,
 } from "../../lib/heat-color-scale";
 
-const BAR_FILL = "#0f6064";
-const CONCURRENT_FILL = "rgba(15, 96, 100, 0.18)";
-const CONCURRENT_STROKE = "#0f6064";
+const BAR_FILL = "#E02F28";
+const CONCURRENT_FILL = "rgba(224, 47, 40, 0.18)";
+const CONCURRENT_STROKE = "#E02F28";
 const GRID_STROKE = "rgba(0, 0, 0, 0.06)";
 const CONNECTOR_STROKE = "rgba(100, 116, 139, 0.55)";
 
@@ -54,7 +54,7 @@ type ViewMode = "bars" | "heatmap";
 /** Faint band behind the heatmap cells marking the configured deployment
  *  period, so a stretch with no cells reads as "deployed, captured
  *  nothing" rather than "no camera here". */
-const HEATMAP_WINDOW_FILL = "rgba(15, 96, 100, 0.08)";
+const HEATMAP_WINDOW_FILL = "rgba(224, 47, 40, 0.08)";
 
 /** Cell bin sizes in days, smallest first. */
 const BIN_DAYS = [1, 7, 28];
@@ -268,7 +268,7 @@ interface HeatmapIndex {
  *
  * The domain has to come from the *binned* counts: a 7-day cell holds up
  * to seven days of files, so scaling it against daily numbers would paint
- * every long-range cell the same dark teal.
+ * every long-range cell the same dark red.
  */
 function buildHeatmapIndex(
   rows: HeatmapPoint[] | undefined,

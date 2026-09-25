@@ -769,11 +769,11 @@ export function DetectionDetailModal({
                   detection.neighbor_top_label !== detection.label;
                 const header = (
                   <>
-                    {/* Calm confidence meter: a single teal fill over a
+                    {/* Calm confidence meter: a single red fill over a
                         muted track. Disagreement is just the unfilled
                         remainder, not a red "wrong" signal. */}
                     <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted-foreground/15">
-                      <div style={{ width: `${pct}%`, backgroundColor: "#0f6064" }} className="h-full transition-all duration-500 ease-out" />
+                      <div style={{ width: `${pct}%`, backgroundColor: "#E02F28" }} className="h-full transition-all duration-500 ease-out" />
                     </div>
                     <p className="text-xs text-muted-foreground text-center">
                       {count} of 10 similar crops share this label
@@ -804,7 +804,7 @@ export function DetectionDetailModal({
                     return {
                       key: n.detection_id,
                       borderClassName: agrees
-                        ? "border-[#0f6064]"
+                        ? "border-[#E02F28]"
                         : "border-muted-foreground/30",
                       tile: crop,
                       preview: (

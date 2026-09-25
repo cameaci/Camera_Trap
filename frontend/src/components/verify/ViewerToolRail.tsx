@@ -95,7 +95,7 @@ export function ViewerToolRail({
         title={file?.flagged ? "Remove flag" : "Flag for review (F)"}
       >
         <Flag
-          className={cn("h-4 w-4", file?.flagged && "fill-[#71b7ba] text-[#71b7ba]")}
+          className={cn("h-4 w-4", file?.flagged && "fill-[#F4A19D] text-[#F4A19D]")}
         />
       </Button>
       {/* Like — flag's sibling triage mark, so it gets the same direct

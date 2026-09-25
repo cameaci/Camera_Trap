@@ -2,7 +2,7 @@
  * Heat color scale for the observation rate map.
  *
  * Gradient per FRONTEND_CONVENTIONS.md:
- *   #f9f871 (light yellow, low)  ->  #0f6064 (dark teal, high)
+ *   #f9f871 (light yellow, low)  ->  #E02F28 (dark red, high)
  *
  * Ported from the web companion app's color-scale.ts. Renamed functions
  * from "detection rate" to "rate" / "heat" since WebUI counts
@@ -11,7 +11,7 @@
 
 import chroma from "chroma-js";
 
-const GRADIENT = chroma.scale(["#f9f871", "#0f6064"]).mode("lab");
+const GRADIENT = chroma.scale(["#f9f871", "#E02F28"]).mode("lab");
 
 /**
  * Pick a color for a single rate value against a normalization max.

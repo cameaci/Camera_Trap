@@ -59,7 +59,7 @@ export function CamtrapDPExportConfirmDialog({
         <div className="space-y-3 text-sm">
           <div
             className="rounded-md border px-3 py-2"
-            style={{ backgroundColor: "#71b7ba22", borderColor: "#71b7ba" }}
+            style={{ backgroundColor: "#F4A19D22", borderColor: "#F4A19D" }}
           >
             Camtrap DP expects every deployment in the database to
             represent one camera, one location, and one continuous
@@ -81,7 +81,7 @@ export function CamtrapDPExportConfirmDialog({
           {noSiteCount > 0 && (
             <div
               className="rounded-md border px-3 py-2"
-              style={{ backgroundColor: "#71b7ba22", borderColor: "#71b7ba" }}
+              style={{ backgroundColor: "#F4A19D22", borderColor: "#F4A19D" }}
             >
               {noSiteCount} {depWord} in this project have no camera
               site. They will be excluded from this export because

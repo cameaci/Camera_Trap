@@ -21,10 +21,10 @@ interface LockedDownHelpProps {
 }
 
 export function LockedDownHelp({ errorKind }: LockedDownHelpProps) {
-  const blocked = errorKind === "network_blocked";
+  const blocked = errorKind === "model_library";
   const href = LOCKED_DOWN_HELP_URL;
   const lead = blocked
-    ? "Models come from the WSP model library on OneDrive. Check that the 'WSP CameraTrap' folder is synced."
+    ? "Models come from the WSP model library on OneDrive. Connect it under File › WSP model library."
     : "Setup stuck on a WSP laptop?";
   const label = blocked
     ? "Read how"
