@@ -1,0 +1,851 @@
+"""Tests for the /api/deployments endpoints."""
+
+import os
+from datetime import date, datetime
+from unittest.mock import patch
+
+import pytest
+
+from app.models.event_observation import EventObservation
+from tests.conftest import (
+    make_deployment,
+    make_detection,
+    make_event_with_files,
+    make_file,
+    make_project,
+    make_site,
+)
+
+
+def test_list_deployments_empty(client):
+    resp = client.get("/api/deployments")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_create_deployment(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    resp = client.post("/api/deployments", json={
+        "project_id": p.id,
+        "site_id": s.id,
+        "start_date_local": "2024-01-01",
+    })
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["site_id"] == s.id
+    assert data["project_id"] == p.id
+
+
+def test_create_deployment_without_site(client, db):
+    p = make_project(db)
+    resp = client.post("/api/deployments", json={
+        "project_id": p.id,
+        "start_date_local": "2024-01-01",
+    })
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["site_id"] is None
+    assert data["project_id"] == p.id
+
+
+def test_create_deployment_invalid_site(client, db):
+    p = make_project(db)
+    resp = client.post("/api/deployments", json={
+        "project_id": p.id,
+        "site_id": "nonexistent",
+        "start_date_local": "2024-01-01",
+    })
+    assert resp.status_code == 400
+
+
+def test_get_deployment(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    resp = client.get(f"/api/deployments/{d.id}")
+    assert resp.status_code == 200
+    assert resp.json()["id"] == d.id
+
+
+def test_get_deployment_not_found(client):
+    resp = client.get("/api/deployments/nonexistent")
+    assert resp.status_code == 404
+
+
+def test_update_deployment(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    resp = client.patch(f"/api/deployments/{d.id}", json={"notes": "updated"})
+    assert resp.status_code == 200
+    assert resp.json()["notes"] == "updated"
+
+
+def test_delete_deployment(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    resp = client.delete(f"/api/deployments/{d.id}")
+    assert resp.status_code == 204
+
+
+def test_delete_deployment_not_found(client):
+    resp = client.delete("/api/deployments/nonexistent")
+    assert resp.status_code == 404
+
+
+def test_delete_deployment_cascades_artifacts_on_disk(client, db, tmp_path):
+    """
+    Deleting a deployment removes the project-scoped .addaxai folder on
+    disk, and rolls up empty parent dirs so the .addaxai marker
+    disappears entirely when the last project is gone.
+    """
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+
+    deploy_dir = tmp_path / "deployment"
+    deploy_dir.mkdir()
+    artifacts = deploy_dir / ".addaxai" / "projects" / p.id
+    artifacts.mkdir(parents=True)
+    (artifacts / "results.json").write_text('{"images": []}')
+    (artifacts / "video_frames").mkdir()
+    (artifacts / "video_frames" / "frame000001.jpg").write_bytes(b"\x00")
+
+    d = make_deployment(db, site_id=s.id, folder_path=str(deploy_dir))
+    db.commit()
+
+    resp = client.delete(f"/api/deployments/{d.id}")
+    assert resp.status_code == 204
+
+    # Project-scoped artifacts dir is gone, and the parent .addaxai is
+    # gone too because there were no other projects in there.
+    assert not artifacts.exists()
+    assert not (deploy_dir / ".addaxai").exists()
+    # The original deployment folder itself is untouched — only AddaxAI
+    # state was removed, never the user's images/videos.
+    assert deploy_dir.exists()
+
+
+def test_delete_deployment_keeps_other_projects_artifacts(client, db, tmp_path):
+    """
+    If two projects analyzed the same physical folder, deleting one
+    project's deployment leaves the other project's artifacts intact.
+    """
+    p1 = make_project(db)
+    p2 = make_project(db)
+    s1 = make_site(db, project_id=p1.id)
+
+    deploy_dir = tmp_path / "shared_deployment"
+    deploy_dir.mkdir()
+    p1_artifacts = deploy_dir / ".addaxai" / "projects" / p1.id
+    p2_artifacts = deploy_dir / ".addaxai" / "projects" / p2.id
+    p1_artifacts.mkdir(parents=True)
+    p2_artifacts.mkdir(parents=True)
+    (p1_artifacts / "results.json").write_text("p1")
+    (p2_artifacts / "results.json").write_text("p2")
+
+    d1 = make_deployment(db, site_id=s1.id, folder_path=str(deploy_dir))
+    db.commit()
+
+    resp = client.delete(f"/api/deployments/{d1.id}")
+    assert resp.status_code == 204
+
+    assert not p1_artifacts.exists()
+    assert p2_artifacts.exists()
+    assert (p2_artifacts / "results.json").read_text() == "p2"
+    # .addaxai/projects/ still has p2's subdir, so the marker stays.
+    assert (deploy_dir / ".addaxai" / "projects").exists()
+
+
+def test_delete_deployment_missing_folder_path_does_not_crash(client, db):
+    """
+    A deployment with folder_path=None (legacy / never-linked) should
+    still delete cleanly without trying to scrub a nonexistent disk path.
+    """
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id, folder_path=None)
+    db.commit()
+
+    resp = client.delete(f"/api/deployments/{d.id}")
+    assert resp.status_code == 204
+
+
+def test_delete_deployment_unreadable_folder_swallowed(client, db, tmp_path):
+    """
+    A deployment whose folder_path doesn't exist on disk anymore (e.g.
+    external drive unmounted) must still delete from the DB; the
+    artifact cleanup is best-effort and never blocks.
+    """
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    fake_path = tmp_path / "never_existed"
+    d = make_deployment(db, site_id=s.id, folder_path=str(fake_path))
+    db.commit()
+
+    resp = client.delete(f"/api/deployments/{d.id}")
+    assert resp.status_code == 204
+    assert not fake_path.exists()  # we didn't accidentally create it
+
+
+def test_preview_folder_success(client):
+    mock_result = {
+        "image_count": 10,
+        "video_count": 2,
+        "total_count": 12,
+        "gps_location": None,
+        "sample_files": [],
+        "start_date": "2024-01-01",
+        "end_date": "2024-01-31",
+        "missing_datetime": 0,
+        "datetime_validation_log": [],
+        "mtime_start_date": None,
+        "mtime_end_date": None,
+    }
+    with patch("app.api.routers.deployments.scan_folder", return_value=mock_result):
+        resp = client.get("/api/deployments/preview-folder?path=/some/folder")
+    assert resp.status_code == 200
+    assert resp.json()["image_count"] == 10
+
+
+def test_preview_folder_not_found(client):
+    with patch(
+        "app.api.routers.deployments.scan_folder",
+        side_effect=FileNotFoundError("not found"),
+    ):
+        resp = client.get("/api/deployments/preview-folder?path=/missing")
+    assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# /info endpoint
+# ---------------------------------------------------------------------------
+
+
+def _build_info_fixture(db):
+    """Project + site + deployment with mixed images/videos and a few
+    classified, verified, and below-threshold detections."""
+    project = make_project(db, counting_threshold=0.5)
+    site = make_site(db, project_id=project.id, name="Camp A")
+    dep = make_deployment(
+        db,
+        site_id=site.id,
+        folder_path="/tmp/demo",
+        start_date_local=date(2024, 6, 1),
+        end_date_local=date(2024, 6, 30),
+    )
+    # 3 images, 2 videos.
+    image_files = [
+        make_file(
+            db,
+            deployment_id=dep.id,
+            file_type="image",
+            file_format="jpg",
+            captured_at_local=datetime(2024, 6, 15, 8, i),
+        )
+        for i in range(3)
+    ]
+    for i in range(2):
+        make_file(
+            db,
+            deployment_id=dep.id,
+            file_type="video",
+            file_format="mp4",
+            captured_at_local=datetime(2024, 6, 16, 9, i),
+        )
+    # Detections: one well above threshold, one verified below threshold,
+    # one unverified below threshold (should NOT be averaged in).
+    make_detection(
+        db, file_id=image_files[0].id, confidence=0.9,
+        label="lion", label_confidence=0.8,
+    )
+    make_detection(
+        db, file_id=image_files[1].id, confidence=0.2,
+        verified=True, label="leopard", label_confidence=0.4,
+    )
+    make_detection(
+        db, file_id=image_files[2].id, confidence=0.1,  # below threshold, dropped
+    )
+    # One event with one observation of MaxN=3. Pass files_verified=[]
+    # so the helper does not auto-create an extra file (we have the
+    # explicit images above and want the file count assertions to be
+    # exact).
+    event = make_event_with_files(
+        db,
+        deployment_id=dep.id,
+        event_start_local=datetime(2024, 6, 15, 8, 0),
+        files_verified=[],
+    )
+    db.add(
+        EventObservation(
+            event_id=event.id,
+            label="lion",
+            label_taxonomy_id=None,
+            category="animal",
+            max_n=3,
+        )
+    )
+    db.flush()
+    return dep
+
+
+def test_deployment_info_happy_path(client, db):
+    dep = _build_info_fixture(db)
+    resp = client.get(f"/api/deployments/{dep.id}/info")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["deployment_id"] == dep.id
+    assert data["folder_path"] == "/tmp/demo"
+    assert data["site_name"] == "Camp A"
+    assert data["site_id"] == dep.site_id
+    assert data["files"] == {"total": 5, "images": 3, "videos": 2}
+    assert data["event_count"] == 1
+    assert data["observation_count"] == 3
+    # One animal observation with MaxN=3 from _build_info_fixture.
+    assert data["detection_categories"]["animal"] == 3
+    assert data["detection_categories"]["person"] == 0
+    assert data["detection_categories"]["vehicle"] == 0
+    assert data["detection_categories"]["empty"] == 0
+    # Top species block: single lion entry with count=3.
+    assert data["top_species"] == [
+        {"label": "lion", "common_name": None, "scientific_name": None, "count": 3}
+    ]
+    # Trap nights is folder-aware: sum of (max - min + 1) per folder over
+    # files. Here all 5 files live under /fake/ and span June 15
+    # to June 16, so trap_nights = 2 regardless of the manually-set
+    # Deployment.start_date_local / end_date_local. Rate = 3 / 2 * 100.
+    assert data["trap_nights"] == 2
+    assert data["observation_rate_per_100_trap_nights"] == pytest.approx(150.0)
+    # Verification: no files verified in the fixture.
+    assert data["verification"] == {"verified": 0, "total": 5}
+    # Total size is 0 because test factory doesn't set size_bytes.
+    assert data["total_size_bytes"] == 0
+    # Threshold-with-verified filter should include the verified 0.2
+    # and the unverified 0.9 but NOT the unverified 0.1.
+    # Mean detection = (0.9 + 0.2) / 2 = 0.55
+    assert data["mean_detection_confidence"] == pytest.approx(0.55)
+    # Classification mean = (0.8 + 0.4) / 2 = 0.6
+    assert data["mean_classification_confidence"] == pytest.approx(0.6)
+    assert data["first_captured_at_local"].startswith("2024-06-15T08:00")
+    assert data["last_captured_at_local"].startswith("2024-06-16T09:01")
+
+
+def test_deployment_info_not_found(client):
+    resp = client.get("/api/deployments/nonexistent/info")
+    assert resp.status_code == 404
+
+
+def test_deployment_info_empty_deployment(client, db):
+    project = make_project(db, counting_threshold=0.5)
+    site = make_site(db, project_id=project.id, name="Empty Camp")
+    dep = make_deployment(db, site_id=site.id, folder_path=None)
+
+    resp = client.get(f"/api/deployments/{dep.id}/info")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["files"] == {"total": 0, "images": 0, "videos": 0}
+    assert data["event_count"] == 0
+    assert data["observation_count"] == 0
+    assert data["mean_detection_confidence"] is None
+    assert data["mean_classification_confidence"] is None
+    assert data["first_captured_at_local"] is None
+    assert data["last_captured_at_local"] is None
+
+
+def test_deployment_info_images_only(client, db):
+    project = make_project(db, counting_threshold=0.5)
+    site = make_site(db, project_id=project.id, name="Images Camp")
+    dep = make_deployment(db, site_id=site.id)
+    make_file(db, deployment_id=dep.id, file_type="image", file_format="jpg")
+    make_file(db, deployment_id=dep.id, file_type="image", file_format="jpg")
+    resp = client.get(f"/api/deployments/{dep.id}/info")
+    data = resp.json()
+    assert data["files"] == {"total": 2, "images": 2, "videos": 0}
+
+
+def test_deployment_info_videos_only(client, db):
+    project = make_project(db, counting_threshold=0.5)
+    site = make_site(db, project_id=project.id, name="Videos Camp")
+    dep = make_deployment(db, site_id=site.id)
+    make_file(db, deployment_id=dep.id, file_type="video", file_format="mp4")
+    resp = client.get(f"/api/deployments/{dep.id}/info")
+    data = resp.json()
+    assert data["files"] == {"total": 1, "images": 0, "videos": 1}
+
+
+def test_deployment_info_no_classifications(client, db):
+    """A detection with no `label_confidence` should produce a null
+    classification mean, even when the detection mean is populated."""
+    project = make_project(db, counting_threshold=0.5)
+    site = make_site(db, project_id=project.id, name="Det Only")
+    dep = make_deployment(db, site_id=site.id)
+    f = make_file(db, deployment_id=dep.id, file_type="image", file_format="jpg")
+    make_detection(db, file_id=f.id, confidence=0.8)  # no label_confidence
+    resp = client.get(f"/api/deployments/{dep.id}/info")
+    data = resp.json()
+    assert data["mean_detection_confidence"] == 0.8
+    assert data["mean_classification_confidence"] is None
+
+
+def test_deployment_info_verified_below_threshold_is_counted(client, db):
+    """A verified detection with confidence < threshold must still count
+    in the mean because of the verified override rule."""
+    project = make_project(db, counting_threshold=0.5)
+    site = make_site(db, project_id=project.id, name="Camp V")
+    dep = make_deployment(db, site_id=site.id)
+    f = make_file(db, deployment_id=dep.id, file_type="image", file_format="jpg")
+    # Only detection is below threshold but verified.
+    make_detection(db, file_id=f.id, confidence=0.3, verified=True)
+    resp = client.get(f"/api/deployments/{dep.id}/info")
+    data = resp.json()
+    assert data["mean_detection_confidence"] == 0.3
+
+
+# ── file-datetime probe: the opt-in mtime fallback ────────────────────────
+
+
+def _jpeg_with_mtime(folder, name, when):
+    """Write a tiny EXIF-less JPEG and set its modification time."""
+    from PIL import Image
+
+    path = folder / name
+    Image.new("RGB", (4, 4), (1, 2, 3)).save(path, format="JPEG")
+    os.utime(path, (when.timestamp(), when.timestamp()))
+    return path
+
+
+def test_file_datetime_without_fallback_returns_null(client, tmp_path):
+    """Default behaviour: no capture date means no date, mtime ignored."""
+    _jpeg_with_mtime(tmp_path, "a.jpg", datetime(2024, 4, 7, 15, 55, 26))
+
+    resp = client.get(
+        "/api/deployments/file-datetime"
+        f"?folder={tmp_path}&file=a.jpg"
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["file_datetime"] is None
+
+
+def test_file_datetime_with_fallback_returns_mtime(client, tmp_path):
+    """Without this the Adjust-dates modal would show "unknown" for every
+    file in a folder that opted in, so the offset could never be set."""
+    _jpeg_with_mtime(tmp_path, "a.jpg", datetime(2024, 4, 7, 15, 55, 26))
+
+    resp = client.get(
+        "/api/deployments/file-datetime"
+        f"?folder={tmp_path}&file=a.jpg&use_file_mtime_fallback=true"
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["file_datetime"] == datetime(2024, 4, 7, 15, 55, 26).isoformat()
+
+
+# ── Relink refusal ───────────────────────────────────────────────────────
+# A refused relink used to leave no trace anywhere: the endpoint answers
+# 200 with the reasons in the body, the UI rendered only how many samples
+# failed, and nothing was logged. A user (and a maintainer reading
+# backend.log afterwards) could not tell which file was wrong or why.
+
+
+def _deployment_with_files_on_disk(db, folder, names_and_sizes):
+    """A deployment whose File rows point at real files under `folder`."""
+    folder.mkdir(parents=True, exist_ok=True)
+    project = make_project(db)
+    deployment = make_deployment(
+        db, project_id=project.id, folder_path=str(folder)
+    )
+    for name, size in names_and_sizes:
+        path = folder / name
+        path.write_bytes(b"x" * size)
+        make_file(
+            db,
+            deployment_id=deployment.id,
+            file_path=str(path),
+            size_bytes=size,
+        )
+    db.commit()
+    return deployment
+
+
+# ---------------------------------------------------------------------------
+# The Deployments page must read the disk, not a status recorded earlier.
+#
+# Nothing else re-checks a deployment already marked needs_relink, so a
+# folder the user reconnected outside the app (an external drive plugged
+# back in) kept being reported as missing while its pictures were plainly
+# on screen, and the only escape was restarting or re-picking the folder
+# it was already pointing at.
+
+
+def test_check_all_clears_a_status_whose_folder_came_back(client, db, tmp_path):
+    """A stale needs_relink is corrected once the files are readable again."""
+    folder = tmp_path / "cam"
+    deployment = _deployment_with_files_on_disk(db, folder, [("a.jpg", 100)])
+    deployment.folder_status = "needs_relink"
+    db.commit()
+
+    body = client.post(
+        f"/api/deployments/check-all?project_id={deployment.project_id}"
+    ).json()
+
+    db.refresh(deployment)
+    assert deployment.folder_status == "valid"
+    assert body["checked"] == 1
+
+
+def test_check_all_still_reports_a_folder_that_is_really_gone(
+    client, db, tmp_path
+):
+    """The test above must not pass by marking everything valid."""
+    folder = tmp_path / "cam"
+    deployment = _deployment_with_files_on_disk(db, folder, [("a.jpg", 100)])
+    folder.rename(tmp_path / "cam-moved")
+
+    client.post(f"/api/deployments/check-all?project_id={deployment.project_id}")
+
+    db.refresh(deployment)
+    assert deployment.folder_status == "needs_relink"
+
+
+def test_check_all_leaves_other_projects_alone(client, db, tmp_path):
+    """Opening one project's page must not re-stat every drive on the machine."""
+    mine = _deployment_with_files_on_disk(db, tmp_path / "mine", [("a.jpg", 100)])
+    theirs = _deployment_with_files_on_disk(
+        db, tmp_path / "theirs", [("a.jpg", 100)]
+    )
+    theirs.folder_status = "needs_relink"
+    db.commit()
+
+    body = client.post(
+        f"/api/deployments/check-all?project_id={mine.project_id}"
+    ).json()
+
+    db.refresh(theirs)
+    assert body["checked"] == 1
+    assert theirs.folder_status == "needs_relink"
+
+
+def test_relink_refusal_reports_the_reason_per_file(db, tmp_path, caplog):
+    """A wrong folder is refused, and says which file and why."""
+    from app.api.crud.deployment import relink_deployment
+
+    old = tmp_path / "old"
+    deployment = _deployment_with_files_on_disk(db, old, [("a.jpg", 100)])
+
+    # Same filename, different contents: the lookalike case the size check
+    # exists to catch.
+    wrong = tmp_path / "wrong"
+    wrong.mkdir()
+    (wrong / "a.jpg").write_bytes(b"y" * 999)
+
+    with caplog.at_level("WARNING"):
+        result = relink_deployment(db, deployment.id, str(wrong))
+
+    assert result.success is False
+    assert result.files_rewritten == 0
+    assert result.verify_result is not None
+    assert len(result.verify_result.mismatches) == 1
+    reason = result.verify_result.mismatches[0]
+    assert "Size mismatch" in reason
+    assert "a.jpg" in reason
+    assert "expected 100" in reason and "got 999" in reason
+
+    # The reason reaches the log, not just the response body.
+    assert "Relink refused" in caplog.text
+    assert reason in caplog.text
+
+
+def test_relink_refusal_names_a_missing_file(db, tmp_path, caplog):
+    """The other failure mode: the file simply is not there."""
+    from app.api.crud.deployment import relink_deployment
+
+    old = tmp_path / "old"
+    deployment = _deployment_with_files_on_disk(db, old, [("a.jpg", 100)])
+    empty = tmp_path / "empty"
+    empty.mkdir()
+
+    with caplog.at_level("WARNING"):
+        result = relink_deployment(db, deployment.id, str(empty))
+
+    assert result.success is False
+    assert any("Missing" in m and "a.jpg" in m for m in result.verify_result.mismatches)
+    assert "Relink refused" in caplog.text
+
+
+def test_relink_refusal_changes_nothing_in_the_database(db, tmp_path):
+    """The refusal path must not half-apply. Files keep their old paths and
+    the deployment keeps its folder, so retrying with the right folder is
+    always possible."""
+    from app.api.crud.deployment import relink_deployment
+
+    old = tmp_path / "old"
+    deployment = _deployment_with_files_on_disk(db, old, [("a.jpg", 100)])
+    original_paths = sorted(f.file_path for f in deployment.files)
+    empty = tmp_path / "empty"
+    empty.mkdir()
+
+    relink_deployment(db, deployment.id, str(empty))
+    db.expire_all()
+
+    assert deployment.folder_path == str(old)
+    assert sorted(f.file_path for f in deployment.files) == original_paths
+
+
+def test_relink_succeeds_when_the_folder_really_holds_the_files(db, tmp_path):
+    """The happy path, so the tests above cannot pass by refusing everything."""
+    from app.api.crud.deployment import relink_deployment
+
+    old = tmp_path / "old"
+    deployment = _deployment_with_files_on_disk(db, old, [("a.jpg", 100)])
+
+    moved = tmp_path / "moved"
+    moved.mkdir()
+    (moved / "a.jpg").write_bytes(b"x" * 100)
+
+    result = relink_deployment(db, deployment.id, str(moved))
+
+    assert result.success is True
+    assert result.files_rewritten == 1
+    assert deployment.folder_path == str(moved)
+    assert deployment.folder_status == "valid"
+
+
+# ---------------------------------------------------------------------------
+# Sampling ten files must not cost the whole files table.
+#
+# `deployment.files` is a plain lazy select, so reading it loads every File
+# row of the deployment to hand back ten. The startup sweep walks every
+# deployment, so that was the whole files table before the first stat()
+# call, and the API served the previous session's folder_status for as long
+# as it took.
+
+
+def test_sampling_does_not_load_the_deployments_files(db, tmp_path):
+    """The sample comes out of SQL, so the relationship stays unloaded."""
+    from sqlalchemy import inspect as sa_inspect
+
+    from app.api.crud.deployment import _sample_files_for_verification
+
+    folder = tmp_path / "run"
+    deployment = _deployment_with_files_on_disk(
+        db, folder, [(f"{i}.jpg", 100) for i in range(25)]
+    )
+    db.expire(deployment)
+
+    samples = _sample_files_for_verification(deployment, folder)
+
+    assert len(samples) == 10
+    assert "files" in sa_inspect(deployment).unloaded
+
+
+def test_sampling_prefers_files_that_carry_a_size(db, tmp_path):
+    """A size is what tells the real folder from a lookalike, so rows that
+    have one must win the sample even when they were added last."""
+    from app.api.crud.deployment import _sample_files_for_verification
+
+    folder = tmp_path / "run"
+    folder.mkdir(parents=True)
+    project = make_project(db)
+    deployment = make_deployment(
+        db, project_id=project.id, folder_path=str(folder)
+    )
+    for i in range(12):
+        make_file(
+            db,
+            deployment_id=deployment.id,
+            file_path=str(folder / f"nosize{i}.jpg"),
+            size_bytes=None,
+        )
+    for i in range(3):
+        make_file(
+            db,
+            deployment_id=deployment.id,
+            file_path=str(folder / f"sized{i}.jpg"),
+            size_bytes=100,
+        )
+    db.commit()
+
+    sampled = [f for f, _ in _sample_files_for_verification(deployment, folder)]
+
+    assert len(sampled) == 10
+    assert sum(1 for f in sampled if f.size_bytes is not None) == 3
+
+
+# ---------------------------------------------------------------------------
+# The banner must not suggest a folder the relink will then refuse.
+#
+# `group-broken` used to offer any similarly-named sibling that merely
+# existed. A beta tester renamed a folder AND reorganised inside it, so the
+# lookalike scored high, existed, and was offered as "it looks like it is
+# now at ...". Clicking it ran the real identity check, all ten sampled
+# files came back missing, and the same banner reappeared with the same
+# suggestion. Five attempts over two days, every one refused.
+
+
+def _broken(deployment):
+    return {"items": [{"id": deployment.id, "folder_path": deployment.folder_path}]}
+
+
+def test_group_broken_does_not_suggest_a_lookalike_that_lacks_the_files(
+    client, db, tmp_path
+):
+    """A sibling with the right name but the wrong contents is not offered."""
+    old = tmp_path / "S5 - Ridge camp waterhole"
+    deployment = _deployment_with_files_on_disk(db, old, [("a.jpg", 100)])
+    # The folder moves away, and a near-identical name appears beside it
+    # holding something else entirely.
+    old.rename(tmp_path / "moved-away")
+    lookalike = tmp_path / "S5 - Ridge camp waterhole -"
+    lookalike.mkdir()
+    (lookalike / "something-else.jpg").write_bytes(b"x" * 100)
+
+    body = client.post("/api/deployments/group-broken", json=_broken(deployment)).json()
+
+    assert body["groups"][0]["suggested_path"] is None
+
+
+def test_group_broken_still_suggests_a_plain_rename(client, db, tmp_path):
+    """The case the feature exists for, so the test above cannot pass by
+    suppressing every suggestion."""
+    old = tmp_path / "S5 - Ridge camp waterhole"
+    deployment = _deployment_with_files_on_disk(db, old, [("a.jpg", 100)])
+    renamed = tmp_path / "S5 - Ridge camp waterhole 2025"
+    old.rename(renamed)
+
+    body = client.post("/api/deployments/group-broken", json=_broken(deployment)).json()
+
+    assert body["groups"][0]["suggested_path"] == str(renamed)
+
+
+# ---------------------------------------------------------------------------
+# An unreadable folder must degrade, never crash.
+#
+# `Path.exists()` swallows only ENOENT and friends; EACCES and EIO
+# propagate. That threw straight out of three request paths on a failing
+# drive: /check-folder 500'd, /group-broken 500'd (so the Deployments page
+# showed broken deployments with no banner at all), and the startup sweep
+# aborted on the first bad folder, leaving EVERY deployment's status stale.
+
+
+def test_check_folder_reports_an_unreadable_folder_instead_of_crashing(
+    client, db, tmp_path, make_unreadable
+):
+    folder = tmp_path / "cam"
+    deployment = _deployment_with_files_on_disk(db, folder, [("a.jpg", 100)])
+    make_unreadable(folder)
+
+    response = client.post(f"/api/deployments/{deployment.id}/check-folder")
+
+    assert response.status_code == 200
+    assert response.json()["folder_status"] == "needs_relink"
+
+
+def test_startup_sweep_survives_one_unreadable_folder(
+    db, tmp_path, make_unreadable
+):
+    """The other deployments must still get checked."""
+    from app.api.crud.deployment import check_all_deployment_folders
+
+    bad = tmp_path / "bad"
+    good = tmp_path / "good"
+    bad_dep = _deployment_with_files_on_disk(db, bad, [("a.jpg", 100)])
+    good_dep = _deployment_with_files_on_disk(db, good, [("b.jpg", 100)])
+    # Start both from a wrong status so a skipped check is visible.
+    bad_dep.folder_status = "valid"
+    good_dep.folder_status = "needs_relink"
+    db.commit()
+    make_unreadable(bad)
+
+    result = check_all_deployment_folders(db)
+
+    assert result["checked"] == 2
+    db.refresh(bad_dep)
+    db.refresh(good_dep)
+    assert bad_dep.folder_status == "needs_relink"
+    assert good_dep.folder_status == "valid"  # the readable one still ran
+
+
+def test_group_broken_survives_an_unreadable_ancestor(
+    client, db, tmp_path, make_unreadable
+):
+    """No suggestion is fine. A 500 is not: the banner never renders."""
+    parent = tmp_path / "parent"
+    folder = parent / "cam"
+    deployment = _deployment_with_files_on_disk(db, folder, [("a.jpg", 100)])
+    make_unreadable(parent)
+
+    response = client.post("/api/deployments/group-broken", json=_broken(deployment))
+
+    assert response.status_code == 200
+    assert response.json()["groups"][0]["suggested_path"] is None
+
+
+def test_turning_paired_cameras_on_needs_camera_subfolders(client, db, tmp_path):
+    """PATCH refuses the flag for a folder without one subfolder per camera,
+    and turning it off never looks at the disk."""
+    from app.services.csv_import_deployments import PAIRED_CAMERAS_NEED_SUBFOLDERS
+
+    p = make_project(db)
+    flat = tmp_path / "flat"
+    flat.mkdir()
+    (flat / "a.jpg").write_bytes(b"x")
+    d = make_deployment(db, project_id=p.id, folder_path=str(flat))
+    db.commit()
+
+    resp = client.patch(f"/api/deployments/{d.id}", json={"paired_cameras": True})
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == PAIRED_CAMERAS_NEED_SUBFOLDERS
+
+    pair = tmp_path / "pair"
+    for cam in ("cam1", "cam2"):
+        (pair / cam).mkdir(parents=True)
+        (pair / cam / "a.jpg").write_bytes(b"x")
+    d2 = make_deployment(db, project_id=p.id, folder_path=str(pair), paired_cameras=True)
+    db.commit()
+    resp = client.patch(f"/api/deployments/{d2.id}", json={"paired_cameras": False})
+    assert resp.status_code == 200
+    assert resp.json()["paired_cameras"] is False
+
+
+def test_camera_offsets_need_paired_cameras_and_a_valid_folder(client, db, tmp_path):
+    for cam in ("cam1", "cam2"):
+        (tmp_path / cam).mkdir()
+        (tmp_path / cam / "a.jpg").write_bytes(b"x")
+    p = make_project(db)
+    unpaired = make_deployment(db, project_id=p.id, folder_path=str(tmp_path))
+    resp = client.patch(f"/api/deployments/{unpaired.id}", json={"camera_offsets": {"cam2": 5}})
+    assert resp.status_code == 400
+    assert "paired" in resp.json()["detail"].lower()
+
+    broken = make_deployment(
+        db,
+        project_id=p.id,
+        folder_path=str(tmp_path / "gone"),
+        paired_cameras=True,
+        folder_status="needs_relink",
+    )
+    resp = client.patch(f"/api/deployments/{broken.id}", json={"camera_offsets": {"cam2": 5}})
+    assert resp.status_code == 400
+
+    paired = make_deployment(
+        db, project_id=p.id, folder_path=str(tmp_path), paired_cameras=True
+    )
+    resp = client.patch(f"/api/deployments/{paired.id}", json={"camera_offsets": {"cam2": 5}})
+    assert resp.status_code == 200
+    assert resp.json()["camera_offsets"] == {"cam2": 5}
+
+    # Turning the pair off in the same request with offsets is refused, and
+    # sending {} together with paired off is the way to unpair.
+    resp = client.patch(
+        f"/api/deployments/{paired.id}",
+        json={"paired_cameras": False, "camera_offsets": {"cam2": 5}},
+    )
+    assert resp.status_code == 400
+    resp = client.patch(
+        f"/api/deployments/{paired.id}",
+        json={"paired_cameras": False, "camera_offsets": {}},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["camera_offsets"] == {}

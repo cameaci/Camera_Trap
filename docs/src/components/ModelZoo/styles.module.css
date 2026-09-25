@@ -1,0 +1,267 @@
+.root {
+  margin: 1.5rem 0;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.search {
+  flex: 1 1 220px;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font-size: 0.95rem;
+}
+
+.typeGroup {
+  display: inline-flex;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  overflow: hidden;
+}
+
+.typeButton {
+  padding: 0.5rem 0.85rem;
+  border: none;
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-right: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.typeButton:last-child {
+  border-right: none;
+}
+
+.typeButton:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.typeButtonActive,
+.typeButtonActive:hover {
+  background: var(--ifm-color-primary);
+  color: #fff;
+}
+
+.region {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font-size: 0.9rem;
+}
+
+.region:disabled {
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-color-emphasis-500);
+  cursor: not-allowed;
+}
+
+.count {
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-600);
+  margin-bottom: 0.5rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: var(--ifm-global-radius);
+}
+
+.table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table thead th {
+  text-align: left;
+  white-space: nowrap;
+  background: var(--ifm-color-emphasis-100);
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.table tbody td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* The whole name cell is the disclosure control, so the hit target is
+   large and the caret is not a tiny separate button. */
+.nameButton {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.nameButton:hover .name {
+  color: var(--ifm-color-primary);
+}
+
+.caret,
+.caretOpen {
+  display: inline-block;
+  color: var(--ifm-color-emphasis-600);
+  transition: transform 0.15s ease;
+}
+
+.caretOpen {
+  transform: rotate(90deg);
+}
+
+.name {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  font-weight: 600;
+}
+
+.modelId {
+  font-size: 0.72rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.summary {
+  min-width: 200px;
+  color: var(--ifm-color-emphasis-800);
+}
+
+/* Type badges are deliberately one neutral style. The label already says
+   which type it is, and colour-coding here read as a quality ranking
+   because the palette's three accents mean bad / middle / good. */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-800);
+}
+
+.rowOpen td {
+  border-bottom: none;
+}
+
+.detailRow td {
+  background: var(--ifm-color-emphasis-100);
+  padding: 0 0.75rem 0.9rem;
+}
+
+.detail p {
+  margin: 0 0 0.75rem;
+  max-width: 70ch;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.species {
+  margin: 0 0 0.85rem;
+}
+
+.speciesHead {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0.2rem;
+}
+
+.speciesMissing {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-700);
+  font-style: italic;
+}
+
+.speciesList {
+  margin: 0;
+  max-width: 70ch;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.meta dt {
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  text-align: center;
+  color: var(--ifm-color-emphasis-600);
+  padding: 1.5rem;
+}
+
+/* A linked row keeps a marker after the scroll, so a shared URL says which
+   model it meant even once the reader opens others. Left border rather than
+   a background tint: the open row already uses a tint, and stacking two
+   would read as a third state. */
+.rowPinned td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--ifm-color-primary);
+}
+
+.idLine {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+/* Hidden until the row is hovered or the link itself is focused, the same
+   trick Docusaurus uses on heading anchors: discoverable on the row you are
+   reading, silent everywhere else. Never hidden from screen readers. */
+.anchor {
+  color: var(--ifm-color-emphasis-500);
+  font-size: 0.72rem;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.table tbody tr:hover .anchor,
+.anchor:focus,
+.rowPinned .anchor {
+  opacity: 1;
+}
+
+.anchor:hover {
+  color: var(--ifm-color-primary);
+}

@@ -1,0 +1,257 @@
+---
+sidebar_position: 7
+title: Install on locked-down computers and networks
+hide_table_of_contents: true
+---
+
+import { FaqItem } from "@site/src/components/Faq";
+
+# Install on locked-down computers and networks
+
+Work and university computers are often managed. A rule about where programs may run, or a network that inspects secure traffic, can stop the first-time setup.
+
+Planning a rollout? Start with the addresses below. Setup already failed? Pick the error you see.
+
+## Which addresses setup needs
+
+Setup downloads from these. They need to be reachable, and not inspected.
+
+| Address | What it is used for | If it is blocked |
+|---|---|---|
+| `micro.mamba.pm` | the program that builds the analysis environment | setup cannot start |
+| `conda.anaconda.org` | the packages that environment is built from | setup fails |
+| `pypi.org` and `files.pythonhosted.org` | more packages | setup fails |
+| `download.pytorch.org` | the parts that use your graphics card | setup fails |
+| `huggingface.co` and `*.hf.co` | the AI models themselves | no model can be downloaded |
+| `raw.githubusercontent.com` | the list of available models | only the models that shipped with your version are listed |
+
+The model files are large, so they are served from `*.hf.co` and not from `huggingface.co` itself. Allowing only the second one is not enough.
+
+After setup, analysis runs offline. AddaxAI still checks the model list and looks for a new version at start, and both fail quietly.
+
+## Problems
+
+<FaqItem
+  id="the-app-is-blocked-by-group-policy"
+  q="The app is blocked by group policy"
+  summary='"This program is blocked by group policy". Needs AddaxAI 7.0.9 or newer.'
+>
+
+Some organizations only allow programs to run from certain folders. Setup then fails with an error like "This program is blocked by group policy".
+
+You need AddaxAI 7.0.9 or newer.
+
+#### Why it fails
+
+The app installs where you pick. The AI runs from a separate data folder, by default `C:\Users\<your user name>\AddaxAI` (macOS and Linux: `~/AddaxAI`). That folder holds your database, the models, and the software they run in. When the policy blocks programs in user folders, that folder is what fails, even though the app opens fine.
+
+#### The fix
+
+Easiest: ask IT to allow programs under that folder. If they cannot, move both.
+
+1. Install the app in an allowed folder. The installer lets you pick. For a script, see [silent install](silent-install.mdx).
+2. Set `ADDAXAI_USER_DATA_DIR` to a path in an allowed location, for example `C:\Apps\AddaxAI-data`. See [environment variables](../reference/environment-variables.mdx) for how to set it. On Windows, set it machine wide so it applies to every user.
+
+#### Things to know
+
+- The folder must be writable by the user who runs the app. If it is not, startup shows an error naming the folder.
+- The variable moves nothing. You start with an empty database, and setup downloads the models again. To keep earlier work, close the app and move the old folder's contents across first.
+
+</FaqItem>
+
+<FaqItem
+  id="access-denied-at-the-last-step-of-setup"
+  q="Access denied at the last step of setup"
+  summary='"[WinError 5] Access denied" while the finished environment is moved into place. Windows only.'
+>
+
+Setup runs for a long while, reaches "Finalizing environment", and then fails:
+
+```
+Failed to create environment env-addaxai-base: [WinError 5] Access denied:
+'C:\Users\<your user name>\AddaxAI\envs\.env-addaxai-base.tmp' ->
+'C:\Users\<your user name>\AddaxAI\envs\env-addaxai-base'
+```
+
+Up to AddaxAI 7.7.0 the same error can also name one file inside the temporary folder, for example `...\envs\.env-addaxai-base.tmp\DLLs\_ctypes.pyd`. That is the same lock, hit while setup cleans up after a failed download. The real reason the download failed is then only in the log, so send a [diagnostic report](troubleshooting.md) if Try again does not help.
+
+Windows only. The "Access denied" part shows in the language of your Windows, for example "Accès refusé".
+
+#### Why it fails
+
+The environment is built in a temporary folder and moved into place once it is complete. Windows refuses that move while another program holds any file inside it open. Right after setup writes thousands of fresh files, that is usually the antivirus still scanning them. Installing as administrator makes no difference: this is a lock, not a missing permission.
+
+#### The fix
+
+Press Try again first. The lock is often gone by the time the build finishes again. If it keeps failing at the same point, ask IT to add an antivirus exclusion for the AddaxAI data folder, by default `C:\Users\<your user name>\AddaxAI`, and press Try again once more.
+
+#### Things to know
+
+- AddaxAI 7.2.1 and newer retry the move for about 30 seconds before reporting this error. If you still see it there, the lock is holding on longer than a routine scan, and the exclusion is the way out.
+- The unfinished folder is removed after the error, so Try again rebuilds the environment from the start.
+
+</FaqItem>
+
+<FaqItem
+  id="antivirus-on-your-own-computer"
+  q="Antivirus on your own computer"
+  summary="Setup fails on a home computer with McAfee, Norton or another antivirus. Windows only."
+>
+
+Setup writes thousands of files to the AddaxAI data folder and runs several programs from it. Antivirus software scans each file as it appears, and holds it while it does. That can stop setup with an "Access denied" error. It can also make analysis slower afterwards.
+
+Windows Security, which comes with Windows, usually lets go fast enough. Other products, McAfee for example, hold files longer.
+
+#### The fix
+
+Exclude the AddaxAI data folder from scanning. By default that is `C:\Users\<your user name>\AddaxAI`. Only this folder needs it. It holds the models and the software they run in, nothing else.
+
+- **Windows Security**: open Virus & threat protection, then Manage settings, then Add or remove exclusions, and add the folder. See [Microsoft's page on exclusions](https://support.microsoft.com/en-us/windows/add-an-exclusion-to-windows-security-811816c0-4dfd-af4a-47e4-c301afe13b26).
+- **McAfee**: the setting is called Excluded files and folders. In some versions it only covers custom and scheduled scans, and real-time scanning cannot skip a folder. Then pause real-time scanning while setup runs, and turn it back on when setup is done. See [McAfee's page on excluding items](https://download.mcafee.com/products/webhelp/5/affid/756/1033/GUID-0A616695-25DF-4D00-850A-1203365F63AB.html).
+- **Another product**: look for a setting named exclusions, exceptions or trusted folders.
+
+Then press Try again.
+
+</FaqItem>
+
+<FaqItem
+  id="certificate-errors-during-setup"
+  q="Certificate errors during setup"
+  summary="CRYPT_E_NO_REVOCATION_CHECK (0x80092012). Windows only. Needs AddaxAI 7.0.12 or newer."
+>
+
+Setup stops while it downloads the analysis environment:
+
+```
+schannel: next InitializeSecurityContext failed: CRYPT_E_NO_REVOCATION_CHECK
+(0x80092012) - The revocation function was unable to check revocation for the
+certificate.
+```
+
+You may also see `CRYPT_E_REVOCATION_OFFLINE (0x80092013)`. Same cause, same fix. Windows only.
+
+You need AddaxAI 7.0.12 or newer.
+
+#### Why it fails
+
+Windows checks whether a certificate has been withdrawn since it was issued. A network that inspects secure traffic re-signs every connection with its own certificate. Those carry no address to check against, so Windows gives up and stops the download.
+
+This is not your computer, and turning off your antivirus does not help. The inspection happens on a network device.
+
+#### Best fix: ask IT
+
+Ask them to exempt the addresses under [which addresses setup needs](#which-addresses-setup-needs) from traffic inspection. Allowing the withdrawal lists through the firewall does not help, because the replacement certificates name no list to reach.
+
+#### If that is not possible
+
+Setup offers a button, **Continue without revocation checks**, under the error next to Try again.
+
+<img src="https://github.com/user-attachments/assets/2e8ceee4-00eb-4727-81d9-ef8a3459ec16" alt="The setup screen showing the error and the Continue without revocation checks button" style={{maxWidth: '620px', width: '100%', display: 'block'}} />
+
+- It stops one check: whether the download servers' certificates have been withdrawn.
+- Still checked: who issued them, that they match the address, and that they have not expired.
+- Nothing outside the environment download changes.
+
+Your choice is remembered, so later downloads do not ask again.
+
+#### How to undo it
+
+AddaxAI writes the choice to one file:
+
+```
+C:\Users\<your user name>\AddaxAI\.allow-no-revocation-check
+```
+
+The file explains itself. Delete it and the check comes back.
+
+Administrators can set this per machine instead, with `MAMBA_SSL_NO_REVOKE` set to `true`. Use `true`, not `1`. A [silent install](silent-install.mdx) shows no screen, so set it before you deploy.
+
+</FaqItem>
+
+<FaqItem
+  id="we-can-only-download-through-our-own-mirror"
+  q="We can only download through our own mirror"
+  summary="Artifactory, Nexus or another repository manager instead of the public addresses."
+>
+
+Some organizations do not open the firewall, but do run their own copy of the public repositories. AddaxAI can be pointed at those. Set the ones you need, see [environment variables](../reference/environment-variables.mdx).
+
+| What | Setting | Example value |
+|---|---|---|
+| AI models | `ADDAXAI_HF_ENDPOINT` | `https://artifactory.example.com/artifactory/api/huggingfaceml/hf-remote` |
+| Model list | `ADDAXAI_MODEL_CATALOG_URL` | your own copy of `models.json` |
+| pip packages | `PIP_INDEX_URL`, or a `pip.conf` / `pip.ini` | your PyPI mirror |
+| PyTorch | `ADDAXAI_PYTORCH_INDEX_URL` | your copy of `https://download.pytorch.org/whl` |
+| conda packages | `MAMBA_CHANNEL_ALIAS` | your conda-forge mirror |
+
+Two things have no mirror setting. `micro.mamba.pm` is fetched from a fixed address, and the model files that `huggingface.co` redirects to have to come through the same endpoint you set. If neither can be reached, use the section below instead.
+
+#### Before you deploy it
+
+Repository managers differ in how much of the HuggingFace interface they answer. Two requests decide it, so check them from a managed computer first:
+
+```bash
+curl -i "<your endpoint>/api/models/Addax-Data-Science/MD5A-0-0/tree/main?recursive=true"
+curl -L -o test.pt "<your endpoint>/Addax-Data-Science/MD5A-0-0/resolve/main/md_v5a.0.0.pt"
+```
+
+The first must answer with a list of files, the second with a 280 MB file. If both work, AddaxAI works. If either does not, [email me](mailto:peter@addaxdatascience.com) with what came back.
+
+#### If the endpoint needs a login
+
+Set `ADDAXAI_HF_TOKEN` to the token. Needs AddaxAI 7.0.14 or newer. It is sent to whatever address `ADDAXAI_HF_ENDPOINT` points at, and to nothing else.
+
+</FaqItem>
+
+<FaqItem
+  id="only-the-models-are-blocked"
+  q="Only the models are blocked"
+  summary="Everything downloads except Hugging Face. Download the models once on another network, or copy them from a prepared computer."
+>
+
+If the other addresses are reachable and only `huggingface.co` and `*.hf.co` are blocked, the environment is already installed and only the models are missing. Two ways out.
+
+#### One computer: download the models on another network
+
+Connect to a home network or a phone hotspot and press Try again. The models are a one-time download, and the two default models are about 370 MB together. They stay on the computer afterwards. Back on the work network the app works as before, because analysis runs offline. Only the model update check at start fails, quietly.
+
+Every model you add later needs the same trip, because the models page downloads the same way.
+
+Two things can still stop this. A managed laptop may not let you join another network. And a filter that runs on the computer itself, rather than on the network, blocks on the hotspot too. If it fails there as well, only IT can change it.
+
+#### Many computers: copy the models from one prepared computer
+
+You do not need to copy the whole data folder. Copy only the models.
+
+1. Set `ADDAXAI_USER_DATA_DIR` on every machine, see [environment variables](../reference/environment-variables.mdx).
+2. On one computer that can reach the models, or one that uses [your own mirror](#we-can-only-download-through-our-own-mirror), install AddaxAI and download the models you need.
+3. Copy its `models` folder into the data folder on the other machines, for example from a network share.
+4. Set `ADDAXAI_DISABLE_MODEL_UPDATES` to `true` on the other machines.
+
+The environment still downloads on each machine at first launch. New models and model fixes only arrive when you copy the folder again.
+
+</FaqItem>
+
+<FaqItem
+  id="we-cannot-download-anything-at-all"
+  q="We cannot download anything at all"
+  summary="Prepare one computer, then copy the result to the rest."
+>
+
+Set up one computer that does have access, then copy what it produced onto the others. Nothing on those computers needs to reach the internet.
+
+With a single computer, the prepared computer can be that same one: run the setup once on a home network, and it works on the work network afterwards. That download is several gigabytes, most of it the analysis environment, so a phone hotspot is a poor fit here. The two things that can still stop it are under [only the models are blocked](#only-the-models-are-blocked).
+
+1. Pick a folder that exists on every machine, for example `C:\Apps\AddaxAI-data`, and set `ADDAXAI_USER_DATA_DIR` to it everywhere. See [environment variables](../reference/environment-variables.mdx). The folder has to be the same path on every machine.
+2. On the prepared computer, install AddaxAI and run the setup, or run it from a script as described under [pre-install the models and environments](silent-install.mdx#pre-install-the-models-and-environments).
+3. Delete `addaxai.db` and the `backups` folder from that folder, or every machine starts with the first one's projects.
+4. Copy the folder to the other machines, along with the app itself.
+5. Set `ADDAXAI_DISABLE_MODEL_UPDATES` to `true` so AddaxAI stops looking for a newer model list at start.
+
+Repeat this whenever you deploy a new version of AddaxAI.
+
+</FaqItem>
+
+## Blocked in a different way?
+
+This page covers the cases I have seen so far. If AddaxAI is blocked differently on your machines, email [peter@addaxdatascience.com](mailto:peter@addaxdatascience.com) with a [diagnostic report](troubleshooting.md). Say which security software or proxy you use, if you know it. I will help you through it and add your case to this page.

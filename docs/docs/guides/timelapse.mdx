@@ -1,0 +1,42 @@
+---
+sidebar_position: 6
+title: Use results in Timelapse
+---
+
+import TutorialVideo from "@site/src/components/TutorialVideo";
+
+# Use results in Timelapse
+
+Timelapse is a separate program for reviewing camera trap photos. It runs on Windows only, and you can get it from [its download page](https://timelapse.ucalgary.ca/download/). AddaxAI writes a recognition file that Timelapse reads, so you can go through the AI results inside Timelapse.
+
+Timelapse needs the recognition file inside the folder it reads. AddaxAI writes it there when you analyse that folder, subfolders included, with a folder run. Then you import that file into Timelapse, as described below. A project does not fit: it can hold many folders in different places that move over time.
+
+## Video tutorial
+
+Prefer to watch? This video shows the round trip from Timelapse to AddaxAI and back.
+
+<TutorialVideo id="C_hbzW4dAWk" title="Video: use results in Timelapse" />
+
+## Steps
+
+1. **Start AddaxAI on your folder.** Two ways:
+
+   - **From Timelapse:** choose Recognitions > AddaxAI Image Recognizer > Run AddaxAI recognizer on a folder. AddaxAI opens "Analyse a folder" with that folder already filled in. By default AddaxAI also writes the recognition file where Timelapse expects it.
+
+     <img src="/img/timelapse-recognitions-menu.webp" alt="The AddaxAI recognizer in Timelapse's Recognitions menu" style={{maxWidth: '560px', width: '100%', display: 'block'}} />
+
+   - **From AddaxAI:** start a folder analysis on the folder yourself.
+
+     <img src="/img/home-analyse-a-folder.webp" alt="Start folder analysis from the AddaxAI home screen" style={{maxWidth: '560px', width: '100%', display: 'block'}} />
+
+2. **Run the folder analysis as normal.** Nothing here is Timelapse-specific. See [analyse a folder](./analyse-a-folder.mdx).
+
+3. **Save the recognition file.** In the save step, check that JSON, the recognition file for Timelapse, is on. AddaxAI writes the file next to your photos. Leave both as they are.
+
+   <img src="/img/save-recognition-file.webp" alt="The JSON recognition file option in the save step" style={{maxWidth: '560px', width: '100%', display: 'block'}} />
+
+4. **Import into Timelapse.** Choose Recognitions > Import image recognition data for this image set, then pick the file.
+
+   <img src="/img/timelapse-import-menu.webp" alt="The Import image recognition data item in Timelapse's Recognitions menu" style={{maxWidth: '560px', width: '100%', display: 'block'}} />
+
+For more detail on the Timelapse side, see their [image recognition guide](https://timelapse.ucalgary.ca/imagerecognition/).

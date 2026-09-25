@@ -1,0 +1,188 @@
+---
+sidebar_position: 6
+title: Silent install for IT teams
+hide_table_of_contents: true
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Silent install for IT teams
+
+This page is for IT staff who deploy AddaxAI to many computers with tools like Intune, SCCM, Jamf or a plain script. Regular users should follow the normal [installation](../start-here/install.mdx) page instead.
+
+AddaxAI is open source under the MIT license, so you are free to install it on as many machines as you want, including university labs and company fleets.
+
+<Tabs groupId="os" queryString="os">
+  <TabItem value="windows" label="Windows" default>
+
+The Windows installer is an NSIS installer, so it uses the NSIS switches.
+
+## Download the latest installer
+
+```cmd
+curl.exe -LO https://github.com/PetervanLunteren/AddaxAI/releases/latest/download/AddaxAI-Setup.exe
+```
+
+This URL always points at the newest release, so scripts never need updating.
+
+## Install for the current user
+
+```cmd
+AddaxAI-Setup.exe /S
+```
+
+This installs to `%LOCALAPPDATA%\Programs\AddaxAI` without showing any window.
+
+## Install for all users
+
+Run from an elevated prompt or as SYSTEM:
+
+```cmd
+AddaxAI-Setup.exe /ALLUSERS /S
+```
+
+This installs to `C:\Program Files\AddaxAI`. Use this variant for shared computers, otherwise the app is only available to the account that ran the installer.
+
+## Custom install directory
+
+```cmd
+AddaxAI-Setup.exe /S /D=C:\Path\To\AddaxAI
+```
+
+`/D=` must be the last argument, and the path must not be quoted, even when it contains spaces.
+
+## Update
+
+Run the new installer with the same switches. It replaces the old version in place, and user data survives.
+
+## Uninstall
+
+Run the uninstaller from the install directory with `/S`:
+
+```cmd
+"C:\Program Files\AddaxAI\Uninstall AddaxAI.exe" /S
+```
+
+A silent uninstall never deletes user data. The question about removing it is only asked in the interactive uninstaller.
+
+  </TabItem>
+  <TabItem value="macos" label="macOS">
+
+AddaxAI ships as a dmg, so there is no installer and no switch. Deploy it the way macOS management tools deploy any drag-and-drop app: mount the dmg and copy the app bundle to Applications.
+
+## Download the latest installer
+
+```bash
+curl -LO https://github.com/PetervanLunteren/AddaxAI/releases/latest/download/AddaxAI-arm64.dmg
+```
+
+This URL always points at the newest release, so scripts never need updating.
+
+## Install
+
+```bash
+hdiutil attach AddaxAI-arm64.dmg -nobrowse -mountpoint /Volumes/AddaxAI
+cp -R /Volumes/AddaxAI/AddaxAI.app /Applications/
+hdiutil detach /Volumes/AddaxAI
+```
+
+The app is code signed and notarized, so Gatekeeper accepts it without user interaction. Only Apple Silicon is supported.
+
+## Update
+
+Run the same script with the new dmg. Replacing the app bundle keeps user data.
+
+## Uninstall
+
+```bash
+rm -rf /Applications/AddaxAI.app
+```
+
+  </TabItem>
+  <TabItem value="linux" label="Linux">
+
+## Download the latest installer
+
+```bash
+wget https://github.com/PetervanLunteren/AddaxAI/releases/latest/download/AddaxAI-amd64.deb
+```
+
+This URL always points at the newest release, so scripts never need updating.
+
+## Install
+
+The deb installs silently by nature:
+
+```bash
+sudo apt install -y ./AddaxAI-amd64.deb
+```
+
+## Update
+
+Same command with the new deb.
+
+## Uninstall
+
+```bash
+sudo apt remove -y addaxai
+```
+
+  </TabItem>
+</Tabs>
+
+## What the install does not cover
+
+The installer only places the app. On first launch AddaxAI downloads its AI models and runtime environment, about 5 GB, into the user's own home folder at `~/AddaxAI`, and it needs at least 7 GB free on that drive. If group policy blocks programs in user folders on your machines, see [install on locked-down computers and networks](locked-down-computers.mdx). This happens once per user account, not once per machine, so on shared computers every user goes through that first-time download. The addresses it downloads from are listed under [which addresses setup needs](locked-down-computers.mdx#which-addresses-setup-needs). To spare your users the wait, run that setup from a script too, as described below.
+
+## Pre-install the models and environments
+
+Needs AddaxAI 7.0.9 or newer.
+
+The app ships a command that runs the same setup the first-launch wizard runs. Call it after the install, and the user's first click needs no downloads.
+
+:::warning[Run it as the user, not as admin]
+
+The command sets up the account that runs it, not the machine. If your deployment system runs it as admin or SYSTEM, only that account is set up and your users still get the full first-launch download. On shared computers run it in each user's own session, for example from a logon script or a run-once task at logon. On computers that reset user profiles, the setup is gone after the reset and runs again.
+
+:::
+
+<Tabs groupId="os" queryString="os">
+  <TabItem value="windows" label="Windows" default>
+
+```cmd
+"C:\Program Files\AddaxAI\resources\backend\backend.exe" --setup
+```
+
+For a per-user install the path is `%LOCALAPPDATA%\Programs\AddaxAI\resources\backend\backend.exe`.
+
+  </TabItem>
+  <TabItem value="macos" label="macOS">
+
+```bash
+/Applications/AddaxAI.app/Contents/Resources/backend/backend --setup
+```
+
+  </TabItem>
+  <TabItem value="linux" label="Linux">
+
+```bash
+/opt/AddaxAI/resources/backend/backend --setup
+```
+
+  </TabItem>
+</Tabs>
+
+That installs the base environment and the default models (MegaDetector and the embedding model). To also pre-install specific species recognition models, add their model IDs:
+
+```cmd
+backend.exe --setup SPECIESNET-v4-0-2-A MD1000-REDWOOD-0-0
+```
+
+This downloads those models and builds the environments they run in, the same as clicking install in the app. Find the model IDs in the [model zoo](../reference/model-zoo.mdx), or print them with `backend.exe --list-models`. An unknown ID stops the command before anything downloads.
+
+Things to know:
+
+- Progress prints to the console. Exit code 0 means success, 1 means failure. The full log is in `~/AddaxAI/logs/backend.log`.
+- It's safe to run repeatedly: finished parts are skipped, and an interrupted download resumes.
+- Run it before the user opens the app, not while the app is running its own setup.

@@ -1,0 +1,26 @@
+---
+sidebar_position: 1
+title: What AddaxAI does
+---
+
+import Steps, { stepIcons } from "@site/src/components/Steps";
+
+# What AddaxAI does
+
+AddaxAI finds the animals in your camera trap photos and videos, and tells you which species they are. It runs on your own computer. Your files stay on your machine.
+
+You give it a folder. It does three things:
+
+<Steps steps={[
+  { icon: stepIcons.find, verb: "Find", body: "A detection model draws a box around each animal, person and vehicle." },
+  { icon: stepIcons.name, verb: "Name", body: "A classification model says which species is in each box." },
+  { icon: stepIcons.check, verb: "Check", body: "You review what the AI suggested and correct anything that is wrong." },
+]} />
+
+These three steps are the same whichever way you work. What happens next differs between two modes: analyse a folder for a one-off batch, or build a project to explore your data inside AddaxAI. Same AI either way. See [choose a workflow](./choose-a-workflow.mdx) to pick.
+
+## What it does not do
+
+- It does not replace your own analysis. The built-in charts and rates cover the usual camera trap questions, and for some projects that might be enough. For anything more specific, like occupancy or density models, export the data and run it in R.
+- It does not upload anything. There is no account and no cloud.
+- It is not always right. The species and the counts are suggestions. Check the ones that matter to your result, and accept the rest. See [confidence and verification](../understanding/confidence-and-verification.md).
