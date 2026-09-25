@@ -26,7 +26,8 @@ def _is_speciesnet_model_dir(path: Path) -> bool:
         path.is_dir()
         and (path / "info.json").is_file()
         and any(path.glob("*.pt"))
-        and any(path.glob("*.labels.*.txt"))
+        # "*.labels*.txt": the release names it <model>.labels.txt.
+        and any(path.glob("*.labels*.txt"))
     )
 
 

@@ -3,6 +3,7 @@
 import http.server
 import io
 import json
+import stat
 import threading
 import zipfile
 from pathlib import Path
@@ -156,13 +157,15 @@ class _Server:
         self.content_type = "application/zip"
         self.status = 200
         self.etag = '"1"'
+        # Bytes announced but never sent: a connection that drops.
+        self.extra_length = 0
         outer = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):  # noqa: N802
                 self.send_response(outer.status)
                 self.send_header("Content-Type", outer.content_type)
-                self.send_header("Content-Length", str(len(outer.body)))
+                self.send_header("Content-Length", str(len(outer.body) + outer.extra_length))
                 self.send_header("ETag", outer.etag)
                 self.end_headers()
                 self.wfile.write(outer.body)
@@ -263,6 +266,15 @@ def test_a_bundle_without_catalog_is_rejected(server):
         model_library.sync_library_url()
 
 
+def test_a_broken_download_is_reported_and_leaves_nothing_behind(server):
+    """A connection that drops mid-download must not leave a partial .zip."""
+    server.body = _bundle({"models.json": b'{"models": {"det": [], "cls": []}}'})
+    server.extra_length = 1000  # promise more bytes than are sent
+    with pytest.raises(model_library.LibraryDownloadError):
+        model_library.sync_library_url()
+    assert not (model_library.library_cache_dir().parent / "library.zip.tmp").exists()
+
+
 # --- copying --------------------------------------------------------------
 
 
@@ -291,6 +303,23 @@ def test_copy_model_skips_a_file_already_there(library, tmp_path):
     assert model_library.copy_model(src, dst) == []
     assert model_library.copy_model(src, dst, overwrite=True) == ["model.pt"]
     assert (dst / "model.pt").read_bytes() == b"abc"
+
+
+def test_a_read_only_library_file_is_installed_writable(library, tmp_path):
+    """OneDrive syncs a view-only SharePoint library read-only. The local
+    copy must not inherit that, or Windows refuses to replace it when the
+    model is updated."""
+    src = library / "cls" / "M"
+    _put(src, "inference.py", b"v1").chmod(0o444)
+    dst = tmp_path / "local"
+
+    model_library.copy_model(src, dst)
+
+    assert (dst / "inference.py").stat().st_mode & stat.S_IWUSR
+    (src / "inference.py").chmod(0o644)
+    (src / "inference.py").write_bytes(b"v2")
+    model_library.copy_model(src, dst, overwrite=True)
+    assert (dst / "inference.py").read_bytes() == b"v2"
 
 
 def test_cancel_raises_and_leaves_no_partial_file(library, tmp_path):
@@ -395,6 +424,34 @@ def test_failed_install_keeps_what_was_copied(library, tmp_path, monkeypatch):
     assert (local / "inference.py").is_file()
 
 
+def test_a_failed_copy_never_leaves_the_weights_without_the_rest(
+    library, tmp_path, monkeypatch
+):
+    """The weights mark a model as installed, so they are copied last: a
+    copy that fails part way is retried, not taken for a finished one."""
+    # "a_weights.pt" sorts before "inference.py".
+    _put(library, "cls/WSP-UK-v1/a_weights.pt", b"weights")
+    _put(library, "cls/WSP-UK-v1/inference.py", b"code")
+    real_copy_one = model_library._copy_one
+
+    def share_drops_on_code(src, dst, on_bytes, should_cancel):
+        if src.name == "inference.py":
+            raise OSError("share went away")
+        real_copy_one(src, dst, on_bytes, should_cancel)
+
+    monkeypatch.setattr(model_library, "_copy_one", share_drops_on_code)
+    storage = ModelStorage(tmp_path / "models")
+    manifest = _manifest(fname="a_weights.pt")
+    with pytest.raises(RuntimeError, match="share went away"):
+        storage.download_weights(manifest)
+    assert not storage.check_weights_ready(manifest)
+
+    monkeypatch.setattr(model_library, "_copy_one", real_copy_one)
+    storage.download_weights(manifest)
+    local = tmp_path / "models" / "cls" / "WSP-UK-v1"
+    assert (local / "inference.py").read_bytes() == b"code"
+
+
 def test_update_stale_files_refreshes_from_the_library(library, tmp_path):
     _put(library, "cls/WSP-UK-v1/model.pt", b"weights")
     _put(library, "cls/WSP-UK-v1/inference.py", b"fixed")
@@ -480,6 +537,18 @@ async def test_sync_never_checks_a_stub_without_weights(library, tmp_path):
     assert (models / "cls" / "WSP-UK-v1" / "manifest.json").is_file()
 
 
+async def test_a_sync_right_after_a_download_does_not_check_the_link_again(
+    tmp_path, monkeypatch
+):
+    calls = []
+    monkeypatch.setattr(model_library, "sync_library_url", lambda *a, **k: calls.append(1))
+
+    await ModelCatalogUpdater(tmp_path / "models").sync(refresh_library=False)
+    assert calls == []
+    await ModelCatalogUpdater(tmp_path / "models").sync()
+    assert calls == [1]
+
+
 async def test_a_failing_library_link_does_not_fail_the_sync(tmp_path, monkeypatch):
     monkeypatch.delenv("WSP_MODEL_LIBRARY_DIR", raising=False)
     monkeypatch.setenv("WSP_MODEL_LIBRARY_URL", "http://127.0.0.1:9/unreachable.zip")
@@ -536,6 +605,15 @@ def test_library_endpoint_rejects_a_folder_that_is_not_a_library(client, tmp_pat
 def test_library_endpoint_rejects_a_link_that_is_not_a_url(client):
     response = client.post("/api/wsp/library", json={"library_url": "OneDrive folder"})
     assert response.status_code == 400
+
+
+def test_library_endpoint_refuses_a_plain_http_link(client):
+    """The library carries inference.py files the app runs."""
+    response = client.post(
+        "/api/wsp/library", json={"library_url": "http://example.invalid/library.zip"}
+    )
+    assert response.status_code == 400
+    assert "https://" in response.json()["detail"]
 
 
 def test_a_link_saved_mid_download_runs_the_download_again():

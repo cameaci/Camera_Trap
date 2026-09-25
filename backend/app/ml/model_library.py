@@ -417,16 +417,24 @@ def sync_library_url(
             total = int(response.headers.get("Content-Length") or 0)
             zip_path = cache_root / "library.zip.tmp"
             done = 0
-            with open(zip_path, "wb") as fout:
-                for chunk in response.iter_content(chunk_size=1024 * 1024):
-                    fout.write(chunk)
-                    done += len(chunk)
-                    if progress_callback and total:
-                        progress_callback(
-                            f"Downloading the WSP model library "
-                            f"({done / 1e6:.0f} / {total / 1e6:.0f} MB)",
-                            min(done / total, 1.0),
-                        )
+            try:
+                with open(zip_path, "wb") as fout:
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        fout.write(chunk)
+                        done += len(chunk)
+                        if progress_callback and total:
+                            progress_callback(
+                                f"Downloading the WSP model library "
+                                f"({done / 1e6:.0f} / {total / 1e6:.0f} MB)",
+                                min(done / total, 1.0),
+                            )
+            except (OSError, requests.RequestException) as e:
+                # A dropped connection or a full disk: do not leave a
+                # partial multi-GB download behind.
+                zip_path.unlink(missing_ok=True)
+                raise LibraryDownloadError(
+                    f"Downloading the WSP model library failed: {e}"
+                ) from e
         staging = cache_root / "models.new"
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
@@ -500,7 +508,9 @@ def _copy_one(
                 on_bytes(len(chunk))
         if tmp.stat().st_size != src.stat().st_size:
             raise OSError(f"Copied size of {src.name} does not match the source")
-        shutil.copystat(src, tmp)
+        # No copystat: a library synced read-only from SharePoint would pass
+        # its read-only attribute on, and Windows then refuses to replace
+        # the file when the model is updated.
         tmp.replace(dst)
     finally:
         if tmp.exists():
@@ -514,6 +524,7 @@ def copy_model(
     should_cancel: CancelCheck | None = None,
     include: Iterable[str] | None = None,
     overwrite: bool = False,
+    last: str | None = None,
 ) -> list[str]:
     """
     Copy a model folder from the library into the local models folder.
@@ -523,6 +534,10 @@ def copy_model(
         dst: The model's local folder.
         include: Only these relative paths (posix style). None copies all.
         overwrite: Copy even when a local file of the same size exists.
+        last: Copy this relative path (posix style) after all the others.
+            An install passes the weights file, which is what marks the
+            model as installed, so a copy that fails part way never leaves
+            weights without the files next to them.
 
     Returns:
         The relative paths that were copied.
@@ -538,6 +553,7 @@ def copy_model(
         or not (dst / rel).is_file()
         or (dst / rel).stat().st_size != (src / rel).stat().st_size
     ]
+    todo.sort(key=lambda rel: rel.as_posix() == last)
     total = sum((src / rel).stat().st_size for rel in todo) or 1
     done = 0
 

@@ -301,18 +301,30 @@ class ModelCatalogUpdater:
         model_dir = self.models_dir / model_type / manifest_data["model_id"]
         if not (model_dir / manifest_data["model_fname"]).is_file():
             return None
-        src = model_library.library_model_dir(model_type, manifest_data["model_id"])
-        if src is None:
-            return None
-        # Off the event loop: a slow network share must not stall startup.
-        return await asyncio.to_thread(model_library.find_stale_files, model_dir, src)
 
-    async def sync(self) -> dict[str, Any]:
+        def compare() -> list[str] | None:
+            src = model_library.library_model_dir(model_type, manifest_data["model_id"])
+            if src is None:
+                return None
+            return model_library.find_stale_files(model_dir, src)
+
+        # Off the event loop, locating the library included: a slow or
+        # unreachable network share must not stall the server.
+        return await asyncio.to_thread(compare)
+
+    async def sync(self, refresh_library: bool = True) -> dict[str, Any]:
         """
         Fetch the central catalog, then for every entry write the local
         manifest.json: create on first appearance, refresh in place when
         the catalog moved (citation, URL, license, friendly_name, etc.),
         no-op when identical. Idempotent: safe to run on every startup.
+
+        `refresh_library=False` skips checking the library link, for a
+        caller that has just downloaded it.
+
+        Everything that reads the library runs in a worker thread: it may
+        be a network share, and an unreachable one must not block the
+        event loop and with it every other request.
 
         Returns:
             {
@@ -343,7 +355,8 @@ class ModelCatalogUpdater:
             # A linked library (OneDrive share link) is refreshed first, so a
             # model published since the last launch is in the catalog below.
             try:
-                await asyncio.to_thread(model_library.sync_library_url)
+                if refresh_library:
+                    await asyncio.to_thread(model_library.sync_library_url)
             except model_library.LibraryDownloadError as e:
                 logger.warning(f"WSP model library link not refreshed: {e}")
                 result["library_error"] = str(e)
@@ -351,7 +364,7 @@ class ModelCatalogUpdater:
                 logger.error(f"WSP model library link sync failed: {e}", exc_info=True)
                 result["library_error"] = str(e)
 
-            catalog = self.fetch_catalog()
+            catalog = await asyncio.to_thread(self.fetch_catalog)
             if catalog is None:
                 result["error"] = "Failed to fetch catalog"
                 return result
@@ -362,7 +375,10 @@ class ModelCatalogUpdater:
 
             for model_type in ["det", "cls", "emb"]:
                 for manifest_data in catalog["models"].get(model_type, []):
-                    state = self.write_manifest(model_type, manifest_data)
+                    # A thread: a missing taxonomy.csv is copied from the library.
+                    state = await asyncio.to_thread(
+                        self.write_manifest, model_type, manifest_data
+                    )
 
                     if state == "created" and not is_fresh_install:
                         # Surface as "new model" toast on existing

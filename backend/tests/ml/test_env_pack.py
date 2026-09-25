@@ -3,6 +3,7 @@
 import hashlib
 import http.server
 import json
+import os
 import threading
 from pathlib import Path
 
@@ -70,6 +71,24 @@ def test_pack_round_trip_relocates_text_files(served, tmp_path):
     assert (target / ".wsp-cameratrap-yaml-sha256").read_text() == "abc123def4567890"
     assert progress and max(progress) <= 1.0
     assert not list(target.parent.glob(".*.pack"))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="Unix permission bits")
+def test_executable_bits_survive_the_pack(served, tmp_path):
+    """zipfile drops Unix modes on extraction; a python that is no longer
+    executable makes the whole environment useless."""
+    prefix = "/build/envs/.env-wsp-base.tmp"
+    built = _fake_env(tmp_path / "build", prefix)
+    python = built / "bin" / "python3.11"
+    python.parent.mkdir()
+    python.write_bytes(b"\x7fELF\0binary")
+    python.chmod(0o755)
+    env_pack.write_pack(built, "env-wsp-base", "e" * 16, "win-64", prefix, served)
+
+    target = tmp_path / "user" / "envs" / "env-wsp-base"
+    target.parent.mkdir(parents=True)
+    assert env_pack.install_env_pack("env-wsp-base", target, "e" * 16)
+    assert (target / "bin" / "python3.11").stat().st_mode & 0o111
 
 
 def test_no_published_pack_means_build_locally(served, tmp_path):

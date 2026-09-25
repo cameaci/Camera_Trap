@@ -162,6 +162,13 @@ def install_env_pack(
         staging = work / env_path.name
         with zipfile.ZipFile(zip_path) as z:
             z.extractall(staging)
+            if os.name == "posix":
+                # zipfile does not restore Unix permissions, and an
+                # environment whose python lost its executable bit cannot run.
+                for info in z.infolist():
+                    mode = (info.external_attr >> 16) & 0o777
+                    if mode:
+                        (staging / info.filename).chmod(mode)
         zip_path.unlink()
         if progress_callback:
             progress_callback("Finishing the analysis environment...", 0.96)

@@ -27,7 +27,8 @@ def generate_taxonomy_csv(model_dir: Path) -> Path:
         print(f"Error: no labels file found in {model_dir}", file=sys.stderr)
         sys.exit(1)
 
-    labels_path = matches[-1]
+    # The first match, as app/ml/geofence.py::find_labels_file picks it.
+    labels_path = matches[0]
     output_path = model_dir / "taxonomy.csv"
 
     rows = []

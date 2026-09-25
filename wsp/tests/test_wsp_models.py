@@ -44,6 +44,27 @@ def test_speciesnet_names_follow_the_app_dedup_rule(tmp_path):
     assert [r["model_class"] for r in rows] == names
 
 
+def test_speciesnet_reads_the_labels_file_the_geofence_reads(tmp_path):
+    """With a dated labels file next to the original, the classifier, the
+    taxonomy.csv and the app's geofence (find_labels_file: the first of the
+    sorted matches) must all read the same one."""
+    sn = tmp_path / "speciesnet"
+    sn.mkdir()
+    (sn / "always_crop_99710272_22x8_v12_epoch_00148.pt").write_bytes(b"w")
+    (sn / "x.labels.txt").write_text("u1;;;;;;original\n")
+    (sn / "x.labels.20251208.txt").write_text("u1;;;;;;dated\n")
+    geofence_pick = sorted(sn.glob("*.labels*.txt"))[0]
+    assert geofence_pick.name == "x.labels.20251208.txt"
+
+    inference = _load_inference(wsp_library.SPECIESNET_INFERENCE)
+    assert inference.ModelInference(sn, sn / "unused.pt").names == ["dated"]
+
+    lib = tmp_path / "lib"
+    assert wsp_library.main(["add-speciesnet", str(lib), str(sn)]) == 0
+    taxonomy = (lib / "cls" / "SPECIESNET-v4-0-2-A" / "taxonomy.csv").read_text()
+    assert "dated" in taxonomy and "original" not in taxonomy
+
+
 def test_library_init_md_and_speciesnet(tmp_path):
     lib = tmp_path / "WSP CameraTrap" / "models"
     assert wsp_library.main(["init", str(lib)]) == 0

@@ -75,7 +75,8 @@ class ModelInference:
         left, top = int(x * image.width), int(y * image.height)
         right = left + max(int(w * image.width), 1)
         bottom = top + max(int(h * image.height), 1)
-        return image.convert("RGB").crop((left, top, right, bottom))
+        # Crop first: convert() on the whole frame copies it for every box.
+        return image.crop((left, top, right, bottom)).convert("RGB")
 
     def get_tensor(self, crop: Image.Image) -> np.ndarray:
         import torchvision.transforms as T

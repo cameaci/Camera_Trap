@@ -158,7 +158,8 @@ def cmd_add_speciesnet(args) -> int:
         if f.is_file():
             _copy(f, dst / f.name)
     _copy(SPECIESNET_INFERENCE, dst / "inference.py")
-    _write_taxonomy(dst / "taxonomy.csv", speciesnet_taxonomy_rows(labels[-1]))
+    # The first labels file, as the app's geofence and inference.py read it.
+    _write_taxonomy(dst / "taxonomy.csv", speciesnet_taxonomy_rows(labels[0]))
     catalog = _load_catalog(lib)
     _upsert(catalog, "cls", entry)
     _save_catalog(lib, catalog)

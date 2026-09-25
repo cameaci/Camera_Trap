@@ -67,10 +67,12 @@ class ModelInference:
         self.model_path = Path(model_path)
         self.model = None
         self.device = "cpu"
+        # The same file app/ml/geofence.py::find_labels_file picks (the
+        # first match), so the geofence names these very classes.
         labels = sorted(self.model_dir.glob("*.labels*.txt"))
         if not labels:
             raise FileNotFoundError(f"No SpeciesNet labels file in {self.model_dir}")
-        self.names = class_names_from_labels(labels[-1])
+        self.names = class_names_from_labels(labels[0])
 
     def check_gpu(self) -> bool:
         import torch
@@ -99,7 +101,8 @@ class ModelInference:
         top = int(y * image.height)
         width = max(int(w * image.width), 1)
         height = max(int(h * image.height), 1)
-        return image.convert("RGB").crop((left, top, left + width, top + height))
+        # Crop first: convert() on the whole frame copies it for every box.
+        return image.crop((left, top, left + width, top + height)).convert("RGB")
 
     def get_tensor(self, crop: Image.Image) -> np.ndarray:
         import torch

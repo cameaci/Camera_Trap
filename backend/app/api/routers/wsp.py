@@ -116,8 +116,12 @@ def _status() -> LibraryStatus:
 
 
 async def _resync(request: Request) -> None:
+    # Never checks the link itself: callers either just downloaded it or
+    # use a folder, so a second check would only repeat the request.
     try:
-        request.app.state.model_updates = await ModelCatalogUpdater().sync()
+        request.app.state.model_updates = await ModelCatalogUpdater().sync(
+            refresh_library=False
+        )
         if ml_models.manifest_manager is not None:
             ml_models.manifest_manager.load_manifests(force_refresh=True)
     except Exception as e:
@@ -183,7 +187,10 @@ async def set_library(update: LibraryUpdate, request: Request) -> LibraryStatus:
         return _status()
 
     if link:
-        if not link.lower().startswith(("https://", "http://")):
+        # https only: the library carries inference.py files that the app
+        # runs, so it must not be fetched over a connection anyone on the
+        # network could alter.
+        if not link.lower().startswith("https://"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Paste the full share link, starting with https://",

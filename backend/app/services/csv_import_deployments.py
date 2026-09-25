@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.schemas.csv_import import CsvImportProblem, DeploymentImportRow
+from app.core.config import PROJECT_URL
 from app.core.logging_config import get_logger
 from app.models import Deployment, DeploymentQueue, Site
 from app.services.csv_import import RawCsvRow, blank_to_none, read_csv_rows
@@ -41,9 +42,8 @@ NOTES_TOO_LONG = "Notes are longer than 1000 characters. Use a shorter text."
 PAIRED_CAMERAS_NOT_BOOLEAN = (
     "paired_cameras must be true or false. Leave it empty for false."
 )
-PAIRED_CAMERAS_DOCS_URL = (
-    "https://docs.wsp-cameratrap.com/docs/understanding/how-a-project-is-organised#paired-cameras"
-)
+# WSP: the user guide, the same page the paired-cameras checkbox links to.
+PAIRED_CAMERAS_DOCS_URL = f"{PROJECT_URL}/blob/main/wsp/docs/USER_GUIDE.md"
 CAMERA_OFFSETS_NEED_PAIRED = "Camera offsets need paired cameras."
 PAIRED_CAMERAS_NEED_SUBFOLDERS = (
     "Paired cameras need one subfolder per camera inside this folder, with at "

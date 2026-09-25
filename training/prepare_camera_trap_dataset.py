@@ -523,8 +523,13 @@ def discover_and_extract(work: Path, args) -> int:
 
             hint = src.get("class_hint", "mixed")
             for r in recs:
+                # A frame MegaDetector found nothing in is not pre-labelled
+                # with the folder's species: it is usually an empty scene.
+                blank_in_species_folder = r["blank"] and hint != "other"
                 index.append({
-                    "label": hint if hint in CLASSES else "",
+                    "label": (
+                        hint if hint in CLASSES and not blank_in_species_folder else ""
+                    ),
                     "deployment": key,
                     "provider": src["provider"],
                     "crop_path": str(r["crop"]),

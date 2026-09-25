@@ -408,7 +408,8 @@ def _refresh_catalog() -> None:
         from app.api.routers import ml_models
         from app.ml.catalog_updater import ModelCatalogUpdater
 
-        asyncio.run(ModelCatalogUpdater().sync())
+        # The library step above already checked the link.
+        asyncio.run(ModelCatalogUpdater().sync(refresh_library=False))
         if ml_models.manifest_manager is not None:
             ml_models.manifest_manager.load_manifests(force_refresh=True)
     except Exception as e:

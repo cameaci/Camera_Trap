@@ -120,7 +120,13 @@ class ModelStorage:
         try:
             if src is not None:
                 logger.info(f"Copying {manifest.model_id} from the library at {src}")
-                model_library.copy_model(src, model_path, progress_callback, should_cancel)
+                # Weights last: they are what check_weights_ready looks for,
+                # so a copy that fails part way is retried rather than
+                # taken for a finished install.
+                model_library.copy_model(
+                    src, model_path, progress_callback, should_cancel,
+                    last=manifest.model_fname,
+                )
             elif manifest.download_url:
                 logger.info(f"Downloading {manifest.model_id} from {manifest.download_url}")
                 if progress_callback:

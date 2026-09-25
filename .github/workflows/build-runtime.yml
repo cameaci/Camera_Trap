@@ -11,7 +11,10 @@ name: Build runtime downloads
 #
 # The environment's asset names carry the hash of its YAML, so an app only
 # installs a pack built from the YAML it ships; a changed YAML publishes a
-# new pack next to the old ones.
+# new pack next to the old ones. A pack already published for the YAML is
+# never rebuilt: replacing it asset by asset would break the downloads of
+# anyone installing at that moment. To rebuild one on purpose, delete its
+# assets from the release first.
 on:
   push:
     branches: [main, "claude/**"]
@@ -25,8 +28,10 @@ on:
 permissions:
   contents: write
 
+# One queue for every branch: two branches with the same YAML must not
+# upload the same pack at the same time.
 concurrency:
-  group: build-runtime-${{ github.ref }}
+  group: build-runtime
   cancel-in-progress: false
 
 jobs:
@@ -50,16 +55,33 @@ jobs:
         working-directory: backend
         run: pip install -r requirements.txt
 
+      # The same manifest URL the app downloads.
+      - name: Check whether this environment is already published
+        id: published
+        working-directory: backend
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          STEM=$(python -c "from app.ml.env_pack import pack_stem, platform_tag; from app.ml.environment_manager import EnvironmentManager, hash_yaml_file; print(pack_stem('env-wsp-base', hash_yaml_file(EnvironmentManager().get_env_yaml_path('wsp-base')), platform_tag()))" | tail -n 1)
+          echo "Environment pack: $STEM"
+          if curl -fsSL -o /dev/null "https://github.com/${{ github.repository }}/releases/download/runtime/$STEM.json"; then
+            echo "$STEM is already published; nothing to build."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build the environment and pack it
+        if: steps.published.outputs.skip != 'true'
         working-directory: backend
         env:
           PYTHONUTF8: "1"
         run: python -m app.ml.env_pack build --env wsp-base --out ../dist-runtime
 
       - name: Show the pack
+        if: steps.published.outputs.skip != 'true'
         run: ls -la dist-runtime
 
       - name: Publish to the runtime release
+        if: steps.published.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
