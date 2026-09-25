@@ -21,9 +21,14 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# WSP: our own data folder, so WSP CameraTrap never shares (or deletes)
+# the data of an AddaxAI install on the same machine.
+USER_DATA_DIR_NAME = "WSP-CameraTrap"
+
+
 def get_default_user_data_dir() -> Path:
     """Get default user data directory."""
-    return Path.home() / "AddaxAI"
+    return Path.home() / USER_DATA_DIR_NAME
 
 
 def get_default_database_url() -> str:
@@ -63,7 +68,7 @@ class Settings(BaseSettings):
     )
 
     # Application
-    app_name: str = "AddaxAI"
+    app_name: str = "WSP CameraTrap"  # WSP
     environment: Literal["development", "production", "test"] = "development"
     debug: bool = True
     # SQL statement echo is separate from `debug`: it logs every query +
@@ -79,8 +84,13 @@ class Settings(BaseSettings):
     # Database - defaults to local SQLite in working directory
     database_url: str = Field(default_factory=get_default_database_url)
 
-    # User data directory - defaults to ~/AddaxAI
+    # User data directory - defaults to ~/WSP-CameraTrap
     user_data_dir: Path = Field(default_factory=get_default_user_data_dir)
+
+    # WSP: the "remove old AddaxAI" feature finds and deletes a legacy
+    # AddaxAI 6 install. In WSP CameraTrap that install belongs to another
+    # app the user may still rely on, so the feature is off.
+    legacy_cleanup_enabled: bool = False
 
     # Redis
     redis_host: str = "127.0.0.1"

@@ -19,6 +19,12 @@ from app.services.legacy_install import LegacyScan
 
 
 @pytest.fixture(autouse=True)
+def legacy_cleanup_enabled(monkeypatch):
+    """WSP turns the feature off by default; these tests cover it switched on."""
+    monkeypatch.setenv("ADDAXAI_LEGACY_CLEANUP_ENABLED", "true")
+
+
+@pytest.fixture(autouse=True)
 def clean_purge_state():
     """Module-level state leaks between tests otherwise."""
     setup_router._purge_state.finish(None)
@@ -147,3 +153,19 @@ def test_unexpected_failure_is_caught_and_reported(client, with_legacy, monkeypa
     data = client.get("/api/setup/legacy-install").json()
     assert data["removal_in_progress"] is False
     assert "drive went away" in data["removal_error"]
+
+
+def test_wsp_default_hides_a_legacy_install(client, with_legacy, monkeypatch):
+    monkeypatch.setenv("ADDAXAI_LEGACY_CLEANUP_ENABLED", "false")
+    data = client.get("/api/setup/legacy-install").json()
+    assert data["found"] is False
+    assert data["removable_paths"] == []
+
+
+def test_wsp_default_refuses_to_remove(client, with_legacy, monkeypatch):
+    monkeypatch.setenv("ADDAXAI_LEGACY_CLEANUP_ENABLED", "false")
+    removed = []
+    monkeypatch.setattr(legacy_install, "remove", lambda: removed.append(1) or [])
+    response = client.post("/api/setup/legacy-install/remove")
+    assert response.status_code == 404
+    assert removed == []

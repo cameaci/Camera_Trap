@@ -83,13 +83,13 @@ def test_explicit_kwargs_win(
 def test_default_home_layout(
     clean_env: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    # With no env vars everything derives from <home>/AddaxAI. Path.home
+    # With no env vars everything derives from <home>/WSP-CameraTrap. Path.home
     # is patched so the test never touches the real home folder.
     clean_env.setattr(Path, "home", lambda: tmp_path)
     settings = Settings()
-    assert settings.user_data_dir == tmp_path / "AddaxAI"
-    assert settings.database_url == f"sqlite:///{tmp_path / 'AddaxAI' / 'addaxai.db'}"
-    assert settings.models_dir == tmp_path / "AddaxAI" / "models"
+    assert settings.user_data_dir == tmp_path / "WSP-CameraTrap"
+    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'addaxai.db'}"
+    assert settings.models_dir == tmp_path / "WSP-CameraTrap" / "models"
 
 
 def test_blank_env_values_treated_as_unset(
@@ -102,9 +102,9 @@ def test_blank_env_values_treated_as_unset(
     clean_env.setenv("ADDAXAI_DATABASE_URL", "   ")
     clean_env.setenv("ADDAXAI_MODELS_DIR", "")
     settings = Settings()
-    assert settings.user_data_dir == tmp_path / "AddaxAI"
-    assert settings.database_url == f"sqlite:///{tmp_path / 'AddaxAI' / 'addaxai.db'}"
-    assert settings.models_dir == tmp_path / "AddaxAI" / "models"
+    assert settings.user_data_dir == tmp_path / "WSP-CameraTrap"
+    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'addaxai.db'}"
+    assert settings.models_dir == tmp_path / "WSP-CameraTrap" / "models"
 
 
 def test_relative_user_data_dir_rejected(
@@ -254,8 +254,8 @@ def test_unprefixed_vars_are_ignored(
     clean_env.setenv("USER_DATA_DIR", str(tmp_path / "stray"))
     clean_env.setenv("DATABASE_URL", "postgresql://stray/db")
     settings = Settings()
-    assert settings.user_data_dir == tmp_path / "AddaxAI"
-    assert settings.database_url == f"sqlite:///{tmp_path / 'AddaxAI' / 'addaxai.db'}"
+    assert settings.user_data_dir == tmp_path / "WSP-CameraTrap"
+    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'addaxai.db'}"
 
 
 def test_prefixed_vars_without_a_field_do_not_crash(

@@ -662,6 +662,17 @@ class LegacyInstallStatus(BaseModel):
 
 @router.get("/legacy-install", response_model=LegacyInstallStatus)
 def get_legacy_install() -> LegacyInstallStatus:
+    # WSP: a legacy AddaxAI install is another app here, never ours to offer
+    # to delete. Reporting "not found" keeps every prompt for it hidden.
+    if not get_settings().legacy_cleanup_enabled:
+        return LegacyInstallStatus(
+            found=False,
+            version=None,
+            removable_paths=[],
+            manual_paths=[],
+            removal_in_progress=False,
+            removal_error=None,
+        )
     found = legacy_install.scan()
     return LegacyInstallStatus(
         found=found.found,
@@ -682,6 +693,11 @@ async def remove_legacy_install() -> dict[str, str]:
     takes minutes on Windows, so this can't block a request. The frontend
     polls GET /legacy-install until removal_in_progress clears.
     """
+    if not get_settings().legacy_cleanup_enabled:  # WSP
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Removing a legacy AddaxAI install is disabled.",
+        )
     if not _purge_state.start():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
