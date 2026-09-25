@@ -4,7 +4,7 @@
  * Gradient per FRONTEND_CONVENTIONS.md:
  *   #f9f871 (light yellow, low)  ->  #0f6064 (dark teal, high)
  *
- * Ported from AddaxAI-Connect's color-scale.ts. Renamed functions
+ * Ported from the web companion app's color-scale.ts. Renamed functions
  * from "detection rate" to "rate" / "heat" since WebUI counts
  * observations (MaxN per event), not raw detections.
  */

@@ -1,7 +1,7 @@
 /**
  * First-run setup wizard.
  *
- * Single screen. Until env-addaxai-base is installed, the rest of the app
+ * Single screen. Until env-wsp-base is installed, the rest of the app
  * is gated (see SetupGate in App.tsx). The wizard is re-entrant: closing
  * and reopening mid-install leaves the user back here with a Resume
  * button, since the backend's env_manager is idempotent.
@@ -128,7 +128,7 @@ export default function SetupPage() {
         <h1 className="text-2xl font-bold tracking-tight">Initial setup</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           The AI models and their environment need to be installed before
-          AddaxAI can analyse your photos and videos. This is a one-time
+          WSP CameraTrap can analyse your photos and videos. This is a one-time
           download and can take 10 to 30 minutes depending on your internet
           connection.
         </p>
@@ -208,7 +208,7 @@ export default function SetupPage() {
 
         {status.ready && (
           <div className="mt-6 text-sm text-[#0f6064]">
-            Setup complete. Opening AddaxAI...
+            Setup complete. Opening WSP CameraTrap...
           </div>
         )}
       </div>

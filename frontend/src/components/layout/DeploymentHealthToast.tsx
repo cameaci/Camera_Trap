@@ -25,7 +25,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useBrokenDeployments } from "../../hooks/useBrokenDeployments";
 
-const SESSION_STORAGE_PREFIX = "addaxai:deployment-health-toast-shown:";
+const SESSION_STORAGE_PREFIX = "wsp:deployment-health-toast-shown:";
 
 const toastIdFor = (projectId: string) => `deployment-health-${projectId}`;
 

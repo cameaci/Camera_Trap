@@ -132,7 +132,7 @@ export function EnvRebuildButton({ envNames, onDone }: EnvRebuildButtonProps) {
               machine and internet connection. Keep the app open so it can
               finish, but quitting is safe: your projects and data are
               untouched, and the rebuild simply starts over the next time
-              you open AddaxAI.
+              you open WSP CameraTrap.
             </DialogDescription>
           </DialogHeader>
 

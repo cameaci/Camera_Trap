@@ -1,5 +1,5 @@
 """
-Standalone similarity script — runs as subprocess in env-addaxai-base.
+Standalone similarity script — runs as subprocess in env-wsp-base.
 
 Performs greedy nearest-neighbor similarity sort or FAISS nearest-neighbor
 search on detection embeddings stored in a SQLite database. No app imports
@@ -7,7 +7,7 @@ search on detection embeddings stored in a SQLite database. No app imports
 
 Usage:
     python similarity_script.py \
-        --db-path /path/to/addaxai.db \
+        --db-path /path/to/wsp-cameratrap.db \
         --project-id <uuid> \
         --operation sort \
         --params '{"filters": {...}}'

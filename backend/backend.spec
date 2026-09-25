@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for AddaxAI backend.
+PyInstaller spec file for WSP CameraTrap backend.
 
 This builds a single-file executable that includes:
 - FastAPI application
@@ -32,15 +32,15 @@ datas = [
     # Single source of truth for the app version. Read at runtime by
     # backend/app/__init__.py via sys._MEIPASS / 'VERSION'.
     ('../VERSION', '.'),
-    # Fallback model catalog, read by catalog_updater when the remote one
-    # cannot be reached. Without it a firewalled first launch ends with no
+    # The shipped model catalog, read by catalog_updater when the WSP model
+    # library cannot be reached. Without it a first launch ends with no
     # manifests, and a model with no manifest is invisible to the app.
-    ('../models.json', '.'),
-    ('../wsp/models.json', 'wsp'),  # WSP catalog
+    ('../wsp/models.json', 'wsp'),
+    # Deployment settings (model library link, environment download URL).
+    ('../wsp/config.json', 'wsp'),
 ]
 
 # Collect data files from packages
-datas += collect_data_files('huggingface_hub')
 datas += collect_data_files('pydantic')
 datas += collect_data_files('fastapi')
 datas += collect_data_files('astral')   # astral ships timezone resources
@@ -68,13 +68,12 @@ hiddenimports += collect_submodules('pydantic_core')
 hiddenimports += collect_submodules('pydantic_settings')
 hiddenimports += collect_submodules('sqlalchemy')
 hiddenimports += collect_submodules('alembic')
-hiddenimports += collect_submodules('huggingface_hub')
 hiddenimports += collect_submodules('PIL')
 hiddenimports += collect_submodules('multipart')
 hiddenimports += collect_submodules('websockets')
 hiddenimports += collect_submodules('httpx')
 hiddenimports += collect_submodules('redis')
-hiddenimports += collect_submodules('requests')  # Required by huggingface_hub
+hiddenimports += collect_submodules('requests')
 hiddenimports += collect_submodules('truststore')  # OS trust store for TLS
 hiddenimports += collect_submodules('ijson')  # streaming JSON (results.json)
 hiddenimports += collect_submodules('cv2')       # opencv-python-headless
@@ -112,7 +111,6 @@ a = Analysis(
         'uvicorn': 'py',
         'pydantic': 'py',
         'sqlalchemy': 'py',
-        'huggingface_hub': 'py',
     }
 )
 
@@ -137,7 +135,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     # These options help with macOS code signing
-    bundle_identifier='com.addaxai.cameratrap.backend',
+    bundle_identifier='com.wsp.cameratrap.backend',
 )
 
 coll = COLLECT(

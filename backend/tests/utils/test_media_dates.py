@@ -1,6 +1,6 @@
 """Tests for the two opt-in capture-date fallbacks.
 
-The `addaxai-YYYYMMDD-HHMMSS` filename marker, and the file modification
+The `wsp-cameratrap-YYYYMMDD-HHMMSS` filename marker, and the file modification
 time the user can opt into when a folder's metadata carries no dates.
 """
 
@@ -11,40 +11,40 @@ from datetime import datetime
 
 from app.utils.media_dates import (
     file_mtime_datetime,
-    parse_addaxai_filename_datetime,
+    parse_wsp_filename_datetime,
 )
 
 
 def test_parses_marked_filename():
-    assert parse_addaxai_filename_datetime(
-        "S1_clip_addaxai-20250222-072314.mp4"
+    assert parse_wsp_filename_datetime(
+        "S1_clip_wsp-cameratrap-20250222-072314.mp4"
     ) == datetime(2025, 2, 22, 7, 23, 14)
 
 
 def test_marker_is_case_insensitive():
-    assert parse_addaxai_filename_datetime(
-        "ADDAXAI-20250222-072314.JPG"
+    assert parse_wsp_filename_datetime(
+        "WSP-CAMERATRAP-20250222-072314.JPG"
     ) == datetime(2025, 2, 22, 7, 23, 14)
 
 
 def test_no_marker_returns_none():
-    # Looks like a date, but no addaxai marker -> ignored (no false positives).
-    assert parse_addaxai_filename_datetime("S1_20250222_072314.mp4") is None
+    # Looks like a date, but no wsp marker -> ignored (no false positives).
+    assert parse_wsp_filename_datetime("S1_20250222_072314.mp4") is None
 
 
 def test_must_end_the_stem():
     assert (
-        parse_addaxai_filename_datetime("addaxai-20250222-072314_edited.mp4") is None
+        parse_wsp_filename_datetime("wsp-cameratrap-20250222-072314_edited.mp4") is None
     )
 
 
 def test_strict_hyphen_separator():
-    assert parse_addaxai_filename_datetime("addaxai_20250222_072314.mp4") is None
+    assert parse_wsp_filename_datetime("wsp_20250222_072314.mp4") is None
 
 
 def test_invalid_calendar_date_returns_none():
     # Month 13 is not a real date.
-    assert parse_addaxai_filename_datetime("addaxai-20251301-072314.mp4") is None
+    assert parse_wsp_filename_datetime("wsp-cameratrap-20251301-072314.mp4") is None
 
 
 # ── file modification time ────────────────────────────────────────────────

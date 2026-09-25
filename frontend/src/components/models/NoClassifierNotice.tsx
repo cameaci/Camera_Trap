@@ -9,7 +9,7 @@ import { Callout } from "@/components/ui/callout";
 export function NoClassifierNotice() {
   return (
     <Callout variant="info" size="compact">
-      Without a classification model, AddaxAI detects animals but does not
+      Without a classification model, WSP CameraTrap detects animals but does not
       identify the species. You can label them yourself in the Labels section.
     </Callout>
   );

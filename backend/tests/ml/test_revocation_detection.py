@@ -98,7 +98,7 @@ def test_enough_output_is_kept_to_find_the_schannel_line(
     Everything micromamba prints afterwards pushes it towards the edge
     of the captured window, and once it falls out the failure reads as
     an ordinary one and the user is offered nothing."""
-    monkeypatch.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     seen: dict[str, Any] = {}
 
     def fake_stream(cmd: list[str], **kwargs: Any) -> StreamedResult:
@@ -140,7 +140,7 @@ def test_revocation_failure_raises_the_actionable_error(
     every other exception into a plain RuntimeError. If it were wrapped,
     the API could not tell this failure from any other and would never
     offer the opt-out."""
-    monkeypatch.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path))
 
     with pytest.raises(TlsRevocationCheckError) as exc_info:
         _build(tmp_path, monkeypatch, REAL_FAILURE)
@@ -156,7 +156,7 @@ def test_revocation_failure_raises_the_actionable_error(
 def test_other_failures_still_raise_the_generic_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path))
 
     with pytest.raises(RuntimeError) as exc_info:
         _build(tmp_path, monkeypatch, UNRELATED_FAILURE)
@@ -172,7 +172,7 @@ def test_no_second_offer_once_the_check_is_already_skipped(
 
     Without this the user would be handed a button that reruns the same
     build with the same setting and fails the same way."""
-    monkeypatch.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     allow_revocation_skip()
 
     with pytest.raises(RuntimeError) as exc_info:
@@ -189,7 +189,7 @@ def test_marker_round_trip(
     The file outlives the click that made it and is the only record that
     this machine builds without the check, so it has to say what it does
     and how to undo it."""
-    monkeypatch.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     assert revocation_skip_allowed() is False
 
     marker = allow_revocation_skip()
@@ -205,7 +205,7 @@ def test_writing_the_marker_twice_is_harmless(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The endpoint behind it is a plain POST a user can double-click."""
-    monkeypatch.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path))
 
     first = allow_revocation_skip()
     second = allow_revocation_skip()

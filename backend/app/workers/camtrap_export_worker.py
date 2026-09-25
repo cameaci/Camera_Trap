@@ -132,7 +132,7 @@ async def process_camtrap_export_job(job_id: str) -> None:
             thumbnails=thumbnails,
         )
 
-        tmp_dir = Path(tempfile.gettempdir()) / "addaxai-camtrap-exports"
+        tmp_dir = Path(tempfile.gettempdir()) / "wsp-cameratrap-camtrap-exports"
         tmp_dir.mkdir(parents=True, exist_ok=True)
         tmp_path = tmp_dir / f"{job_id}.zip"
         tmp_path.write_bytes(zip_bytes)

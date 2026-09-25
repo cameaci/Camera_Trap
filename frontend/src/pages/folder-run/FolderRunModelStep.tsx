@@ -174,7 +174,7 @@ type PrepStage = "form" | "preparing" | "error";
 
 /**
  * Read a `?path=<folder>` query param. The desktop launcher
- * (`AddaxAI.exe --timelapse <folder>`, used by Timelapse Analyser) opens
+ * (`WSP CameraTrap.exe --timelapse <folder>`, used by Timelapse Analyser) opens
  * a brand-new folder run with this set so the folder picker starts
  * pre-filled. Returns "" when absent.
  */
@@ -945,7 +945,7 @@ export function FolderRunModelStep() {
                                 }}
                                 hideLabel
                                 compactScanResult
-                                missingDateNote="AddaxAI will still detect and classify these files, but the date column in your results will be empty."
+                                missingDateNote="WSP CameraTrap will still detect and classify these files, but the date column in your results will be empty."
                                 useFileMtimeFallback={useFileMtimeFallback}
                                 onUseFileMtimeFallbackChange={setFileMtimeChecked}
                                 datetimeOffsetSeconds={datetimeOffsetSeconds}

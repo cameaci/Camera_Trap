@@ -5,10 +5,10 @@ machine, and check that no row was lost.
 Why this exists: the CI tests prove a migration on an empty database
 (`test_migrations.py`) and on one synthetic row per table
 (`test_migration_keeps_rows.py`). Real databases are messier: years of
-rows, old NULLs, whatever an earlier bug left behind. `~/AddaxAI/backups/`
+rows, old NULLs, whatever an earlier bug left behind. `~/WSP-CameraTrap/backups/`
 holds real databases from the last days and from before every upgrade,
 each stamped at the revision it was made at. This script upgrades a copy
-of each and compares rows before and after. Nothing under `~/AddaxAI` is
+of each and compares rows before and after. Nothing under `~/WSP-CameraTrap` is
 touched.
 
 Run it before releasing a version that ships a migration:
@@ -33,7 +33,7 @@ from pathlib import Path
 REPO_BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_BACKEND))
 
-BACKUPS = Path(os.environ.get("ADDAXAI_USER_DATA_DIR", Path.home() / "AddaxAI")) / "backups"
+BACKUPS = Path(os.environ.get("WSP_USER_DATA_DIR", Path.home() / "WSP CameraTrap")) / "backups"
 
 
 def main() -> int:
@@ -58,7 +58,7 @@ def main() -> int:
 
     head = get_head_revision()
     failures = 0
-    with tempfile.TemporaryDirectory(prefix="addaxai-migration-check-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="wsp-cameratrap-migration-check-") as tmp:
         for src in backups:
             dst = Path(tmp) / src.name
             shutil.copy(src, dst)

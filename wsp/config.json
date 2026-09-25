@@ -1,0 +1,4 @@
+{
+  "_comment": "WSP CameraTrap deployment settings. model_library_url: a OneDrive/SharePoint share link (or any https URL) to the WSP model library .zip. Leave empty to use only the synced OneDrive folder.",
+  "model_library_url": ""
+}

@@ -256,7 +256,7 @@ export function ModelInfoSheet({ modelId, open, onOpenChange }: ModelInfoSheetPr
                     ) === true;
                   return (
                     <>
-                      Minimum AddaxAI version required is {formatVersion(model.min_app_version)}, while your current version is {formatVersion(currentVersion)}.{" "}
+                      Minimum WSP CameraTrap version required is {formatVersion(model.min_app_version)}, while your current version is {formatVersion(currentVersion)}.{" "}
                       {meetsRequirement ? (
                         <span>You're good to go.</span>
                       ) : (
@@ -268,7 +268,7 @@ export function ModelInfoSheet({ modelId, open, onOpenChange }: ModelInfoSheetPr
                             rel="noopener noreferrer"
                             className="text-primary hover:opacity-80 underline inline-flex items-center gap-1"
                           >
-                            update AddaxAI
+                            update WSP CameraTrap
                             <ExternalLink className="h-3 w-3" />
                           </a>
                           .

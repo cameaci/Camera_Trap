@@ -37,7 +37,7 @@ from app.ml.manifest_manager import ManifestManager
 from app.ml.model_storage import ModelStorage
 from app.models import Deployment
 from app.services.folder_scanner import walk_media_files
-from app.utils.fs_hidden import mkdir_hidden_addaxai
+from app.utils.fs_hidden import mkdir_hidden_wsp
 
 logger = get_logger(__name__)
 
@@ -107,7 +107,7 @@ async def _process_batch_job(job_id: str, project_id: str, queue_entry_ids: list
         if not inference_script.exists():
             error_msg = (
                 f"Custom inference script not found: {inference_script}\n"
-                f"Model developers must provide inference.py in their HuggingFace repo."
+                f"Every classification model folder must contain inference.py."
             )
             logger.error(error_msg)
             raise FileNotFoundError(error_msg)
@@ -310,8 +310,8 @@ async def _process_batch_job(job_id: str, project_id: str, queue_entry_ids: list
                 logger.info(f"Created deployment: {deployment.id}")
 
                 # Create project-scoped artifacts folder
-                artifacts_folder = folder_path / ".addaxai" / "projects" / project_id
-                mkdir_hidden_addaxai(artifacts_folder)
+                artifacts_folder = folder_path / ".wsp-cameratrap" / "projects" / project_id
+                mkdir_hidden_wsp(artifacts_folder)
 
                 # JSON file paths
                 video_json_path = artifacts_folder / "detection_video.json"

@@ -2,7 +2,7 @@
 Check that fetching one video frame by seeking returns the same pixels as
 walking to it, over a folder of real videos.
 
-Why this exists: `read_frame_by_seek` is what stops AddaxAI decoding half
+Why this exists: `read_frame_by_seek` is what stops WSP CameraTrap decoding half
 of every clip to write one thumbnail, and it is only used when it can
 verify where it landed, so an awkward codec loses the speed-up rather
 than getting the wrong picture. That makes it safe on formats nobody has

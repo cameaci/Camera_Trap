@@ -48,8 +48,8 @@ const FILTER_SCHEMA: FilterSchema = {
   labels: "string[]",
 };
 
-const VIEW_MODE_KEY = "addaxai:map-view-mode";
-const BASE_LAYER_KEY = "addaxai:map-base-layer";
+const VIEW_MODE_KEY = "wsp:map-view-mode";
+const BASE_LAYER_KEY = "wsp:map-base-layer";
 
 function readStoredViewMode(): ViewMode {
   const saved = localStorage.getItem(VIEW_MODE_KEY);

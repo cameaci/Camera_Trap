@@ -122,7 +122,7 @@ def test_clip_window_partial_overlap(db):
 
 
 def test_frame_rows_do_not_contribute(db):
-    """Frame rows live inside .addaxai/ and represent pipeline artifacts.
+    """Frame rows live inside .wsp-cameratrap/ and represent pipeline artifacts.
     They should be ignored — only image and video rows drive trap nights."""
     p = make_project(db)
     d = make_deployment(db, project_id=p.id, folder_path="/data/deploy")
@@ -143,7 +143,7 @@ def test_frame_rows_do_not_contribute(db):
             db,
             deployment_id=d.id,
             file_path=(
-                f"/data/deploy/.addaxai/projects/{p.id}/video_frames"
+                f"/data/deploy/.wsp-cameratrap/projects/{p.id}/video_frames"
                 f"/clip.mp4/frame{n:06d}.jpg"
             ),
             file_type="frame",

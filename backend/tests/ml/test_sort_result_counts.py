@@ -12,7 +12,7 @@ showed "showing the newest 8 of 814, capped to stay responsive" on a pool
 nowhere near the 20,000 cap. These tests pin all three counts per sort
 mode so that comparison cannot be reintroduced.
 
-FAISS is not installed in the backend venv (it lives in env-addaxai-base,
+FAISS is not installed in the backend venv (it lives in env-wsp-base,
 where the script really runs), so the suggestions path gets a numpy
 stand-in for ``IndexFlatIP``. That index is exact brute-force inner
 product, which numpy reproduces exactly at these sizes, so the stub

@@ -6,7 +6,7 @@ Following DEVELOPERS.md principles:
 - Explicit error handling
 - Type hints everywhere
 
-Uses MegaDetector's built-in process_video module (matches streamlit-AddaxAI exactly).
+Uses MegaDetector's built-in process_video module (matches the earlier prototype exactly).
 
 Created by Claude Code on 2026-01-07
 """
@@ -106,7 +106,7 @@ class VideoDetectionModel:
 
         # Verify environment exists
         try:
-            self.python_path = env_manager.get_python("env-addaxai-base")
+            self.python_path = env_manager.get_python("env-wsp-base")
             logger.info(f"VideoDetectionModel using Python: {self.python_path}")
         except Exception as e:
             raise RuntimeError(f"Failed to get Python environment: {e}") from e

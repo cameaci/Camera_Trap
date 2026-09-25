@@ -6,11 +6,11 @@ Snapshots use SQLite's online backup API (`sqlite3.Connection.backup`),
 which is WAL-safe and produces a single consolidated `.db` file with
 no `-wal` / `-shm` siblings.
 
-Storage layout under `~/AddaxAI/backups/`:
-- `addaxai-<utc-iso>.db`                        — daily rolling snapshot
-- `addaxai-pre-upgrade-<rev>-<utc-iso>.db`      — pre-upgrade snapshot
-- `addaxai-pre-restore-<utc-iso>.db`            — safety snapshot before a restore
-- `addaxai-manual-<utc-iso>[-<note>].db`        — user-initiated "back up now"
+Storage layout under `~/WSP-CameraTrap/backups/`:
+- `wsp-cameratrap-<utc-iso>.db`                        — daily rolling snapshot
+- `wsp-cameratrap-pre-upgrade-<rev>-<utc-iso>.db`      — pre-upgrade snapshot
+- `wsp-cameratrap-pre-restore-<utc-iso>.db`            — safety snapshot before a restore
+- `wsp-cameratrap-manual-<utc-iso>[-<note>].db`        — user-initiated "back up now"
 - `.last-rolling-utc-date`                      — daily-throttle marker
 
 Manual backups may carry an optional user note, slugged into the
@@ -54,13 +54,13 @@ ROLLING_MARKER_FILENAME = ".last-rolling-utc-date"
 RESTORE_MARKER_FILENAME = ".restore-on-next-launch"
 
 _TS = r"\d{4}-\d{2}-\d{2}T\d{6}Z"
-_DAILY_RE = re.compile(rf"^addaxai-({_TS})\.db$")
-_PRE_UPGRADE_RE = re.compile(rf"^addaxai-pre-upgrade-([^-\s]+)-({_TS})\.db$")
-_PRE_RESTORE_RE = re.compile(rf"^addaxai-pre-restore-({_TS})\.db$")
+_DAILY_RE = re.compile(rf"^wsp-cameratrap-({_TS})\.db$")
+_PRE_UPGRADE_RE = re.compile(rf"^wsp-cameratrap-pre-upgrade-([^-\s]+)-({_TS})\.db$")
+_PRE_RESTORE_RE = re.compile(rf"^wsp-cameratrap-pre-restore-({_TS})\.db$")
 # The optional note group accepts more than `_slugify_note` generates
 # (trailing hyphens, `--` runs), on purpose: a file the user renamed by
 # hand should stay listable as long as it stays lowercase.
-_MANUAL_RE = re.compile(rf"^addaxai-manual-({_TS})(?:-([a-z0-9][a-z0-9-]*))?\.db$")
+_MANUAL_RE = re.compile(rf"^wsp-cameratrap-manual-({_TS})(?:-([a-z0-9][a-z0-9-]*))?\.db$")
 
 # Longest note slug we ever write into a filename.
 NOTE_SLUG_MAX_LEN = 40
@@ -146,7 +146,7 @@ def validate_backup(path: Path) -> None:
                 ).fetchall()
             except sqlite3.DatabaseError as e:
                 raise BackupInvalidError(
-                    "This file is not an AddaxAI database, or it is from an "
+                    "This file is not a WSP CameraTrap database, or it is from an "
                     "early beta that this version cannot open."
                 ) from e
             if len(versions) != 1:
@@ -217,7 +217,7 @@ def manual_backup_filename(note: str | None = None) -> str:
     """
     ts = _backup_timestamp()
     slug = _slugify_note(note)
-    return f"addaxai-manual-{ts}-{slug}.db" if slug else f"addaxai-manual-{ts}.db"
+    return f"wsp-cameratrap-manual-{ts}-{slug}.db" if slug else f"wsp-cameratrap-manual-{ts}.db"
 
 
 def pre_restore_snapshot(settings: Settings) -> Path:
@@ -258,7 +258,7 @@ def pre_upgrade_backup(settings: Settings, rev: str | None) -> Path | None:
     tag = _PRE_UPGRADE_RE.match(dst.name).group(1)  # type: ignore[union-attr]
     if any(
         (m := _PRE_UPGRADE_RE.match(p.name)) and m.group(1) == tag
-        for p in backups_dir.glob("addaxai-pre-upgrade-*.db")
+        for p in backups_dir.glob("wsp-cameratrap-pre-upgrade-*.db")
     ):
         logger.info(f"Pre-upgrade backup for {tag} already exists, skipping")
         return None
@@ -300,7 +300,7 @@ def list_ring_buffer(settings: Settings) -> list[BackupEntry]:
 def schedule_restore(settings: Settings, source_path: Path) -> Path:
     """Validate `source_path` and schedule it as the next-launch restore.
 
-    Writes `~/AddaxAI/.restore-on-next-launch` containing the absolute
+    Writes `~/WSP-CameraTrap/.restore-on-next-launch` containing the absolute
     source path. The frontend should ask Electron to quit immediately
     after; the next launch consumes the marker via
     `consume_restore_marker()` before `init_db()` runs.
@@ -361,7 +361,7 @@ def restore_db(settings: Settings, source_path: Path) -> None:
 
 
 def _backups_dir(settings: Settings) -> Path:
-    """`~/AddaxAI/backups/`, created on first use."""
+    """`~/WSP-CameraTrap/backups/`, created on first use."""
     path = settings.user_data_dir / "backups"
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -390,16 +390,16 @@ def _backup_timestamp() -> str:
 
 
 def _daily_filename(ts: str) -> str:
-    return f"addaxai-{ts}.db"
+    return f"wsp-cameratrap-{ts}.db"
 
 
 def _pre_upgrade_filename(rev: str | None, ts: str) -> str:
     rev_short = (rev or "unknown")[:8]
-    return f"addaxai-pre-upgrade-{rev_short}-{ts}.db"
+    return f"wsp-cameratrap-pre-upgrade-{rev_short}-{ts}.db"
 
 
 def _pre_restore_filename(ts: str) -> str:
-    return f"addaxai-pre-restore-{ts}.db"
+    return f"wsp-cameratrap-pre-restore-{ts}.db"
 
 
 def _slugify_note(raw: str | None) -> str | None:
@@ -433,7 +433,7 @@ def _classify(name: str) -> BackupKind | None:
     """Map a filename to its backup kind, or None if it's not a backup.
 
     The tagged prefixes are checked before the bare daily pattern (which
-    would otherwise only match `addaxai-<ts>.db` anyway).
+    would otherwise only match `wsp-cameratrap-<ts>.db` anyway).
     """
     if _PRE_UPGRADE_RE.match(name):
         return "pre-upgrade"

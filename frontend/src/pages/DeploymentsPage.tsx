@@ -502,7 +502,7 @@ export function DeploymentsPage() {
                                 <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
                               </TooltipTrigger>
                               <TooltipContent className="max-w-xs">
-                                AddaxAI can't find this folder on disk. It may
+                                WSP CameraTrap can't find this folder on disk. It may
                                 have been renamed, moved, or is on a
                                 disconnected drive. Use the banner at the top
                                 of the page to reconnect it.

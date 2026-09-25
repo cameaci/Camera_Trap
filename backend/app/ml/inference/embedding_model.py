@@ -2,7 +2,7 @@
 DINOv2 embedding model wrapper — subprocess invocation.
 
 Thin wrapper around embedding_script.py, same pattern as MegaDetector wrapper.
-Runs as subprocess in env-addaxai-base environment.
+Runs as subprocess in env-wsp-base environment.
 
 Following CONVENTIONS.md: crash early and loudly, no silent failures.
 """
@@ -66,7 +66,7 @@ class EmbeddingModel:
         self.model_path = model_path
         self.manifest = manifest
         self.env_manager = env_manager
-        self.python_path = env_manager.get_python("env-addaxai-base")
+        self.python_path = env_manager.get_python("env-wsp-base")
         self.script_path = Path(__file__).parent / "embedding_script.py"
 
         if not self.script_path.exists():

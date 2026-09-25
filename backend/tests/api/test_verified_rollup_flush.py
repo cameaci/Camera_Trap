@@ -9,7 +9,7 @@ computed matched the one already stored.
 
 The symptom was quiet and reached exported data: relabelling a file, or
 marking its detection false, left ``File.verified`` at FALSE, so
-``addaxai-files.csv`` reported ``is_verified = FALSE`` for a file the
+``wsp-cameratrap-files.csv`` reported ``is_verified = FALSE`` for a file the
 person had just judged. Relabelling the same detection a second time
 fixed it, because by then the first write had landed.
 

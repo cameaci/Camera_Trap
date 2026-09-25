@@ -29,17 +29,17 @@ from app.utils.media_dates import file_mtime_datetime, read_exif_datetime
 
 logger = get_logger(__name__)
 
-# Marker file dropped inside AddaxAI output folders. Any directory that
+# Marker file dropped inside WSP CameraTrap output folders. Any directory that
 # contains it is a results folder and is skipped during scans, so the
 # copies / visualisations it holds never get re-ingested as input media
 # (this is what lets the save step default to a subfolder of the source).
-OUTPUT_DIR_MARKER = ".addaxai-output"
+OUTPUT_DIR_MARKER = ".wsp-cameratrap-output"
 
 
 def prune_unscannable_dirs(root: str, dirnames: list[str]) -> list[str]:
     """Filter an ``os.walk`` dir list down to the ones worth descending into.
 
-    Drops dot-folders (``.addaxai`` etc.) and AddaxAI output folders (those
+    Drops dot-folders (``.wsp-cameratrap`` etc.) and WSP CameraTrap output folders (those
     carrying ``OUTPUT_DIR_MARKER``), so a previous run's separated /
     visualised copies are never re-ingested as input media. Used by
     ``walk_media_files``, which both the preview scan and the worker's input
@@ -95,7 +95,7 @@ def walk_media_files(folder: Path) -> tuple[list[Path], list[Path]]:
     """Every image and video under ``folder``, as ``(images, videos)``.
 
     Filenames only: nothing is opened and no metadata is read. Dot-folders
-    and AddaxAI output folders are skipped via ``prune_unscannable_dirs``,
+    and WSP CameraTrap output folders are skipped via ``prune_unscannable_dirs``,
     dot-files via ``prune_hidden_files``.
 
     Raises:
@@ -211,7 +211,7 @@ def scan_folder(folder_path: str, gps_sample_size: int = 10) -> FolderPreview:
     if not folder.is_dir():
         raise NotADirectoryError(f"Path is not a directory: {folder_path}")
 
-    # Recursively find all media files. Dot-folders and AddaxAI output
+    # Recursively find all media files. Dot-folders and WSP CameraTrap output
     # folders are skipped inside the walk, so a previous run's separated /
     # visualised copies never get scanned back in as input media.
     image_files, video_files = walk_media_files(folder)

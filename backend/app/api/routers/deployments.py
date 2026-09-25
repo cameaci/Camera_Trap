@@ -886,10 +886,10 @@ def split_deployment(
     """
     Split a deployment into N children along the folder hierarchy.
 
-    Copies the deployment's `.addaxai/projects/<project_id>/` artifacts into
+    Copies the deployment's `.wsp-cameratrap/projects/<project_id>/` artifacts into
     each child subfolder, reassigns files / detections / events to the
     correct child (duplicating events that straddle multiple children),
-    deletes the parent row, and removes the parent's old `.addaxai` folder.
+    deletes the parent row, and removes the parent's old `.wsp-cameratrap` folder.
 
     Returns 404 if the deployment doesn't exist, 409 when an active job or
     queue entry blocks the split, 400 on any other precondition failure.

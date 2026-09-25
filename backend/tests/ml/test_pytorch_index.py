@@ -106,7 +106,7 @@ def test_configured_yaml_reaches_no_blocked_host() -> None:
     receives. Windows is the platform that carries both.
     """
     for platform_dir in ("windows", "linux"):
-        yaml_path = ENVS_DIR / "addaxai-base" / platform_dir / "environment.yml"
+        yaml_path = ENVS_DIR / "wsp-base" / platform_dir / "environment.yml"
         text = substitute_bundled_wheels(
             yaml_path.read_text(encoding="utf-8"), BUNDLED_WHEELS_DIR
         )

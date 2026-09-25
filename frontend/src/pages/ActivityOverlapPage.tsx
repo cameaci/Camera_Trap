@@ -265,10 +265,10 @@ export function ActivityOverlapPage() {
   // changes and auto-pick decisions go through `writeFilters` so the
   // decision they make is durable.
   const storageKeyA = projectId
-    ? `addaxai:plots:activity-overlap:species-a:${projectId}`
+    ? `wsp:plots:activity-overlap:species-a:${projectId}`
     : null;
   const storageKeyB = projectId
-    ? `addaxai:plots:activity-overlap:species-b:${projectId}`
+    ? `wsp:plots:activity-overlap:species-b:${projectId}`
     : null;
 
   const readStored = (key: string | null): string | null => {

@@ -3,7 +3,7 @@
  *
  * These launch the real Electron app against a throwaway user data dir,
  * which spawns the real backend against a throwaway database. Nothing
- * here touches `~/AddaxAI`.
+ * here touches `~/WSP-CameraTrap`.
  *
  * What they are here to catch: when the backend refuses a database it
  * exits before the API or the frontend exist, so the in-app Restore and
@@ -24,7 +24,7 @@ import * as path from 'path';
 import { launch as launchApp, makeHealthyDb, appWindow } from './app-harness';
 
 // Its own port, so a running dev backend on 8000 is left alone. The app
-// kills whatever AddaxAI backend already holds its port.
+// kills whatever WSP CameraTrap backend already holds its port.
 const PORT = '8971';
 
 // Launching the app boots the real backend and, on a fresh database,
@@ -38,7 +38,7 @@ function launch(env?: Record<string, string>) {
 }
 
 test.beforeEach(() => {
-  userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'addaxai-e2e-'));
+  userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsp-cameratrap-e2e-'));
 });
 
 test.afterEach(() => {
@@ -77,7 +77,7 @@ test('a slow start says so, and never offers to start a second backend', async (
    * against the same SQLite file.
    */
   makeHealthyDb(userDataDir);
-  const app = await launch({ ADDAXAI_SLOW_NOTICE_MS: '1' });
+  const app = await launch({ WSP_SLOW_NOTICE_MS: '1' });
   const win = await appWindow(app);
 
   await expect(win.locator('h1')).toHaveText('Still working…', {
@@ -104,7 +104,7 @@ test('a port held by another application names the port, not an exit code', asyn
    * returned null, the app read that as "port free", spawned a backend
    * that could not bind, and showed "The backend stopped while starting
    * up (exit code 1)". The port never got a mention, so the user had no
-   * way to know that ADDAXAI_BACKEND_PORT was the way out.
+   * way to know that WSP_BACKEND_PORT was the way out.
    */
   makeHealthyDb(userDataDir);
 
@@ -120,7 +120,7 @@ test('a port held by another application names the port, not an exit code', asyn
     const app = await launch();
     const win = await appWindow(app);
 
-    await expect(win.locator('h1')).toHaveText('AddaxAI could not start', {
+    await expect(win.locator('h1')).toHaveText('WSP CameraTrap could not start', {
       timeout: 60_000,
     });
     await expect(win.locator('.reason')).toContainText(
@@ -128,7 +128,7 @@ test('a port held by another application names the port, not an exit code', asyn
     );
     // The way out has to be on the page. Quitting the other application
     // is not always possible.
-    await expect(win.locator('.reason')).toContainText('ADDAXAI_BACKEND_PORT');
+    await expect(win.locator('.reason')).toContainText('WSP_BACKEND_PORT');
 
     await app.close();
   } finally {
@@ -146,7 +146,7 @@ test('a broken database shows the reason and the recovery buttons', async () => 
   const app = await launch();
   const win = await appWindow(app);
 
-  await expect(win.locator('h1')).toHaveText('AddaxAI could not start', {
+  await expect(win.locator('h1')).toHaveText('WSP CameraTrap could not start', {
     timeout: 150_000,
   });
   // The backend's own words, not "exit code 3".
@@ -188,7 +188,7 @@ test('Restore from backup schedules the chosen file and quits', async () => {
 
   const app = await launch();
   const win = await appWindow(app);
-  await expect(win.locator('h1')).toHaveText('AddaxAI could not start', {
+  await expect(win.locator('h1')).toHaveText('WSP CameraTrap could not start', {
     timeout: 150_000,
   });
 
@@ -216,7 +216,7 @@ test('Delete database is gated on the confirm dialog', async () => {
 
   const app = await launch();
   const win = await appWindow(app);
-  await expect(win.locator('h1')).toHaveText('AddaxAI could not start', {
+  await expect(win.locator('h1')).toHaveText('WSP CameraTrap could not start', {
     timeout: 150_000,
   });
 
@@ -251,7 +251,7 @@ test('an unwritable data folder shows a clear error instead of a dead app', asyn
    * file and the startup error file both live inside the directory that
    * is broken. The Electron pre-flight has to catch it and explain it.
    * Locking the parent (r-x) makes the data dir uncreatable, the same
-   * shape as ADDAXAI_USER_DATA_DIR pointing into a root-owned folder.
+   * shape as WSP_USER_DATA_DIR pointing into a root-owned folder.
    */
   const lockedParent = path.join(userDataDir, 'locked');
   fs.mkdirSync(lockedParent);
@@ -259,7 +259,7 @@ test('an unwritable data folder shows a clear error instead of a dead app', asyn
   const target = path.join(lockedParent, 'data');
 
   try {
-    const app = await launch({ ADDAXAI_USER_DATA_DIR: target });
+    const app = await launch({ WSP_USER_DATA_DIR: target });
     const win = await appWindow(app);
 
     await expect(win.locator('.reason')).toContainText(

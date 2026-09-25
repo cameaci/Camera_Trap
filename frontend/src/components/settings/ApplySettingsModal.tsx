@@ -35,7 +35,7 @@ export function ApplySettingsModal({
       >
         <DialogTitle className="sr-only">Applying settings</DialogTitle>
         <DialogDescription className="sr-only">
-          AddaxAI is applying your settings. This may take a moment.
+          WSP CameraTrap is applying your settings. This may take a moment.
         </DialogDescription>
         <div className="flex flex-col items-center gap-4 py-4">
           <div className="rounded-full bg-primary/10 p-3">

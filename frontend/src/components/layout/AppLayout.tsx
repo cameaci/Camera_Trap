@@ -11,7 +11,7 @@ import { ModelSetupRequiredDialog } from "../models/ModelSetupRequiredDialog";
 import { cn } from "../../lib/utils";
 import { useLabelColors } from "../../hooks/useLabelColors";
 
-const COLLAPSE_KEY = "addaxai:sidebar-collapsed";
+const COLLAPSE_KEY = "wsp:sidebar-collapsed";
 
 export function AppLayout() {
   const { projectId } = useParams<{ projectId: string }>();

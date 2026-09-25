@@ -3,7 +3,7 @@
  * at the start when the container is too narrow.
  *
  * The tail of a path carries the meaningful bits (site, deployment name);
- * the leading `/Users/peter/...` prefix is noise that repeats across every
+ * the leading `C:/Users/<name>/...` prefix is noise that repeats across every
  * row. CSS `direction: rtl` flips the overflow side so ellipsis sits on the
  * left; a nested `<bdi>` keeps the text itself rendering left-to-right.
  * Full path is in the hover title for when the user needs the prefix.

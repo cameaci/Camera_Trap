@@ -5,7 +5,7 @@
  * that supports multiple selections. Use this as the go-to multiselect
  * across the app.
  *
- * Features (mirrored from AddaxAI-Connect):
+ * Features (mirrored from the web companion app):
  * - Live search filter
  * - "Select all" / "Clear all" buttons that operate on the currently
  *   visible (search-filtered) options

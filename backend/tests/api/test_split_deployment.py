@@ -87,7 +87,7 @@ def _seed_parent_results_json(
     root: Path, project_id: str, files: list[File]
 ) -> Path:
     """Write a minimal parent results.json that lists every file."""
-    artifacts = root / ".addaxai" / "projects" / project_id
+    artifacts = root / ".wsp-cameratrap" / "projects" / project_id
     artifacts.mkdir(parents=True, exist_ok=True)
     images = []
     for f in files:
@@ -413,13 +413,13 @@ def test_split_slices_results_json_and_removes_parent_dir(
     )
     assert resp.status_code == 200
 
-    # Parent's .addaxai has been cleaned up.
-    assert not (root / ".addaxai").exists()
+    # Parent's .wsp-cameratrap has been cleaned up.
+    assert not (root / ".wsp-cameratrap").exists()
 
     # Each child has its own slice with rewritten relative paths.
     for sub in ("siteA", "siteB"):
         child_json_path = (
-            root / sub / ".addaxai" / "projects" / d.project_id
+            root / sub / ".wsp-cameratrap" / "projects" / d.project_id
             / "results.json"
         )
         assert child_json_path.exists()
@@ -655,7 +655,7 @@ def test_split_handles_video_only_project(client, db, tmp_path):
     """
     Video-only projects no longer hold `file_type='frame'` rows
     post-2026-05: detections live on the parent video File and the only
-    artifact under `.addaxai/` is the single best-frame JPEG per video.
+    artifact under `.wsp-cameratrap/` is the single best-frame JPEG per video.
     Splitting a video-only project must rewrite each video's
     `best_frame_path` into its new child layout and move the JPEG on disk.
     """
@@ -675,8 +675,8 @@ def test_split_handles_video_only_project(client, db, tmp_path):
         folder_path=str(root),
         start_date_local=date(2024, 1, 1),
     )
-    # Seed best-frame JPEGs under parent's .addaxai.
-    parent_artifacts = root / ".addaxai" / "projects" / d.project_id
+    # Seed best-frame JPEGs under parent's .wsp-cameratrap.
+    parent_artifacts = root / ".wsp-cameratrap" / "projects" / d.project_id
     bf_a = parent_artifacts / "video_frames" / "siteA" / "REC001.mp4" / "frame000042.jpg"
     bf_b = parent_artifacts / "video_frames" / "siteB" / "REC002.mp4" / "frame000017.jpg"
     for bf in (bf_a, bf_b):
@@ -724,13 +724,13 @@ def test_split_handles_video_only_project(client, db, tmp_path):
     )
     assert resp.status_code == 200, resp.text
 
-    # Best-frame JPEGs moved on disk to each child's .addaxai.
+    # Best-frame JPEGs moved on disk to each child's .wsp-cameratrap.
     for sub, expected_video, expected_frame in (
         ("siteA", "REC001.mp4", "frame000042.jpg"),
         ("siteB", "REC002.mp4", "frame000017.jpg"),
     ):
         child_frame = (
-            root / sub / ".addaxai" / "projects" / d.project_id
+            root / sub / ".wsp-cameratrap" / "projects" / d.project_id
             / "video_frames" / expected_video / expected_frame
         )
         assert child_frame.exists(), f"missing best frame {child_frame}"
@@ -754,7 +754,7 @@ def test_split_rewrites_best_frame_path(client, db, tmp_path):
         db, tmp_path, {"siteA": 1, "siteB": 1}
     )
     # Promote siteA's image to a "video" by faking best_frame_number +
-    # best_frame_path under the parent's .addaxai layout.
+    # best_frame_path under the parent's .wsp-cameratrap layout.
     site_a_file = db.execute(
         select(File).where(File.file_path.like(f"{root}/siteA/%"))
     ).scalar_one()
@@ -764,7 +764,7 @@ def test_split_rewrites_best_frame_path(client, db, tmp_path):
         Path(site_a_file.file_path).relative_to(root)
     )
     frame_dir = (
-        root / ".addaxai" / "projects" / d.project_id / "video_frames"
+        root / ".wsp-cameratrap" / "projects" / d.project_id / "video_frames"
         / frame_relative
     )
     frame_dir.mkdir(parents=True, exist_ok=True)
@@ -786,7 +786,7 @@ def test_split_rewrites_best_frame_path(client, db, tmp_path):
         select(File).where(File.id == site_a_file.id)
     ).scalar_one()
     expected = (
-        root / "siteA" / ".addaxai" / "projects" / d.project_id
+        root / "siteA" / ".wsp-cameratrap" / "projects" / d.project_id
         / "video_frames" / Path(reloaded.file_path).name / "frame000042.jpg"
     )
     assert reloaded.best_frame_path == str(expected)
@@ -904,7 +904,7 @@ def test_split_tolerates_duplicate_entries_in_parent_json(
 
     # siteA child's results.json still has the duplicate.
     a_json_path = (
-        root / "siteA" / ".addaxai" / "projects" / d.project_id
+        root / "siteA" / ".wsp-cameratrap" / "projects" / d.project_id
         / "results.json"
     )
     a_images = json.loads(a_json_path.read_text())["images"]
@@ -940,7 +940,7 @@ def test_split_rolls_back_on_validation_failure(
     client, db, tmp_path, monkeypatch
 ):
     """If child artifact validation fails, DB stays unchanged and child
-    .addaxai dirs are scrubbed."""
+    .wsp-cameratrap dirs are scrubbed."""
     root, d = _seed_deployment_with_files(
         db, tmp_path, {"siteA": 2, "siteB": 1}
     )
@@ -966,11 +966,11 @@ def test_split_rolls_back_on_validation_failure(
     assert db.get(Deployment, d.id) is not None
     assert len(db.execute(select(Deployment)).scalars().all()) == 1
 
-    # Children's .addaxai dirs were cleaned up.
-    assert not (root / "siteA" / ".addaxai").exists()
-    assert not (root / "siteB" / ".addaxai").exists()
-    # Parent's .addaxai is intact.
-    assert (root / ".addaxai" / "projects" / d.project_id / "results.json").exists()
+    # Children's .wsp-cameratrap dirs were cleaned up.
+    assert not (root / "siteA" / ".wsp-cameratrap").exists()
+    assert not (root / "siteB" / ".wsp-cameratrap").exists()
+    # Parent's .wsp-cameratrap is intact.
+    assert (root / ".wsp-cameratrap" / "projects" / d.project_id / "results.json").exists()
 
 
 def test_crud_split_not_found(db):

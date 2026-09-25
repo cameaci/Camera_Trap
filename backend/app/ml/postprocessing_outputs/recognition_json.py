@@ -1,7 +1,7 @@
-"""Reconstruct the canonical AddaxAI / Timelapse recognition JSON from the DB.
+"""Reconstruct the canonical WSP CameraTrap / Timelapse recognition JSON from the DB.
 
 The same JSON shape that `app.ml.json_pipeline.merge_json_files`
-produces is the de facto AddaxAI recognition format. Users have
+produces is the de facto WSP CameraTrap recognition format. Users have
 downstream scripts that parse it; the Timelapse Analyser imports it
 directly.
 
@@ -14,14 +14,14 @@ classification per detection — but the shape is identical:
 `detection_categories`, `classification_categories`,
 `classification_category_descriptions` (the 7-token taxonomy strings,
 rebuilt from `label_taxonomy` exactly as results mode emits them),
-the `info` block (`format_version` 1.6 + the `addaxai` sub-block),
+the `info` block (`format_version` 1.6 + the `wsp` sub-block),
 per-image `exif_metadata` (DateTimeOriginal and GPSInfo, as
 MegaDetector writes them) and `width`/`height`, per-video
 `frame_rate` and `frames_processed` (required for videos by MD format
 1.6), and per-image detections with `category`, `conf`, `bbox`, and
 optional `classifications` and `frame_number` keys.
 
-The `info.addaxai` block additionally carries the app version and a
+The `info.wsp-cameratrap` block additionally carries the app version and a
 `settings` sub-dict (smoothing, rollup, geofence, independence
 interval, video fps) so the run is reproducible from the JSON alone.
 The file is the complete record of the run: every stored detection is
@@ -33,9 +33,9 @@ the source folder itself, so the file lands where those paths
 resolve — required by the Timelapse Analyser, which matches the
 relative paths against the folder the JSON sits in.
 
-Filename is `addaxai-recognitions.json`: one canonical name so
+Filename is `wsp-cameratrap-recognitions.json`: one canonical name so
 scripts (and the Timelapse Analyser) can rely on it, with the shared
-`addaxai-` prefix so the run's outputs sort together between the
+`wsp-cameratrap-` prefix so the run's outputs sort together between the
 user's own files.
 """
 
@@ -64,7 +64,7 @@ _DETECTION_CATEGORIES = {v: k for k, v in _CATEGORY_TO_ID.items()}
 
 # Output filename. Stays the same across runs so downstream tools that
 # look for one canonical filename keep working.
-RECOGNITION_JSON_FILENAME = "addaxai-recognitions.json"
+RECOGNITION_JSON_FILENAME = "wsp-cameratrap-recognitions.json"
 
 
 @dataclass
@@ -192,7 +192,7 @@ def write_recognition_json(
 ) -> RecognitionJsonResult:
     """Serialise the project's analysis results to the canonical JSON shape.
 
-    The output is written to `target_dir/addaxai-recognitions.json`.
+    The output is written to `target_dir/wsp-cameratrap-recognitions.json`.
     The directory is created if it does not exist. An existing file
     at that path is overwritten — the recognition file represents the
     current DB state, so a re-export replaces the previous snapshot.
@@ -273,7 +273,7 @@ def write_recognition_json(
             bbox = _bbox_for_detection(det)
             if bbox is None:
                 # Event-level observation — no spatial annotation to
-                # write. The canonical Timelapse / AddaxAI JSON has
+                # write. The canonical Timelapse / WSP CameraTrap JSON has
                 # no representation for this, so we skip.
                 continue
 
@@ -387,7 +387,7 @@ def write_recognition_json(
         # 1.6 requires frame_rate + frames_processed on video entries
         # and frame_number on their detections, all emitted above.
         "format_version": "1.6",
-        "addaxai": {
+        "wsp": {
             "version": APP_VERSION,
             "export_source": "folder-run",
             "classification_completion_time": (

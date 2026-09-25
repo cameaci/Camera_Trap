@@ -85,7 +85,7 @@ def test_readme_carries_run_metadata(db, tmp_path):
 
     # Header carries the project name.
     assert "readme-meta" in text
-    # AddaxAI version is surfaced — read from the canonical exporter.
+    # WSP CameraTrap version is surfaced — read from the canonical exporter.
     from app import __version__
 
     assert __version__ in text

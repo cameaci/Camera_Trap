@@ -70,12 +70,12 @@ _WHAT_NOW = (
 )
 
 _EARLY_BETA_MESSAGE = (
-    "This database is from an early AddaxAI beta and cannot be upgraded "
+    "This database is from an early WSP CameraTrap beta and cannot be upgraded "
     f"to this version.\n\n{_WHAT_NOW}"
 )
 
 _FOREIGN_DB_MESSAGE = (
-    "This database was made by a different version of AddaxAI, so this "
+    "This database was made by a different version of WSP CameraTrap, so this "
     f"version cannot open it.\n\n{_WHAT_NOW}"
 )
 
@@ -92,7 +92,7 @@ def schema_mismatch_message(problems: list[str]) -> str:
     if remaining:
         listed += f"\n  and {remaining} more"
     return (
-        "The database does not match what this version of AddaxAI "
+        "The database does not match what this version of WSP CameraTrap "
         f"expects, so it cannot be opened safely.\n\n{listed}\n\n"
         f"{_WHAT_NOW}"
     )

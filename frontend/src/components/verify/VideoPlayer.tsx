@@ -377,7 +377,7 @@ export function VideoPlayer({
       const blob = new Blob(chunks, { type: mimeType });
       const url = URL.createObjectURL(blob);
       // For frame files, derive the video name from the parent directory
-      // (frames are stored as .addaxai/video_frames/{video_name}/frame000000.jpg)
+      // (frames are stored as .wsp-cameratrap/video_frames/{video_name}/frame000000.jpg)
       const parts = splitPath(file.file_path);
       const fileName =
         sourceVideoId

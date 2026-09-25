@@ -6,7 +6,7 @@ Following DEVELOPERS.md principles:
 - Explicit error handling
 - Type hints everywhere
 
-Uses exact same execution as streamlit-AddaxAI to guarantee matching results.
+Uses exact same execution as the earlier prototype to guarantee matching results.
 
 Created by Claude Code on 2026-01-04
 """
@@ -27,7 +27,7 @@ from app.core.subprocess_group import popen_group
 from app.ml.environment_manager import EnvironmentManager
 from app.ml.gpu_guard import cuda_guard_overrides
 from app.ml.inference.base import DetectionModel
-from app.utils.fs_hidden import mkdir_hidden_addaxai
+from app.utils.fs_hidden import mkdir_hidden_wsp
 from app.utils.subprocess_env import clean_python_env
 
 logger = get_logger(__name__)
@@ -129,7 +129,7 @@ class MegaDetectorV1000(DetectionModel):
     MegaDetector v1000 implementation.
 
     Uses official megadetector Python package via subprocess in isolated environment.
-    Command matches streamlit-AddaxAI exactly:
+    Command matches the earlier prototype exactly:
 
     python -m megadetector.detection.run_detector_batch \\
         --recursive \\
@@ -167,7 +167,7 @@ class MegaDetectorV1000(DetectionModel):
 
         # Verify environment exists
         try:
-            self.python_path = env_manager.get_python("env-addaxai-base")
+            self.python_path = env_manager.get_python("env-wsp-base")
             logger.info(f"MegaDetector using Python: {self.python_path}")
         except Exception as e:
             raise RuntimeError(f"Failed to get Python environment: {e}") from e
@@ -305,7 +305,7 @@ class MegaDetectorV1000(DetectionModel):
 
         Args:
             image_paths: List of absolute paths to image files
-            deployment_folder: Path to deployment folder (will create .addaxai subfolder)
+            deployment_folder: Path to deployment folder (will create .wsp-cameratrap subfolder)
             confidence_threshold: Minimum confidence for detections (typically 0.1)
             batch_size: Number of images processed in parallel. None means let
                 MegaDetector use its own default (1). A non-None integer is
@@ -316,7 +316,7 @@ class MegaDetectorV1000(DetectionModel):
                 false positives). From the project's detection_augment setting.
             progress_callback: Optional callback(message, progress)
             output_path: Optional explicit output path. If provided, results are written
-                here instead of the default .addaxai/detection_results.json.
+                here instead of the default .wsp-cameratrap/detection_results.json.
             checkpoint_path: Where MegaDetector saves its results so far, every
                 ``checkpoint_frequency`` images. When the file already exists
                 the run resumes from it. None disables checkpointing.
@@ -353,8 +353,8 @@ class MegaDetectorV1000(DetectionModel):
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 output_file = output_path
             else:
-                artifacts_folder = deployment_folder / ".addaxai"
-                mkdir_hidden_addaxai(artifacts_folder)
+                artifacts_folder = deployment_folder / ".wsp-cameratrap"
+                mkdir_hidden_wsp(artifacts_folder)
                 output_file = artifacts_folder / "detection_results.json"
 
             # Create temporary directory for working files
@@ -364,7 +364,7 @@ class MegaDetectorV1000(DetectionModel):
                 temp_output = temp_path / "temp_detection_results.json"
 
                 # Write file list JSON so MegaDetector processes only these
-                # files (avoids its own recursive scan picking up .addaxai frames)
+                # files (avoids its own recursive scan picking up .wsp-cameratrap frames)
                 file_list_json = temp_path / "image_file_list.json"
                 with open(file_list_json, "w") as f:
                     json.dump([str(p) for p in image_paths], f)

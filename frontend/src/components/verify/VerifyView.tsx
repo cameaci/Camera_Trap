@@ -162,11 +162,11 @@ export function VerifyView({ projectId }: VerifyViewProps) {
   const [page, setPage] = useState(0);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [showEventsWelcome, setShowEventsWelcome] = useState(
-    () => !localStorage.getItem("addaxai:verifyWelcomeDismissed"),
+    () => !localStorage.getItem("wsp:verifyWelcomeDismissed"),
   );
   const handleDismissEventsWelcome = useCallback(() => {
     setShowEventsWelcome(false);
-    localStorage.setItem("addaxai:verifyWelcomeDismissed", "1");
+    localStorage.setItem("wsp:verifyWelcomeDismissed", "1");
   }, []);
 
   // Parse filters from URL

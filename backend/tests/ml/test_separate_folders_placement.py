@@ -309,7 +309,7 @@ def test_video_is_copied_as_the_file_it_is(db, tmp_path):
     """A video is copied whole, under its own name, like an image. Until
     2026-09 it was written as its best-frame JPEG only; three users asked
     for the clips themselves, to sort them into species folders the way
-    legacy AddaxAI did. The original is untouched."""
+    the earlier desktop app did. The original is untouched."""
     project = make_project(db, name="vid", counting_threshold=0.5)
     dep = make_deployment(db, project_id=project.id)
     f = _video_on_disk(db, tmp_path, dep.id, "CLIP01.MP4")

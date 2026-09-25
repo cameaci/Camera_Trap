@@ -1,6 +1,6 @@
 """Tests for app.ml.geofence.
 
-Validates that AddaxAI's geofence decisions match the official SpeciesNet
+Validates that WSP CameraTrap's geofence decisions match the official SpeciesNet
 API's should_geofence_animal_classification(). Tests use the real
 SpeciesNet v4.0.2a model data (geofence JSON + labels file).
 
@@ -27,8 +27,8 @@ from app.ml.geofence import (
     load_geofence,
 )
 
-MODEL_DIR = Path.home() / "AddaxAI/models/cls/SPECIESNET-v4-0-2-A"
-ENV_PYTHON = Path.home() / "AddaxAI/envs/env-addaxai-base/bin/python"
+MODEL_DIR = Path.home() / "WSP CameraTrap/models/cls/SPECIESNET-v4-0-2-A"
+ENV_PYTHON = Path.home() / "WSP CameraTrap/envs/env-wsp-base/bin/python"
 
 # Skip when the model dir is just a catalog stub (manifest.json + taxonomy.csv
 # only). The geofence tests need the real geofence_release.*.json file, which
@@ -42,7 +42,7 @@ requires_model = pytest.mark.skipif(
     not _GEOFENCE_DATA_PRESENT, reason="SpeciesNet geofence data not installed"
 )
 requires_env = pytest.mark.skipif(
-    not ENV_PYTHON.exists(), reason="env-addaxai-base not installed"
+    not ENV_PYTHON.exists(), reason="env-wsp-base not installed"
 )
 
 
@@ -330,7 +330,7 @@ def _load_fix_cases() -> list[tuple]:
 @requires_env
 @pytest.mark.slow
 class TestGeofenceFixesMatchOfficialAPI:
-    """Verify AddaxAI matches the official API for every fix case.
+    """Verify WSP CameraTrap matches the official API for every fix case.
 
     Per SpeciesNet developer recommendation: test every (taxon,
     country, state) combination in geofence_fixes.csv. If my code
@@ -381,7 +381,7 @@ class TestGeofenceFixesMatchOfficialAPI:
         )
         official_results = json.loads(proc.stdout)
 
-        # Compare against AddaxAI for each case
+        # Compare against WSP CameraTrap for each case
         cache: dict[tuple, list[str]] = {}
         mismatches = []
 
@@ -411,15 +411,15 @@ class TestGeofenceFixesMatchOfficialAPI:
             if key not in cache:
                 cache[key] = get_allowed_labels(MODEL_DIR, country, state)
             common_name = label_to_name.get(full_label)
-            addaxai_allowed = common_name in cache[key]
+            wsp_allowed = common_name in cache[key]
             official_blocked = official_results[i]
-            addaxai_blocked = not addaxai_allowed
+            wsp_blocked = not wsp_allowed
 
-            if addaxai_blocked != official_blocked:
+            if wsp_blocked != official_blocked:
                 mismatches.append(
                     f"{common_name} in {country}/{state or '-'}: "
                     f"official={'block' if official_blocked else 'allow'} "
-                    f"addaxai={'block' if addaxai_blocked else 'allow'}"
+                    f"wsp={'block' if wsp_blocked else 'allow'}"
                 )
 
         assert not mismatches, (
@@ -434,7 +434,7 @@ class TestGeofenceFixesMatchOfficialAPI:
 @requires_env
 @pytest.mark.slow
 class TestExhaustiveMatchOfficialAPI:
-    """Compare AddaxAI's geofence decisions against the official SpeciesNet API.
+    """Compare WSP CameraTrap's geofence decisions against the official SpeciesNet API.
 
     Tests ALL taxa x ALL countries from the geofence data. Agreement
     must be 100% (no floating-point math involved).
@@ -545,7 +545,7 @@ class TestExhaustiveMatchOfficialAPI:
         official_results = json.loads(proc.stdout)
         assert len(official_results) == len(queries)
 
-        # Compare against AddaxAI
+        # Compare against WSP CameraTrap
         allowed_cache: dict[tuple, list[str]] = {}
         mismatches = []
 
@@ -556,17 +556,17 @@ class TestExhaustiveMatchOfficialAPI:
                     MODEL_DIR, country, state
                 )
 
-            addaxai_allowed = common_name in allowed_cache[cache_key]
+            wsp_allowed = common_name in allowed_cache[cache_key]
             official_blocked = official_results[i]
 
-            # official True = blocked, AddaxAI in list = allowed
-            if addaxai_allowed == official_blocked:
+            # official True = blocked, WSP CameraTrap in list = allowed
+            if wsp_allowed == official_blocked:
                 taxonomy_key = ";".join(full_label.split(";")[1:6])
                 mismatches.append(
                     f"{common_name} in {country}"
                     f"{'/' + state if state else ''}: "
                     f"official={'blocked' if official_blocked else 'allowed'}"
-                    f" addaxai={'allowed' if addaxai_allowed else 'blocked'}"
+                    f" wsp={'allowed' if wsp_allowed else 'blocked'}"
                     f" key={taxonomy_key}"
                 )
 

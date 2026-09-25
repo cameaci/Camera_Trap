@@ -37,27 +37,27 @@ import { formatOffsetSummary } from "@/lib/utils";
 const TEST_DEPLOYMENTS: { scope: string; path: string }[] = [
   {
     scope: "Deployment",
-    path: "/Users/peter/Downloads/example-data/project_Kenya/Chui River/deployment_001",
+    path: "C:/WSP-CameraTrap-test-data/project_Kenya/Chui River/deployment_001",
   },
   {
     scope: "Site",
-    path: "/Users/peter/Downloads/example-data/project_Kenya/Chui River",
+    path: "C:/WSP-CameraTrap-test-data/project_Kenya/Chui River",
   },
   {
     scope: "Project",
-    path: "/Users/peter/Downloads/example-data/project_Kenya",
+    path: "C:/WSP-CameraTrap-test-data/project_Kenya",
   },
   {
     scope: "Videos",
-    path: "/Users/peter/Downloads/example-data/project_Ukraine/loc_SIMON03/dep001",
+    path: "C:/WSP-CameraTrap-test-data/project_Ukraine/loc_SIMON03/dep001",
   },
   {
     scope: "Edge cases",
-    path: "/Users/peter/Downloads/example-data/test_package",
+    path: "C:/WSP-CameraTrap-test-data/test_package",
   },
   {
     scope: "ENA24",
-    path: "/Users/peter/Downloads/example-data/ena24",
+    path: "C:/WSP-CameraTrap-test-data/ena24",
   },
 ];
 
@@ -246,7 +246,7 @@ export function FolderSelector({
               type="text"
               value={value || ""}
               onChange={(e) => onChange(e.target.value)}
-              placeholder="/Users/peter/Downloads/example-data/project_Kenya/..."
+              placeholder="C:/WSP-CameraTrap-test-data/project_Kenya/..."
               className={`flex-1 font-mono text-sm ${error ? "border-red-500" : ""}`}
             />
             <DropdownMenu>

@@ -3,7 +3,7 @@
  *
  * Every spec here launches the real app against a throwaway user data
  * dir, which spawns the real backend against a throwaway database.
- * Nothing touches `~/AddaxAI`. That setup is identical for all of them,
+ * Nothing touches `~/WSP-CameraTrap`. That setup is identical for all of them,
  * so it lives here rather than being copied per file: one place to fix
  * when Electron, Playwright or the app's startup contract moves.
  */
@@ -23,7 +23,7 @@ const VENV_PY = path.join(BACKEND, 'venv', 'bin', 'python');
  * get.
  */
 export function makeHealthyDb(dir: string): string {
-  const db = path.join(dir, 'addaxai.db');
+  const db = path.join(dir, 'wsp-cameratrap.db');
   execFileSync(
     VENV_PY,
     ['-c', 'from app.db.migrations import upgrade_to_head; upgrade_to_head()'],
@@ -32,9 +32,9 @@ export function makeHealthyDb(dir: string): string {
       env: {
         ...process.env,
         PYTHONPATH: BACKEND,
-        // The DB path derives from ADDAXAI_USER_DATA_DIR (Settings
-        // derivation); no separate ADDAXAI_DATABASE_URL needed.
-        ADDAXAI_USER_DATA_DIR: dir,
+        // The DB path derives from WSP_USER_DATA_DIR (Settings
+        // derivation); no separate WSP_DATABASE_URL needed.
+        WSP_USER_DATA_DIR: dir,
       },
     },
   );
@@ -56,21 +56,21 @@ export function launch(options: LaunchOptions): Promise<ElectronApplication> {
       path.join(REPO, 'electron'),
       // Electron keys requestSingleInstanceLock() on the Chromium user
       // data dir. Without our own, a developer who happens to have
-      // AddaxAI open holds that lock, main.ts quits the test instance
+      // WSP CameraTrap open holds that lock, main.ts quits the test instance
       // immediately, and every test in the run fails with the useless
       // "Process failed to launch! ... exitCode=0". Note this is
       // Chromium's profile directory and has nothing to do with the
-      // app's own ADDAXAI_USER_DATA_DIR below.
+      // app's own WSP_USER_DATA_DIR below.
       `--user-data-dir=${path.join(userDataDir, 'chromium-profile')}`,
     ],
     env: {
       ...process.env,
       // The backend derives its DB and models paths from this one
       // variable, so it is the whole isolation story.
-      ADDAXAI_USER_DATA_DIR: userDataDir,
-      ADDAXAI_BACKEND_PORT: port,
+      WSP_USER_DATA_DIR: userDataDir,
+      WSP_BACKEND_PORT: port,
       // Keep the run offline and deterministic.
-      ADDAXAI_DISABLE_MODEL_UPDATES: 'true',
+      WSP_DISABLE_MODEL_UPDATES: 'true',
       ...env,
     },
   });

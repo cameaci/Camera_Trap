@@ -26,7 +26,7 @@
 import type { SeparateGroupBy } from "../api/folder-runs";
 import type { MediaFilter } from "../api/types";
 
-const KEY = "addaxai.folderRun.lastSettings";
+const KEY = "wsp.folderRun.lastSettings";
 
 export interface PersistedAnalysisSettings {
   detection_model_id?: string;
@@ -89,7 +89,7 @@ export function loadLastUsedSettings(): PersistedAnalysisSettings | null {
 // folder is deliberately not stored — it's derived per run from the
 // source folder, not a sticky preference.
 
-const SAVE_OUTPUTS_KEY = "addaxai.folderRun.lastSaveOutputs";
+const SAVE_OUTPUTS_KEY = "wsp.folderRun.lastSaveOutputs";
 
 export interface PersistedSaveOutputsSettings {
   exportEnabled: boolean;

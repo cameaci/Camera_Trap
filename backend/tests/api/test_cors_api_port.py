@@ -1,6 +1,6 @@
 """Verify the CORS allow-list follows the configured API port.
 
-The Electron app picks the backend port (ADDAXAI_BACKEND_PORT) and passes
+The Electron app picks the backend port (WSP_BACKEND_PORT) and passes
 it to the backend as API_PORT, so the renderer is served from whatever
 port the backend bound. CORS origins pinned to a literal 8000 stopped
 matching as soon as the port moved, which is exactly the case this
@@ -33,7 +33,7 @@ def test_configured_port_is_an_allowed_origin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A renderer served from the configured port is allowed."""
-    monkeypatch.setenv("ADDAXAI_API_PORT", "8123")
+    monkeypatch.setenv("WSP_API_PORT", "8123")
     assert _preflight("http://localhost:8123") == "http://localhost:8123"
     assert _preflight("http://127.0.0.1:8123") == "http://127.0.0.1:8123"
 
@@ -46,7 +46,7 @@ def test_default_port_is_not_allowed_once_the_port_moves(
     Guards the regression directly: if 8000 were still hardcoded here it
     would pass this origin regardless of the setting.
     """
-    monkeypatch.setenv("ADDAXAI_API_PORT", "8123")
+    monkeypatch.setenv("WSP_API_PORT", "8123")
     assert _preflight("http://localhost:8000") is None
 
 
@@ -54,5 +54,5 @@ def test_vite_dev_server_is_always_allowed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Moving the port must not lock out the dev server on 5173."""
-    monkeypatch.setenv("ADDAXAI_API_PORT", "8123")
+    monkeypatch.setenv("WSP_API_PORT", "8123")
     assert _preflight("http://localhost:5173") == "http://localhost:5173"

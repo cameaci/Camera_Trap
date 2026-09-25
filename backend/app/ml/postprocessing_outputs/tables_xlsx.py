@@ -8,7 +8,7 @@ shared ``export_crud`` builders and are trimmed to the same column set
 as the folder-run CSVs; see ``_table_columns`` for which columns and
 why.
 
-Writes ``<target_dir>/addaxai-spreadsheet.xlsx``.
+Writes ``<target_dir>/wsp-cameratrap-spreadsheet.xlsx``.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from app.models import Project
 
 logger = get_logger(__name__)
 
-XLSX_FILENAME = "addaxai-spreadsheet.xlsx"
+XLSX_FILENAME = "wsp-cameratrap-spreadsheet.xlsx"
 
 
 @dataclass
@@ -50,7 +50,7 @@ def write_tables_xlsx(
     project_id: str,
     target_dir: Path,
 ) -> TablesXlsxResult:
-    """Write the three-sheet ``addaxai-spreadsheet.xlsx`` (Summary + Files +
+    """Write the three-sheet ``wsp-cameratrap-spreadsheet.xlsx`` (Summary + Files +
     Detections)."""
     project = db.get(Project, project_id)
     if project is None:
@@ -61,7 +61,7 @@ def write_tables_xlsx(
     # One scope for every sheet and for both modes: the threshold plus the
     # verified override, and only boxes on a video's visible frame, so the
     # workbook holds what the Labels step showed (matches tables_csv).
-    # ``addaxai-recognitions.json`` stays the complete record of the run.
+    # ``wsp-cameratrap-recognitions.json`` stays the complete record of the run.
     #
     # Built before the files sheet and released right after, so this row
     # set and build_files_rows' own never sit in memory together: on a

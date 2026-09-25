@@ -24,10 +24,10 @@ def _write_jpeg(path) -> None:
 
 
 def _make_tree(tmp_path):
-    """Source folder with one real image + an AddaxAI output folder holding
+    """Source folder with one real image + a WSP CameraTrap output folder holding
     a separated copy. The output folder carries the marker."""
     _write_jpeg(tmp_path / "IMG_0001.jpg")
-    output = tmp_path / "AddaxAI-output"
+    output = tmp_path / "WSP CameraTrap-output"
     (output).mkdir()
     (output / OUTPUT_DIR_MARKER).touch()
     _write_jpeg(output / "mammalia" / "REC0028.jpg")
@@ -46,7 +46,7 @@ def test_worker_image_scan_skips_output_folder(tmp_path):
 def test_worker_video_scan_skips_output_folder(tmp_path):
     _make_tree(tmp_path)
     # Put a (bare) video inside the output folder too.
-    (tmp_path / "AddaxAI-output" / "VID_OUT.mp4").write_bytes(b"\x00")
+    (tmp_path / "WSP CameraTrap-output" / "VID_OUT.mp4").write_bytes(b"\x00")
     _, found = scan_folder_for_media(tmp_path)
     names = {p.name for p in found}
     assert "VID_OUT.mp4" not in names

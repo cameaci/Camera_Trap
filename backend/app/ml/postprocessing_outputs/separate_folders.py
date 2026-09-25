@@ -1,6 +1,6 @@
 """Reorganise a project's media files into ``<output_root>/<label>/``.
 
-The legacy-AddaxAI mental model for postprocessing: browse the run's
+The legacy-WSP CameraTrap mental model for postprocessing: browse the run's
 output as ``output_root/dog/``, ``output_root/leopard/``,
 ``output_root/blank/``, …, in the file manager. This module re-creates
 that experience on top of the modern DB pipeline.
@@ -40,9 +40,9 @@ is placed in one shared folder, the species of the event's most
 confident detection, instead of deciding per file. This keeps a
 sequence together even when a stray frame's own top species differs.
 
-Copies only, never a move. Legacy AddaxAI offered a move, and there
+Copies only, never a move. Legacy WSP CameraTrap offered a move, and there
 used to be an unreachable ``move`` mode here. It is gone on purpose,
-not parked: the worker wipes ``addaxai-media`` before every re-save,
+not parked: the worker wipes ``wsp-cameratrap-media`` before every re-save,
 using the scan-skip marker as its proof of ownership, so a move would
 hand the user's only copy to that wipe. The output folder also
 defaults to the source folder itself, and the source tree is what the
@@ -70,7 +70,7 @@ exists → append ``_2``, ``_3``, … per destination folder until the
 name is unique. Original files are never overwritten.
 
 Videos: a video is copied as the file it is, the whole container under
-its own name, like an image. That is what legacy AddaxAI did and what
+its own name, like an image. That is what the earlier desktop app did and what
 three users asked for in the first week of v7 (2026-09): they sort
 their media into species folders to keep the animal clips apart from
 the junk they delete, and a still is no use for that. Until then a

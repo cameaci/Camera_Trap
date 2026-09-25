@@ -181,7 +181,7 @@ def _get_ml_python_path() -> Path:
     from app.ml.environment_manager import EnvironmentManager
 
     env_manager = EnvironmentManager()
-    return env_manager.get_python("env-addaxai-base")
+    return env_manager.get_python("env-wsp-base")
 
 
 def _ensure_7_token_descriptions(md_results: dict, project, db: Session) -> bool:

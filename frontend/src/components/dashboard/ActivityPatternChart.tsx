@@ -1,7 +1,7 @@
 /**
  * Activity pattern: 24-hour clock face of observation counts.
  *
- * Pure SVG clock ported from AddaxAI-Connect: 24 radial bars around
+ * Pure SVG clock ported from the web companion app: 24 radial bars around
  * a circle with hour 0 at the top, color-coded by time of day.
  * Hovering over any bar snaps to the nearest hour and shows the
  * count in the center. Counts are normalized to "per 100 trap

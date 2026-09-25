@@ -42,7 +42,7 @@ PAIRED_CAMERAS_NOT_BOOLEAN = (
     "paired_cameras must be true or false. Leave it empty for false."
 )
 PAIRED_CAMERAS_DOCS_URL = (
-    "https://docs.addaxai.com/docs/understanding/how-a-project-is-organised#paired-cameras"
+    "https://docs.wsp-cameratrap.com/docs/understanding/how-a-project-is-organised#paired-cameras"
 )
 CAMERA_OFFSETS_NEED_PAIRED = "Camera offsets need paired cameras."
 PAIRED_CAMERAS_NEED_SUBFOLDERS = (

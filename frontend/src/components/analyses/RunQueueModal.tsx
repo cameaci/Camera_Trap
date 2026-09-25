@@ -485,7 +485,7 @@ export function RunQueueModal({
             {isComplete
               ? mode === "folder-run"
                 ? "Your folder has been analysed. You can review and edit the labels, or go straight to saving."
-                : "AddaxAI filled in what it found. You can accept the results as they are, but the AI makes mistakes, so a quick review is recommended."
+                : "WSP CameraTrap filled in what it found. You can accept the results as they are, but the AI makes mistakes, so a quick review is recommended."
               : hasCancelled
                 ? mode === "folder-run"
                   ? "The run was stopped before finishing. Any finished detection work is kept for the next run of this folder."
@@ -500,7 +500,7 @@ export function RunQueueModal({
                       ? mode === "folder-run"
                         ? "Preparing the analysis..."
                         : "Preparing the deployment queue..."
-                      : "AddaxAI is analysing your files..."}
+                      : "WSP CameraTrap is analysing your files..."}
           </DialogDescription>
         </DialogHeader>
 
@@ -747,10 +747,10 @@ export function RunQueueModal({
               {isRunning && (
                 <Callout variant="info">
                   This window stays open until the analysis finishes, so the
-                  rest of AddaxAI is on pause for now. It is resource
+                  rest of WSP CameraTrap is on pause for now. It is resource
                   intensive, so avoid other heavy tasks while it runs. Perfect
                   moment to step outside and do some birding. Press Cancel to
-                  stop processing and return to AddaxAI.
+                  stop processing and return to WSP CameraTrap.
                 </Callout>
               )}
 

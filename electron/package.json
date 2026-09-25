@@ -1,12 +1,11 @@
 {
-  "name": "addaxai-desktop",
+  "name": "wsp-cameratrap-desktop",
   "version": "0.0.0-dev",
-  "description": "AddaxAI - Camera trap wildlife analysis platform",
+  "description": "WSP CameraTrap - camera trap image analysis for WSP",
   "main": "dist/main.js",
-  "homepage": "https://github.com/PetervanLunteren/AddaxAI",
+  "homepage": "https://github.com/cameaci/Camera_Trap",
   "author": {
-    "name": "Addax Data Science",
-    "email": "peter@addaxdatascience.com"
+    "name": "WSP"
   },
   "license": "MIT",
   "private": true,
@@ -21,7 +20,6 @@
     "electron-store": "^8.1.0"
   },
   "devDependencies": {
-    "@electron/notarize": "^2.2.1",
     "@playwright/test": "^1.62.0",
     "@types/node": "^20.10.0",
     "electron": "^34.0.0",
@@ -30,8 +28,9 @@
     "typescript": "^5.3.3"
   },
   "build": {
-    "appId": "com.addaxai.cameratrap",
-    "productName": "AddaxAI",
+    "appId": "com.wsp.cameratrap",
+    "productName": "WSP CameraTrap",
+    "copyright": "Copyright © WSP",
     "directories": {
       "output": "dist-build"
     },
@@ -45,42 +44,19 @@
       {
         "from": "../backend/dist/backend",
         "to": "backend"
+      },
+      {
+        "from": "../LICENSE",
+        "to": "LICENSE.txt"
       }
     ],
-    "mac": {
-      "category": "public.app-category.education",
-      "target": [
-        "dmg"
-      ],
-      "artifactName": "${productName}-${arch}.${ext}",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "notarize": false
-    },
-    "afterSign": "build/notarize.js",
-    "dmg": {
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
-    },
     "win": {
       "target": [
         "nsis"
       ],
-      "artifactName": "${productName}-Setup.${ext}",
+      "icon": "build/icon.ico",
+      "artifactName": "WSP-CameraTrap-Setup-${version}.${ext}",
       "signtoolOptions": {
-        "publisherName": "Addax Data Science",
         "signingHashAlgorithms": [
           "sha256"
         ],
@@ -89,28 +65,13 @@
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "WSP CameraTrap",
+      "uninstallDisplayName": "WSP CameraTrap",
       "include": "build/installer.nsh"
-    },
-    "linux": {
-      "target": [
-        "deb"
-      ],
-      "icon": "build/icons",
-      "artifactName": "${productName}-${arch}.${ext}",
-      "category": "Science",
-      "maintainer": "Addax Data Science <peter@addaxdatascience.com>"
-    },
-    "deb": {
-      "packageName": "addaxai",
-      "afterInstall": "build/deb-after-install.sh",
-      "fpm": [
-        "--replaces",
-        "addaxai-desktop",
-        "--conflicts",
-        "addaxai-desktop",
-        "build/addaxai.metainfo.xml=/usr/share/metainfo/com.addaxai.cameratrap.metainfo.xml"
-      ]
     }
   }
 }

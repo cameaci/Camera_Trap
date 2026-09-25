@@ -1,6 +1,6 @@
 # Frontend Conventions
 
-This document outlines the conventions, patterns, and design decisions for the AddaxAI frontend.
+This document outlines the conventions, patterns, and design decisions for the WSP CameraTrap frontend.
 
 ## Tech Stack
 
@@ -438,7 +438,7 @@ onClick={() => {
   - ✅ "Cities visited: Utrecht, Amsterdam"
   - ❌ "Create New Project", "Edit Project", "Select Species"
   - ❌ "Project Name", "Detection Model", "Species Taxonomy"
-- Proper nouns remain capitalized: "MegaDetector", "SpeciesNet", "Peter van Lunteren"
+- Proper nouns remain capitalized: "MegaDetector", "SpeciesNet", "WSP"
 
 ## Testing (To Be Implemented)
 

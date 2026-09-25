@@ -16,8 +16,8 @@ Module sequencing matters: ``separate_folders`` runs first so the
 shared ``OutputContext`` knows where each file ended up, then
 ``annotated_copies`` reads those placements and writes the
 combined-effect image into each one. Media copies land under the
-``addaxai-media`` subfolder of the output dir; the loose data exports
-(``addaxai-*.csv`` / ``.xlsx`` / ``.json`` / ``.txt``) go at the
+``wsp-cameratrap-media`` subfolder of the output dir; the loose data exports
+(``wsp-cameratrap-*.csv`` / ``.xlsx`` / ``.json`` / ``.txt``) go at the
 output root, which defaults to the source folder itself.
 
 The job's ``result`` payload mirrors the per-module dataclass dicts so
@@ -126,9 +126,9 @@ async def process_save_outputs_job(job_id: str) -> None:
         if project is None or project.mode != "folder_run":
             raise ValueError(f"Folder run not found: {run_id}")
 
-        # Layout: loose ``addaxai-*`` data files at the output root
+        # Layout: loose ``wsp-cameratrap-*`` data files at the output root
         # (which defaults to the source folder itself), media copies
-        # under the ``addaxai-media`` subfolder.
+        # under the ``wsp-cameratrap-media`` subfolder.
         output_root = Path(output_dir)
         output_root.mkdir(parents=True, exist_ok=True)
         media_root = output_root / MEDIA_SUBDIR
@@ -176,10 +176,10 @@ async def process_save_outputs_job(job_id: str) -> None:
             # - This worker is the ONLY writer of the marker. The save
             #   endpoint must never stamp it: the marker is the wipe's
             #   proof of ownership, so stamping before the check above
-            #   would hand that proof to a pre-existing addaxai-media
+            #   would hand that proof to a pre-existing wsp-cameratrap-media
             #   the app never created, and the wipe would delete the
             #   user's files.
-            # - A pre-existing UNMARKED addaxai-media is never stamped
+            # - A pre-existing UNMARKED wsp-cameratrap-media is never stamped
             #   either, or the next save would wipe it — same loss, one
             #   save later. Copies placed into such a folder keep their
             #   collision suffixes and it is never scan-skipped; both
@@ -207,7 +207,7 @@ async def process_save_outputs_job(job_id: str) -> None:
             active_modules.append("csv")
         if payload.get("xlsx"):
             active_modules.append("xlsx")
-        # Run-info manifest (addaxai-run-info.txt). Controlled by the Save
+        # Run-info manifest (wsp-cameratrap-run-info.txt). Controlled by the Save
         # step's "Run details" checkbox.
         #
         # The default is for a job queued by a build from before

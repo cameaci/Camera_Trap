@@ -7,7 +7,7 @@
  * once and cannot drift apart.
  *
  * Clicking it records the choice on the backend and then retries. The
- * record is a file in the user's AddaxAI folder, so every later
+ * record is a file in the user's WSP CameraTrap folder, so every later
  * environment build honours it too and the user is not asked again.
  */
 
@@ -50,7 +50,7 @@ export function ContinueWithoutRevocationChecks({
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Ask your IT team to exempt the AddaxAI download servers from
+        Ask your IT team to exempt the WSP CameraTrap download servers from
         traffic inspection. If that is not possible, you can continue
         without this check. Certificates are still verified, only the
         question of whether one has been revoked is skipped.{" "}

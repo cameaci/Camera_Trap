@@ -6,7 +6,7 @@ discover where each source file ended up, instead of writing into
 siloed wrapper folders next to the separated tree.
 
 The context belongs to the media modules only. The worker points
-``output_root`` at the ``addaxai-media`` subfolder of the user's
+``output_root`` at the ``wsp-cameratrap-media`` subfolder of the user's
 output dir; the loose data exports (CSV / XLSX / recognition JSON /
 summary) take their target dir directly and never see this context.
 
@@ -27,9 +27,9 @@ from pathlib import Path
 # one prefixed subfolder is what lets the output dir default to the
 # source folder itself: originals are never overwritten, and the
 # scan-skip marker goes on this subfolder only, never on the source
-# root. The loose data exports share the prefix ("addaxai-…") so all
+# root. The loose data exports share the prefix ("wsp-cameratrap-…") so all
 # run outputs sort together between the user's own files.
-MEDIA_SUBDIR = "addaxai-media"
+MEDIA_SUBDIR = "wsp-cameratrap-media"
 
 
 @dataclass

@@ -1,12 +1,12 @@
 """
-Logging configuration for AddaxAI Backend.
+Logging configuration for WSP CameraTrap Backend.
 
 Following DEVELOPERS.md principles:
 - Explicit configuration
 - Structured logging to files
 - No silent failures
 
-Sets up rotating file logging to ~/AddaxAI/logs/backend.log
+Sets up rotating file logging to ~/WSP-CameraTrap/logs/backend.log
 """
 
 import logging
@@ -23,7 +23,7 @@ def setup_logging() -> logging.Logger:
     Configures rotating file handler with 33MB rotation, 3 backups.
 
     IMPORTANT: Captures ALL logs including:
-    - Application logs (addaxai.*)
+    - Application logs (wsp.*)
     - Uvicorn server logs
     - SQLAlchemy logs
     - Third-party library logs
@@ -125,9 +125,9 @@ def setup_logging() -> logging.Logger:
     sys.excepthook = exception_handler
 
     # Get app logger for initialization message
-    logger = logging.getLogger("addaxai")
+    logger = logging.getLogger("wsp")
     logger.info("=" * 80)
-    logger.info("AddaxAI Backend Logging Initialized")
+    logger.info("WSP CameraTrap Backend Logging Initialized")
     logger.info(f"Log file: {log_file}")
     logger.info(f"Environment: {settings.environment}")
     logger.info("Capturing ALL logs: uvicorn, SQLAlchemy, exceptions, tracebacks")
@@ -146,4 +146,4 @@ def get_logger(name: str) -> logging.Logger:
     Returns:
         Logger instance
     """
-    return logging.getLogger(f"addaxai.{name}")
+    return logging.getLogger(f"wsp.{name}")

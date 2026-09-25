@@ -1,5 +1,5 @@
 /**
- * API client for AddaxAI backend.
+ * API client for WSP CameraTrap backend.
  *
  * Following DEVELOPERS.md principles:
  * - Type hints everywhere

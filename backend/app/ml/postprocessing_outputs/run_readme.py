@@ -1,6 +1,6 @@
 """Human-readable run summary written into every folder-run output.
 
-An `addaxai-run-info.txt` at the root of the output directory carries
+An `wsp-cameratrap-run-info.txt` at the root of the output directory carries
 the complete picture of the run so a user (or a colleague) opening the
 folder weeks later can see exactly what produced the deliverables:
 
@@ -35,7 +35,7 @@ from app.models import Deployment, Detection, File, Project
 
 logger = get_logger(__name__)
 
-SUMMARY_FILENAME = "addaxai-run-info.txt"
+SUMMARY_FILENAME = "wsp-cameratrap-run-info.txt"
 
 # Human wording for Project.media_filter. Only the non-default values are ever
 # printed, so "all" is here for completeness rather than use.
@@ -246,12 +246,12 @@ def _build_readme_text(
     lines: list[str] = []
     lines.append("=" * 72 + "\n")
     lines.append(
-        f"AddaxAI folder analysis  -  {project.name}\n"
+        f"WSP CameraTrap folder analysis  -  {project.name}\n"
     )
     lines.append("=" * 72 + "\n")
 
     lines.append(_section("Run"))
-    lines.append(_kv("AddaxAI version", APP_VERSION))
+    lines.append(_kv("WSP CameraTrap version", APP_VERSION))
     lines.append(
         _kv("Run finished (UTC)", run_started_at.strftime("%Y-%m-%d %H:%M:%S"))
     )
@@ -370,7 +370,7 @@ def _build_readme_text(
         lines.append(_section("Top species"))
         lines.append("  (no species labels yet)\n")
 
-    # Last, and only when it happened: the files AddaxAI could not open.
+    # Last, and only when it happened: the files WSP CameraTrap could not open.
     # They are in no other output, because a file with no detections still
     # gets a row and these never got one at all.
     if skipped_files:
@@ -393,7 +393,7 @@ def write_run_readme(
     *,
     media_threshold: float,
 ) -> RunReadmeResult:
-    """Write the run info at ``target_dir/addaxai-run-info.txt``.
+    """Write the run info at ``target_dir/wsp-cameratrap-run-info.txt``.
 
     ``media_threshold`` is the Save step's media-output confidence,
     reported so a reader knows which detections the media copies show.

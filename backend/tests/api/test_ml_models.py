@@ -285,7 +285,7 @@ def test_updates_recomputes_env_drift(client):
     client.app.state.model_updates = {
         "new_models": [],
         "drifted_models": [],
-        "drifted_envs": [{"env_name": "addaxai-base"}],
+        "drifted_envs": [{"env_name": "wsp-base"}],
         "checked_at": "2026-08-18T12:00:00+00:00",
     }
 
@@ -318,7 +318,7 @@ def test_updates_reports_an_env_that_drifted_after_startup(client):
 
 def test_updates_honours_the_disable_switch(client):
     """
-    ADDAXAI_DISABLE_MODEL_UPDATES turns off the whole notice, so env
+    WSP_DISABLE_MODEL_UPDATES turns off the whole notice, so env
     drift must not sneak past it on its own.
     """
     client.app.state.model_updates = {
@@ -347,7 +347,7 @@ def test_updates_does_not_mutate_the_startup_snapshot(client):
     state = {
         "new_models": [],
         "drifted_models": [],
-        "drifted_envs": [{"env_name": "addaxai-base"}],
+        "drifted_envs": [{"env_name": "wsp-base"}],
         "checked_at": None,
     }
     client.app.state.model_updates = state
@@ -357,7 +357,7 @@ def test_updates_does_not_mutate_the_startup_snapshot(client):
     ):
         client.get("/api/ml/updates")
 
-    assert state["drifted_envs"] == [{"env_name": "addaxai-base"}]
+    assert state["drifted_envs"] == [{"env_name": "wsp-base"}]
 
 
 # --- the /api/ml/updates snapshot -------------------------------------------

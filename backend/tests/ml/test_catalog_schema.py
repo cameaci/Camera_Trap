@@ -1,17 +1,16 @@
 """The shipped catalog must validate against the shipped schema.
 
-The model catalog (repo root ``models.json``) is fetched live at runtime
-and written to every user's disk, then validated against whatever
-``ModelManifest`` schema their build carries. If a field is required in the
-schema but absent from the catalog, the manifests fail to validate. Since
-``load_manifests`` now skips invalid manifests, the failure is quiet: the
-affected models just vanish from the list instead of crashing. Either way
-the model is unusable.
+The model catalog (``wsp/models.json``, merged with the WSP model
+library's own ``models.json``) is written to every user's disk, then
+validated against whatever ``ModelManifest`` schema their build carries.
+If a field is required in the schema but absent from the catalog, the
+manifests fail to validate. Since ``load_manifests`` skips invalid
+manifests, the failure is quiet: the affected models just vanish from the
+list instead of crashing. Either way the model is unusable.
 
 This test pins the invariant that the current schema can read every entry
 in the current catalog, so a required-field change that the catalog does
-not supply (the beta-tester "MD5A not found" report) fails in CI, not on a
-user's machine.
+not supply fails in CI, not on a user's machine.
 """
 
 import json
@@ -21,7 +20,7 @@ import pytest
 
 from app.ml.schemas.model_manifest import ModelManifest
 
-_CATALOG_PATH = Path(__file__).resolve().parents[3] / "models.json"
+_CATALOG_PATH = Path(__file__).resolve().parents[3] / "wsp" / "models.json"
 
 
 def _catalog_entries() -> list[tuple[str, dict]]:

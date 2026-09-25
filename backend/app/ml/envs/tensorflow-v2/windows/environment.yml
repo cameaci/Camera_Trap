@@ -1,6 +1,6 @@
 # Windows env-tensorflow-v2.
 #
-# Mirrors the legacy AddaxAI Windows build workflow's env-tensorflow-v2
+# Mirrors the earlier Windows build workflow's env-tensorflow-v2
 # package list (build-windows-release.yml:274-291). Pinned to TF 2.16.2
 # to match darwin and Linux for reproducibility.
 #

@@ -2,7 +2,7 @@
 
 This module replaces the old ``visualised_images`` + ``blur_people``
 pair. Doing both effects in one open / save round-trip means a user
-who picks both gets one image per source (legacy AddaxAI behaviour),
+who picks both gets one image per source (the earlier desktop app behaviour),
 not two parallel trees, and writes land directly into the file's
 post-separation destination(s) instead of a siloed wrapper folder.
 
@@ -39,7 +39,7 @@ Source-vs-destination semantics:
 - Images: source is ``File.file_path``, the original. Effects are
   computed on the source pixels and saved to the destination.
 - Videos: source is the per-video best-frame JPEG
-  (``File.best_frame_path``), which lives inside ``.addaxai/projects/...``
+  (``File.best_frame_path``), which lives inside ``.wsp-cameratrap/projects/...``
   and is unaffected by separation. The annotated JPEG is saved beside
   the copied video, never written into the container itself.
 """
@@ -84,7 +84,7 @@ logger = get_logger(__name__)
 _BLUR_CATEGORIES = ("person", "vehicle")
 
 # Blur radius as a fraction of the image's shorter side. Same value
-# legacy AddaxAI used so testers comparing outputs see an identical
+# the earlier desktop app used so testers comparing outputs see an identical
 # blur strength.
 _BLUR_FRACTION = 0.04
 # Floor for very small images so the blur never disappears entirely.
@@ -136,7 +136,7 @@ def _source_for(file: File) -> Path | None:
     Images use their own path (which is the post-separation location
     under ``move`` mode, the original under ``copy`` / no separation).
     Videos use the pre-rendered best-frame JPEG, which sits in the
-    project's ``.addaxai`` cache and is unaffected by separation.
+    project's ``.wsp-cameratrap`` cache and is unaffected by separation.
     """
     if file.file_type == "image":
         return Path(file.file_path)

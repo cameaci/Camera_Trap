@@ -1,5 +1,5 @@
 """
-Standalone DINOv2 embedding script — runs as subprocess in env-addaxai-base.
+Standalone DINOv2 embedding script — runs as subprocess in env-wsp-base.
 
 Usage:
     python embedding_script.py \
@@ -88,7 +88,7 @@ def load_model(model_arch: str, weights_path: str, device: torch.device) -> torc
     """Load DINOv2 model architecture and weights.
 
     Both the .pth weights and the dinov2/ architecture source live in the
-    same HF repo (Addax-Data-Science/DINOV2-*), so the weights' parent
+    same model folder (DINOV2-*), so the weights' parent
     directory is also a valid torch.hub local source. This avoids the
     facebookresearch/dinov2 GitHub fetch that fails on networks blocking
     or throttling github.com.
@@ -99,8 +99,8 @@ def load_model(model_arch: str, weights_path: str, device: torch.device) -> torc
         raise FileNotFoundError(
             f"DINOv2 architecture files missing from {model_dir}. "
             f"This usually means the embedding model was installed before "
-            f"the AddaxAI update that ships dinov2 source alongside the "
-            f"weights. Open AddaxAI and click the 'Re-download' button on "
+            f"the WSP CameraTrap update that ships dinov2 source alongside the "
+            f"weights. Open WSP CameraTrap and click the 'Re-download' button on "
             f"the model-update toast, or remove {model_dir} and rerun setup."
         )
     model = torch.hub.load(str(model_dir), model_arch, source="local", pretrained=False)

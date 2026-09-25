@@ -51,7 +51,7 @@ setup_logging()
 logger = get_logger(__name__)
 
 # Route TLS through the OS trust store before any network call (micromamba
-# download, model catalog, HuggingFace, geocoding). Fixes the frozen build's
+# download, environment and model downloads, geocoding). Fixes the frozen build's
 # first-launch CERTIFICATE_VERIFY_FAILED and lab/proxy TLS-inspection setups.
 enable_os_trust_store()
 
@@ -109,7 +109,7 @@ async def update_model_catalog(app: FastAPI) -> None:
         return
 
     try:
-        updater = ModelCatalogUpdater(catalog_url=settings.model_catalog_url)
+        updater = ModelCatalogUpdater()
         result = await updater.sync()
         app.state.model_updates = result
     except Exception as e:
@@ -218,7 +218,7 @@ async def _reclaim_legacy_video_frames() -> None:
     of the filesystem).
 
     For each video File row, the only JPEG we keep under
-    `<deployment>/.addaxai/projects/*/video_frames/<rel_video>/` is the
+    `<deployment>/.wsp-cameratrap/projects/*/video_frames/<rel_video>/` is the
     one named `frame{best_frame_number:06d}.jpg`. Everything else gets
     unlinked. Empty subdirectories are tolerated; the function never
     creates files, so re-running it on a clean tree is a no-op.
@@ -250,7 +250,7 @@ async def _reclaim_legacy_video_frames() -> None:
                     continue
                 bf = Path(v.best_frame_path)
                 # The best-frame JPEG lives inside a deployment's
-                # `.addaxai/projects/<pid>/video_frames/<rel_video>/`.
+                # `.wsp-cameratrap/projects/<pid>/video_frames/<rel_video>/`.
                 # `bf.parent` is that per-video directory.
                 keep_filenames.setdefault(bf.parent, set()).add(bf.name)
 
@@ -339,7 +339,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     settings = get_settings()
-    logger.info(f"Starting AddaxAI Backend (Environment: {settings.environment})")
+    logger.info(f"Starting WSP CameraTrap Backend (Environment: {settings.environment})")
     logger.info(f"Database: {settings.database_url}")
     logger.info(f"User data directory: {settings.user_data_dir}")
 
@@ -359,7 +359,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # launches.
     db_wipe_marker = settings.user_data_dir / ".wipe-db-on-next-launch"
     if db_wipe_marker.exists():
-        logger.warning("DB wipe marker present, deleting addaxai.db files")
+        logger.warning("DB wipe marker present, deleting wsp-cameratrap.db files")
         # Snapshot first so the wipe stays undoable. This marker used to
         # be reachable only by typing RESET in the Settings dialog, but
         # the startup error page can now write it behind a native
@@ -368,15 +368,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # the restore picker, so the user can walk it back.
         from app.db.backup import manual_snapshot
         try:
-            if (settings.user_data_dir / "addaxai.db").is_file():
+            if (settings.user_data_dir / "wsp-cameratrap.db").is_file():
                 snapshot = manual_snapshot(settings)
                 logger.warning(f"Backed up before wipe: {snapshot}")
         except Exception as e:
             logger.error(f"Pre-wipe backup failed: {e}", exc_info=True)
         for sibling in (
-            "addaxai.db",
-            "addaxai.db-wal",
-            "addaxai.db-shm",
+            "wsp-cameratrap.db",
+            "wsp-cameratrap.db-wal",
+            "wsp-cameratrap.db-shm",
         ):
             target = settings.user_data_dir / sibling
             if target.exists():
@@ -397,7 +397,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Pre-upgrade backup (best-effort; never blocks startup). Must run
     # BEFORE init_db so the snapshot captures the pre-migration schema.
     # Skipped on a fresh install: there is no existing DB to preserve.
-    live_db = settings.user_data_dir / "addaxai.db"
+    live_db = settings.user_data_dir / "wsp-cameratrap.db"
     if live_db.is_file():
         from app.db.backup import pre_upgrade_backup
         from app.db.base import get_engine
@@ -494,7 +494,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.core.websocket_manager import ws_manager
     await ws_manager.close()
 
-    logger.info("Shutting down AddaxAI Backend")
+    logger.info("Shutting down WSP CameraTrap Backend")
 
 
 def create_app() -> FastAPI:
@@ -507,7 +507,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="AddaxAI API",
+        title="WSP CameraTrap API",
         description="Camera trap wildlife analysis platform - Backend API",
         version=__version__,
         lifespan=lifespan,
@@ -663,7 +663,7 @@ def create_app() -> FastAPI:
             Returns welcome message and API information.
             """
             return {
-                "message": "AddaxAI API",
+                "message": "WSP CameraTrap API",
                 "version": __version__,
                 "docs": "/docs",
                 "health": "/health",

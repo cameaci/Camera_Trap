@@ -4,7 +4,7 @@
  * Users pick a descent depth; the backend returns the subfolders at that
  * depth along with per-branch image/video counts. On OK we call POST
  * /api/deployments/{id}/split which creates one child deployment per
- * non-empty subfolder, slices the .addaxai artifacts, and removes the
+ * non-empty subfolder, slices the .wsp-cameratrap artifacts, and removes the
  * original row.
  */
 

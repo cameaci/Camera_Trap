@@ -7,7 +7,7 @@ Keeping these pure makes them trivially unit-testable without spinning up
 a session and keeps the DB layer in ``crud/export.py`` focused on queries.
 
 Most of the binary serializers (Shapefile ZIP, GeoPackage) are ports of
-the equivalent code in AddaxAI Connect's ``services/api/routers/export.py``
+the equivalent code in the web companion app's ``services/api/routers/export.py``
 so the outputs match byte-for-byte where possible.
 """
 

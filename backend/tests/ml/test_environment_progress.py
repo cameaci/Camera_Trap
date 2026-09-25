@@ -7,7 +7,7 @@ from app.ml.environment_manager import (
     parse_micromamba_progress,
 )
 
-# Realistic progress allocation for env-addaxai-base from setup logs:
+# Realistic progress allocation for env-wsp-base from setup logs:
 # 1 conda package + 15 pip packages -> conda gets 5%-11%, pip 11%-100%.
 CONDA_START = 0.05
 CONDA_END = 0.11
@@ -140,7 +140,7 @@ def test_progress_is_monotonic_under_real_sequence() -> None:
     """Replay the line order from a real setup log and confirm the bar
     only ever moves forward. Any backwards movement is a UX regression.
     """
-    # Subset of the real lines observed in env-addaxai-base creation,
+    # Subset of the real lines observed in env-wsp-base creation,
     # in chronological order. Interleaved with diag lines to confirm
     # unknown lines don't reset progress.
     script = [

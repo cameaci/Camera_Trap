@@ -48,7 +48,7 @@ export interface FolderRunCreate {
   image_count?: number;
   /** "Discard and start over": when true and a folder-run project
    * already points at this source folder, the existing project is
-   * cascade-deleted (DB rows + on-disk .addaxai cache) before the
+   * cascade-deleted (DB rows + on-disk .wsp-cameratrap cache) before the
    * fresh one is created. Default false keeps the create-or-resume
    * behaviour for callers that don't care. */
   force_new?: boolean;
@@ -259,7 +259,7 @@ export interface SaveOutputsRequest {
   recognition_json?: boolean;
   csv?: boolean;
   xlsx?: boolean;
-  /** Write the addaxai-run-info.txt run manifest. Omitted by older
+  /** Write the wsp-cameratrap-run-info.txt run manifest. Omitted by older
    * frontends, where the backend defaults it to on. */
   run_readme?: boolean;
   /** Which species name to burn into the visualised images. Mirrors the
@@ -325,7 +325,7 @@ export const folderRunsApi = {
    *  backend-side. Powers the step-1 "Show recent runs" list. */
   list: () => api.get<FolderRunSummary[]>("/api/folder-runs"),
 
-  /** Delete a folder run: its DB rows and its on-disk .addaxai cache.
+  /** Delete a folder run: its DB rows and its on-disk .wsp-cameratrap cache.
    *  Irreversible — caller surfaces a confirm. */
   remove: (runId: string) => api.delete<void>(`/api/folder-runs/${runId}`),
 

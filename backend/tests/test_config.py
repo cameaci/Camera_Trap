@@ -1,7 +1,7 @@
 """
 Tests for Settings path resolution.
 
-ADDAXAI_USER_DATA_DIR must relocate the whole app: database_url and
+WSP_USER_DATA_DIR must relocate the whole app: database_url and
 models_dir derive from user_data_dir unless set explicitly, and the ML
 managers resolve their directories through settings instead of
 hardcoding the home folder. These tests pin that contract, including
@@ -20,14 +20,9 @@ from app.core.config import Settings
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
     """Remove the path env vars so each test controls them explicitly."""
     for name in (
-        "ADDAXAI_USER_DATA_DIR",
-        "ADDAXAI_DATABASE_URL",
-        "ADDAXAI_MODELS_DIR",
-        "ADDAXAI_HF_ENDPOINT",
-        "HF_ENDPOINT",
-        "ADDAXAI_HF_TOKEN",
-        "HF_TOKEN",
-        "ADDAXAI_HF_FALLBACK_ENDPOINT",
+        "WSP_USER_DATA_DIR",
+        "WSP_DATABASE_URL",
+        "WSP_MODELS_DIR",
     ):
         monkeypatch.delenv(name, raising=False)
     return monkeypatch
@@ -36,10 +31,10 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
 def test_user_data_dir_env_derives_database_url_and_models_dir(
     clean_env: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    clean_env.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     settings = Settings()
     assert settings.user_data_dir == tmp_path
-    assert settings.database_url == f"sqlite:///{tmp_path / 'addaxai.db'}"
+    assert settings.database_url == f"sqlite:///{tmp_path / 'wsp-cameratrap.db'}"
     assert settings.models_dir == tmp_path / "models"
     # The mkdir side effect must follow the derived path too.
     assert settings.models_dir.is_dir()
@@ -49,8 +44,8 @@ def test_explicit_database_url_env_wins(
     clean_env: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     explicit = f"sqlite:///{tmp_path / 'elsewhere.db'}"
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path / "data"))
-    clean_env.setenv("ADDAXAI_DATABASE_URL", explicit)
+    clean_env.setenv("WSP_USER_DATA_DIR", str(tmp_path / "data"))
+    clean_env.setenv("WSP_DATABASE_URL", explicit)
     settings = Settings()
     assert settings.database_url == explicit
     assert settings.models_dir == tmp_path / "data" / "models"
@@ -59,11 +54,11 @@ def test_explicit_database_url_env_wins(
 def test_explicit_models_dir_env_wins(
     clean_env: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path / "data"))
-    clean_env.setenv("ADDAXAI_MODELS_DIR", str(tmp_path / "elsewhere"))
+    clean_env.setenv("WSP_USER_DATA_DIR", str(tmp_path / "data"))
+    clean_env.setenv("WSP_MODELS_DIR", str(tmp_path / "elsewhere"))
     settings = Settings()
     assert settings.models_dir == tmp_path / "elsewhere"
-    assert settings.database_url == f"sqlite:///{tmp_path / 'data' / 'addaxai.db'}"
+    assert settings.database_url == f"sqlite:///{tmp_path / 'data' / 'wsp-cameratrap.db'}"
 
 
 def test_explicit_kwargs_win(
@@ -88,7 +83,7 @@ def test_default_home_layout(
     clean_env.setattr(Path, "home", lambda: tmp_path)
     settings = Settings()
     assert settings.user_data_dir == tmp_path / "WSP-CameraTrap"
-    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'addaxai.db'}"
+    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'wsp-cameratrap.db'}"
     assert settings.models_dir == tmp_path / "WSP-CameraTrap" / "models"
 
 
@@ -98,12 +93,12 @@ def test_blank_env_values_treated_as_unset(
     # A defined-but-empty env var (half-filled GPO entry) must behave
     # exactly like an absent one, matching Electron's falsy check.
     clean_env.setattr(Path, "home", lambda: tmp_path)
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", "")
-    clean_env.setenv("ADDAXAI_DATABASE_URL", "   ")
-    clean_env.setenv("ADDAXAI_MODELS_DIR", "")
+    clean_env.setenv("WSP_USER_DATA_DIR", "")
+    clean_env.setenv("WSP_DATABASE_URL", "   ")
+    clean_env.setenv("WSP_MODELS_DIR", "")
     settings = Settings()
     assert settings.user_data_dir == tmp_path / "WSP-CameraTrap"
-    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'addaxai.db'}"
+    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'wsp-cameratrap.db'}"
     assert settings.models_dir == tmp_path / "WSP-CameraTrap" / "models"
 
 
@@ -113,7 +108,7 @@ def test_relative_user_data_dir_rejected(
     # Relative paths resolve against the working directory, which
     # differs per process, so they are refused instead of guessed at.
     for value in ("relative-dir", "~/somewhere"):
-        clean_env.setenv("ADDAXAI_USER_DATA_DIR", value)
+        clean_env.setenv("WSP_USER_DATA_DIR", value)
         with pytest.raises(Exception, match="absolute"):
             Settings()
 
@@ -123,7 +118,7 @@ def test_environment_manager_paths_follow_user_data_dir(
 ) -> None:
     from app.ml.environment_manager import EnvironmentManager
 
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    clean_env.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     # Pre-create the micromamba binary; a missing one triggers a real
     # network download at construction time.
     bin_dir = tmp_path / "bin"
@@ -142,106 +137,33 @@ def test_model_managers_follow_models_dir(
     from app.ml.manifest_manager import ManifestManager
     from app.ml.model_storage import ModelStorage
 
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    clean_env.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     assert ModelStorage().models_dir == tmp_path / "models"
     assert ModelCatalogUpdater().models_dir == tmp_path / "models"
     assert ManifestManager().models_dir == tmp_path / "models"
 
     # An explicit MODELS_DIR moves all three the same way.
-    clean_env.setenv("ADDAXAI_MODELS_DIR", str(tmp_path / "elsewhere"))
+    clean_env.setenv("WSP_MODELS_DIR", str(tmp_path / "elsewhere"))
     assert ModelStorage().models_dir == tmp_path / "elsewhere"
     assert ModelCatalogUpdater().models_dir == tmp_path / "elsewhere"
     assert ManifestManager().models_dir == tmp_path / "elsewhere"
 
 
-def test_hf_endpoint_prefixed_var_and_fallback(
-    clean_env: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
-    # Unset: no mirror.
-    assert Settings().hf_endpoint is None
-    # The ecosystem-standard name still works (early China adopters).
-    clean_env.setenv("HF_ENDPOINT", "https://hf-mirror.com")
-    assert Settings().hf_endpoint == "https://hf-mirror.com"
-    # The prefixed name is the documented one and wins.
-    clean_env.setenv("ADDAXAI_HF_ENDPOINT", "https://mirror.example")
-    assert Settings().hf_endpoint == "https://mirror.example"
-
-
-def test_hf_fallback_url_only_when_the_primary_is_huggingface(
-    clean_env: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """
-    The relay is a retry for a blocked huggingface.co, nothing else. A
-    mirror or repository manager set through ADDAXAI_HF_ENDPOINT is where
-    that organisation allows downloads from, so the relay must not be
-    offered behind it. The trailing slash is dropped like hf_base_url's.
-    """
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
-    clean_env.setenv("ADDAXAI_HF_FALLBACK_ENDPOINT", "https://relay.example/")
-    assert Settings().hf_fallback_url == "https://relay.example"
-
-    clean_env.setenv("ADDAXAI_HF_ENDPOINT", "https://hf-mirror.com")
-    assert Settings().hf_fallback_url is None
-
-    clean_env.delenv("ADDAXAI_HF_ENDPOINT")
-    assert Settings(hf_fallback_endpoint=None).hf_fallback_url is None
-
-
-def test_hf_token_prefixed_var_and_fallback(
-    clean_env: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """
-    Only an endpoint that refuses anonymous reads needs this, so unset is
-    the normal case and must stay unset.
-    """
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
-    assert Settings().hf_token is None
-    # The ecosystem-standard name works, so an existing HF login is honoured.
-    clean_env.setenv("HF_TOKEN", "ecosystem-token")
-    assert Settings().hf_token == "ecosystem-token"
-    # The prefixed name is the documented one and wins.
-    clean_env.setenv("ADDAXAI_HF_TOKEN", "prefixed-token")
-    assert Settings().hf_token == "prefixed-token"
-    # Blank behaves as unset, like every other setting.
-    clean_env.setenv("ADDAXAI_HF_TOKEN", "  ")
-    clean_env.setenv("HF_TOKEN", "  ")
-    assert Settings().hf_token is None
-
-
-def test_hf_base_url_is_the_mirror_or_the_real_host(
-    clean_env: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """
-    Every HuggingFace request reads this one property, so a mirror
-    cannot end up covering part of the traffic and missing the rest.
-    """
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
-    assert Settings().hf_base_url == "https://huggingface.co"
-
-    clean_env.setenv("ADDAXAI_HF_ENDPOINT", "https://hf-mirror.com")
-    assert Settings().hf_base_url == "https://hf-mirror.com"
-
-    # A trailing slash would double up when a path is appended.
-    clean_env.setenv("ADDAXAI_HF_ENDPOINT", "https://hf-mirror.com/")
-    assert Settings().hf_base_url == "https://hf-mirror.com"
-
-
 def test_pytorch_index_url_is_off_unless_set(
     clean_env: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    clean_env.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     assert Settings().pytorch_index_url is None
 
     clean_env.setenv(
-        "ADDAXAI_PYTORCH_INDEX_URL", "https://mirror.nju.edu.cn/pytorch/whl"
+        "WSP_PYTORCH_INDEX_URL", "https://mirror.nju.edu.cn/pytorch/whl"
     )
     assert (
         Settings().pytorch_index_url == "https://mirror.nju.edu.cn/pytorch/whl"
     )
 
     # Blank behaves as unset, like every other setting.
-    clean_env.setenv("ADDAXAI_PYTORCH_INDEX_URL", "  ")
+    clean_env.setenv("WSP_PYTORCH_INDEX_URL", "  ")
     assert Settings().pytorch_index_url is None
 
 
@@ -255,32 +177,30 @@ def test_unprefixed_vars_are_ignored(
     clean_env.setenv("DATABASE_URL", "postgresql://stray/db")
     settings = Settings()
     assert settings.user_data_dir == tmp_path / "WSP-CameraTrap"
-    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'addaxai.db'}"
+    assert settings.database_url == f"sqlite:///{tmp_path / 'WSP-CameraTrap' / 'wsp-cameratrap.db'}"
 
 
 def test_prefixed_vars_without_a_field_do_not_crash(
     clean_env: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    # Electron sets its own ADDAXAI_-prefixed vars (ADDAXAI_BACKEND_PORT,
-    # ADDAXAI_SLOW_NOTICE_MS) in the environment the backend inherits.
+    # Electron sets its own WSP_-prefixed vars (WSP_BACKEND_PORT,
+    # WSP_SLOW_NOTICE_MS) in the environment the backend inherits.
     # pydantic-settings must keep ignoring prefixed env vars that have no
     # Settings field; a pydantic-settings bump that starts rejecting them
     # would kill every packaged launch.
-    clean_env.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
-    clean_env.setenv("ADDAXAI_BACKEND_PORT", "8123")
-    clean_env.setenv("ADDAXAI_SLOW_NOTICE_MS", "60000")
+    clean_env.setenv("WSP_USER_DATA_DIR", str(tmp_path))
+    clean_env.setenv("WSP_BACKEND_PORT", "8123")
+    clean_env.setenv("WSP_SLOW_NOTICE_MS", "60000")
     settings = Settings()
     assert settings.user_data_dir == tmp_path
 
 
 def test_path_home_only_in_allowed_modules() -> None:
     # The home folder may only be resolved in config.py (the single
-    # source of truth) and legacy_install.py (which targets the legacy
-    # v6 install locations on purpose). Anything else must go through
+    # source of truth). Anything else must go through
     # settings, or USER_DATA_DIR silently stops relocating the app.
     allowed = {
         Path("app/core/config.py"),
-        Path("app/services/legacy_install.py"),
         # WSP: looks for the synced OneDrive/SharePoint model library,
         # which lives in the real home folder, not in USER_DATA_DIR.
         Path("app/ml/model_library.py"),
@@ -295,5 +215,5 @@ def test_path_home_only_in_allowed_modules() -> None:
         if "Path.home()" in text or 'expanduser("~' in text:
             offenders.append(str(rel))
     assert not offenders, (
-        f"home folder resolved outside config/legacy_install: {offenders}"
+        f"home folder resolved outside config: {offenders}"
     )

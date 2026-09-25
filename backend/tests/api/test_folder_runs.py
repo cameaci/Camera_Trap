@@ -137,7 +137,7 @@ def test_create_folder_run_rejects_duplicate_name(client):
 
 
 def test_same_source_folder_resumes_existing_run(client):
-    """Legacy-AddaxAI behaviour: re-selecting an analysed folder
+    """Legacy-WSP CameraTrap behaviour: re-selecting an analysed folder
     returns the existing folder-run project rather than creating a
     new one. There is no "recent work" list in the UI; this is how
     users revisit their work."""
@@ -582,7 +582,7 @@ def test_create_default_resumes_existing_run(client):
 
 
 def test_delete_folder_run_removes_cache_folder(db, tmp_path):
-    """The cascade-delete helper cleans up the ``.addaxai/projects/<pid>/``
+    """The cascade-delete helper cleans up the ``.wsp-cameratrap/projects/<pid>/``
     folder under the deployment's folder_path. Best-effort: missing
     folders are fine."""
     from app.api.crud import project as crud_project
@@ -596,7 +596,7 @@ def test_delete_folder_run_removes_cache_folder(db, tmp_path):
     )
 
     # Drop a fake artifact tree where the worker would have written it.
-    cache_dir = source_folder / ".addaxai" / "projects" / project.id
+    cache_dir = source_folder / ".wsp-cameratrap" / "projects" / project.id
     cache_dir.mkdir(parents=True)
     (cache_dir / "results.json").write_text("{}")
 
@@ -604,7 +604,7 @@ def test_delete_folder_run_removes_cache_folder(db, tmp_path):
     assert deleted is True
     assert not cache_dir.exists()
     # Empty parent dirs are cleaned up so the source folder is left clean.
-    assert not (source_folder / ".addaxai").exists()
+    assert not (source_folder / ".wsp-cameratrap").exists()
 
 
 def test_delete_folder_run_returns_false_for_unknown(db):
@@ -820,7 +820,7 @@ def _run_save_worker(db, monkeypatch, job_id: str) -> None:
 def test_save_outputs_marks_media_subdir_not_output_root(
     client, db, tmp_path, monkeypatch
 ):
-    """The scan-skip marker goes on the addaxai-media subfolder only,
+    """The scan-skip marker goes on the wsp-cameratrap-media subfolder only,
     and only the WORKER writes it.
 
     Root placement is pinned because a marker at the output root (which
@@ -828,7 +828,7 @@ def test_save_outputs_marks_media_subdir_not_output_root(
     the user's entire source. Worker-only writing is pinned because the
     marker is the wipe's ownership proof: the endpoint stamping it
     before the worker's check handed that proof to any pre-existing
-    addaxai-media and got the user's own files deleted.
+    wsp-cameratrap-media and got the user's own files deleted.
     """
     source = tmp_path / "src"
     source.mkdir()
@@ -842,18 +842,18 @@ def test_save_outputs_marks_media_subdir_not_output_root(
     job_id = resp.json()["job_id"]
 
     # The endpoint alone must not have stamped anything.
-    assert not (source / "addaxai-media" / ".addaxai-output").exists()
+    assert not (source / "wsp-cameratrap-media" / ".wsp-cameratrap-output").exists()
 
     _run_save_worker(db, monkeypatch, job_id)
 
-    assert (source / "addaxai-media" / ".addaxai-output").is_file()
-    assert not (source / ".addaxai-output").exists()
+    assert (source / "wsp-cameratrap-media" / ".wsp-cameratrap-output").is_file()
+    assert not (source / ".wsp-cameratrap-output").exists()
 
 
 def test_save_outputs_leaves_foreign_media_dir_alone(
     client, db, tmp_path, monkeypatch
 ):
-    """A pre-existing addaxai-media folder the app never created (no
+    """A pre-existing wsp-cameratrap-media folder the app never created (no
     marker) must survive a media save through the real API path.
 
     Regression: the endpoint used to stamp the marker before spawning
@@ -862,7 +862,7 @@ def test_save_outputs_leaves_foreign_media_dir_alone(
     """
     source = tmp_path / "src"
     source.mkdir()
-    foreign = source / "addaxai-media" / "users-own-file.txt"
+    foreign = source / "wsp-cameratrap-media" / "users-own-file.txt"
     foreign.parent.mkdir()
     foreign.write_text("keep me")
     run_id = _create_run(client, str(source))
@@ -877,12 +877,12 @@ def test_save_outputs_leaves_foreign_media_dir_alone(
 
     assert foreign.read_text() == "keep me"
     # And not claimed: a marker here would let the NEXT save wipe it.
-    assert not (source / "addaxai-media" / ".addaxai-output").exists()
+    assert not (source / "wsp-cameratrap-media" / ".wsp-cameratrap-output").exists()
 
 
 def test_save_outputs_data_only_creates_no_media_dir(client, tmp_path):
     """A data-exports-only save (no media modules) must not create the
-    addaxai-media folder or any marker."""
+    wsp-cameratrap-media folder or any marker."""
     source = tmp_path / "src"
     source.mkdir()
     run_id = _create_run(client, str(source))
@@ -893,8 +893,8 @@ def test_save_outputs_data_only_creates_no_media_dir(client, tmp_path):
     )
     assert resp.status_code == 200
 
-    assert not (source / "addaxai-media").exists()
-    assert not (source / ".addaxai-output").exists()
+    assert not (source / "wsp-cameratrap-media").exists()
+    assert not (source / ".wsp-cameratrap-output").exists()
 
 
 def test_unticking_run_details_does_not_write_the_run_info_file(
@@ -913,7 +913,7 @@ def test_unticking_run_details_does_not_write_the_run_info_file(
     where the value was lost. A second worker-level test would have been
     green against the broken code too.
 
-    Peter's report is the case in the first half: tick JSON only, and get
+    A user's report is the case in the first half: tick JSON only, and get
     the JSON plus a run-info file nobody asked for.
     """
     source = tmp_path / "src"
@@ -931,8 +931,8 @@ def test_unticking_run_details_does_not_write_the_run_info_file(
     assert resp.status_code == 200
     _run_save_worker(db, monkeypatch, resp.json()["job_id"])
 
-    assert (source / "addaxai-recognitions.json").is_file()
-    assert not (source / "addaxai-run-info.txt").exists()
+    assert (source / "wsp-cameratrap-recognitions.json").is_file()
+    assert not (source / "wsp-cameratrap-run-info.txt").exists()
 
 
 def test_ticking_run_details_still_writes_the_run_info_file(
@@ -950,7 +950,7 @@ def test_ticking_run_details_still_writes_the_run_info_file(
     assert resp.status_code == 200
     _run_save_worker(db, monkeypatch, resp.json()["job_id"])
 
-    assert (source / "addaxai-run-info.txt").is_file()
+    assert (source / "wsp-cameratrap-run-info.txt").is_file()
 
 
 def test_save_outputs_job_payload_carries_the_whole_request(
@@ -1311,7 +1311,7 @@ def test_rerun_without_a_body_removes_the_whole_cache(client, tmp_path):
 
     resp = client.post(f"/api/folder-runs/{run_id}/rerun")
     assert resp.status_code == 200
-    assert not (folder / ".addaxai").exists()
+    assert not (folder / ".wsp-cameratrap").exists()
 
 
 def test_rerun_keeps_only_the_checkpoint_files_when_asked(client, tmp_path):

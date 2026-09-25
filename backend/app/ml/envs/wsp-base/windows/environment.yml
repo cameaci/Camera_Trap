@@ -1,0 +1,87 @@
+name: env-wsp-base
+# conda-forge only, deliberately. `defaults` (repo.anaconda.com) was
+# carried over from the first env YAMLs and never resolved a single
+# package: python, pip and exiftool and all 17 of their dependencies
+# come from conda-forge. It cost us twice. It is a second host that has
+# to pass TLS, and it broke a corporate Windows install on 2026-08-14
+# whose proxy could not reach the CRL endpoint (`pkgs/main`, `pkgs/r`
+# and `pkgs/msys2` failed to load with CRYPT_E_NO_REVOCATION_CHECK).
+# repo.anaconda.com also carries Anaconda's commercial terms, which
+# organisations above 200 staff need a paid licence for, and our
+# installer must not quietly put users in breach of that.
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  # exiftool binary for EXIF writes and video date extraction. The
+  # installers do not bundle exiftool and fresh machines do not have
+  # it on PATH; the backend resolves it from this env (exiftool_bin.py).
+  - exiftool
+  - pip:
+    # CUDA torch wheels installed from the pytorch.org cu128 index so
+    # GPU acceleration is available out of the box, including RTX
+    # 50-series (Blackwell, sm_120) with native kernels instead of the
+    # slow PTX JIT fallback. Needs NVIDIA driver >= 555. torch 2.8 still
+    # satisfies megadetector 10.0.24: it dropped the old `mkl<=2021.4.0`
+    # Windows pin (so megadetector's `mkl==2024.0` resolves) and is not
+    # 2.4.0 (which ultralytics 8.3.177 excludes on win32, `torch!=2.4.0`).
+    # torchvision 0.23.0 is the matching release. Use --extra-index-url
+    # (not --index-url) so PyPI still serves the rest of the tree.
+    - --extra-index-url https://download.pytorch.org/whl/cu128
+    - torch==2.8.0+cu128
+    - torchvision==0.23.0+cu128
+
+    # Image processing and metadata
+    - exifread
+    - piexif
+    - gpsphoto
+    - hachoir
+
+    # Utility packages
+    - appdirs
+    - requests
+    - pillow
+    - tqdm
+    - huggingface_hub
+    - anyio<4.0  # Pin to v3.x for Python 3.11 typing compatibility
+    - openpyxl
+
+    # Similarity search
+    - faiss-cpu>=1.7.4
+
+    # MegaDetector and detection packages
+    - setuptools<82  # yolov5 needs pkg_resources, removed in setuptools 82
+    # Prebuilt wheel for megadetector's ultralytics-yolov5 dependency.
+    # The PyPI release is sdist-only and its setup.py downloads a README
+    # from GitHub at build time; that crashes on machines where Python
+    # cannot load the Windows certificate store (ssl ASN1 error, beta
+    # report 2026-06-10). Installing a wheel skips setup.py entirely.
+    - ultralytics-yolov5 @ https://github.com/cameaci/Camera_Trap/raw/main/backend/app/ml/pip-wheels/ultralytics_yolov5-0.1.1-py3-none-any.whl#sha256=d532e62d6d7cd6c7381e4453810f31f10fd269cf9f237494bc570e74168dc2e1
+    - megadetector==10.0.24
+    # MDv1000-cedar is the only model in the zoo with a YOLOv9 architecture,
+    # and megadetector loads it through this package. Upstream treats each
+    # YOLO backend as an optional extra and dropped this one as a dependency
+    # in 10.0.20, so we pin it here; without it cedar fails to load at all.
+    # 10.0.23 is also the first release that runs cedar correctly: before it,
+    # cedar's anchor-free output went through the YOLOv5-shaped NMS, which
+    # read anchor positions as class ids and failed every batch. That crashed
+    # process_video with "exit code 1" and made images silently return
+    # nothing (beta report 2026-07-30).
+    - yolov9pip==0.0.4
+    - ultralytics==8.3.177
+    # albumentations arrives through yolov9pip and pulls albucore, which
+    # requires stringzilla. stringzilla 5.1.2 shipped without a cp311
+    # win_amd64 wheel (every other python and platform combination has
+    # one), so pip fell back to the sdist and every fresh Windows install
+    # died on "Microsoft Visual C++ 14.0 or greater is required" (beta
+    # report 2026-08-12). Their release workflow does list cp311, with
+    # fail-fast disabled, so that one job failed and the release
+    # published without it. 5.1.1 is the last version with the wheel. We
+    # never import this package, so pin it and stop tracking upstream.
+    - stringzilla==5.1.1
+
+    # Helps Windows pip use the system certificate store (matches the
+    # earlier Windows build workflow). Last so it doesn't hold
+    # up the rest of the install if its index trips.
+    - pip-system-certs

@@ -1,9 +1,7 @@
 ; Custom NSIS hooks for WSP CameraTrap.
 ;
-; WSP CameraTrap installs per user (no UAC, into %LOCALAPPDATA%\Programs),
-; like the AddaxAI app it is built on. It shares nothing with an AddaxAI
-; install on the same machine: its own registry key, its own data folder,
-; and none of AddaxAI's Timelapse launcher shims (those belong to AddaxAI).
+; WSP CameraTrap installs per user (no UAC, into %LOCALAPPDATA%\Programs)
+; with its own registry key and its own data folder.
 ;
 ; Two responsibilities:
 ;
@@ -11,7 +9,7 @@
 ;    scripts and support can find the install without guessing.
 ;
 ; 2. On uninstall, offer to delete the user's data folder
-;    (%USERPROFILE%\WSP-CameraTrap). Never touches %USERPROFILE%\AddaxAI.
+;    (%USERPROFILE%\WSP-CameraTrap). Your images are never touched.
 
 !define WSP_KEY "Software\WSP-CameraTrap"
 !define WSP_DATA_DIR "$PROFILE\WSP-CameraTrap"

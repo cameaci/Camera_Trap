@@ -47,7 +47,7 @@ export function CrashBanner() {
         <div className="flex items-center gap-3">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <div className="flex-1 text-sm">
-            AddaxAI didn't shut down cleanly last time. If this is unexpected,
+            WSP CameraTrap didn't shut down cleanly last time. If this is unexpected,
             export a diagnostic report and email it to support.
           </div>
           <Button

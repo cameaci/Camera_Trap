@@ -2,8 +2,8 @@
 
 The row schemas live in the ``export_crud`` builders and have their own
 coverage there. Here we pin that this wrapper writes all three files
-(``addaxai-summary.csv`` + ``addaxai-files.csv`` +
-``addaxai-detections.csv``) at the right paths, that it trims to the
+(``wsp-cameratrap-summary.csv`` + ``wsp-cameratrap-files.csv`` +
+``wsp-cameratrap-detections.csv``) at the right paths, that it trims to the
 folder-run column set, and that ``relative_path`` on the files and
 detections tables is the file's path under its deployment's source folder.
 """
@@ -66,8 +66,8 @@ def test_writes_all_three_files_at_canonical_paths(db, tmp_path):
     assert (target / DETECTIONS_FILENAME).is_file()
     assert (target / DETECTIONS_FILENAME).stat().st_size > 0
     assert len(result.output_paths) == 3
-    assert not (target / "addaxai-deployments.csv").exists()
-    assert not (target / "addaxai-counts.csv").exists()
+    assert not (target / "wsp-cameratrap-deployments.csv").exists()
+    assert not (target / "wsp-cameratrap-counts.csv").exists()
 
     with open(target / SUMMARY_FILENAME, newline="") as f:
         summary = list(csv.DictReader(f))
@@ -370,10 +370,10 @@ def test_detections_export_honours_project_threshold(db, tmp_path):
 
     This reverses an earlier decision (the tables used to be the complete
     record and ignored the threshold). It was reversed because the two
-    sheets disagreed with each other and with the app: addaxai-files.csv
-    was thresholded while addaxai-detections.csv beside it was not, and
+    sheets disagreed with each other and with the app: wsp-cameratrap-files.csv
+    was thresholded while wsp-cameratrap-detections.csv beside it was not, and
     users read the extra rows as species the app had hidden from them.
-    addaxai-recognitions.json is the complete record now.
+    wsp-cameratrap-recognitions.json is the complete record now.
 
     The verified override still applies: a human decision outranks the
     score, so a box someone checked survives however low it scored."""

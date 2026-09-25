@@ -6,7 +6,7 @@
  * Spreadsheet row), and a single "Download" dropdown of formats (quarter
  * width). The dropdown pattern is used for every export, including
  * single-option ones, so the page reads as one tidy column of controls.
- * Layout follows AddaxAI Connect's ExportsPage; the filters column is
+ * Layout follows the web companion app's ExportsPage; the filters column is
  * WebUI-specific and reserved for more filters later.
  */
 
@@ -212,20 +212,20 @@ export default function ExportPage() {
     try {
       if (format === "xlsx") {
         const blob = await exportApi.downloadSpreadsheetXlsx(projectId, tableScope);
-        downloadBlob(blob, "addaxai-spreadsheet.xlsx");
+        downloadBlob(blob, "wsp-cameratrap-spreadsheet.xlsx");
       } else {
         // Same order as the XLSX sheets (build_spreadsheet_sheets) and as
         // the docs: broadest question first. Keep the three in step.
         const summary = await exportApi.downloadSummary(projectId, format, tableScope);
-        downloadBlob(summary, `addaxai-summary.${format}`);
+        downloadBlob(summary, `wsp-cameratrap-summary.${format}`);
         const counts = await exportApi.downloadObservations(projectId, format, tableScope);
-        downloadBlob(counts, `addaxai-counts.${format}`);
+        downloadBlob(counts, `wsp-cameratrap-counts.${format}`);
         const detections = await exportApi.downloadDetections(projectId, format, tableScope);
-        downloadBlob(detections, `addaxai-detections.${format}`);
+        downloadBlob(detections, `wsp-cameratrap-detections.${format}`);
         const files = await exportApi.downloadFiles(projectId, format, tableScope);
-        downloadBlob(files, `addaxai-files.${format}`);
+        downloadBlob(files, `wsp-cameratrap-files.${format}`);
         const deployments = await exportApi.downloadDeployments(projectId, format, tableScope);
-        downloadBlob(deployments, `addaxai-deployments.${format}`);
+        downloadBlob(deployments, `wsp-cameratrap-deployments.${format}`);
       }
     } catch (err) {
       setTableError(errorMessage(err));
@@ -258,7 +258,7 @@ export default function ExportPage() {
     };
     try {
       const blob = await exportApi.downloadSpatial(projectId, fmt);
-      downloadBlob(blob, `addaxai-spatial.${ext[fmt]}`);
+      downloadBlob(blob, `wsp-cameratrap-spatial.${ext[fmt]}`);
     } catch (err) {
       setSpatialError(errorMessage(err));
     } finally {
@@ -298,7 +298,7 @@ export default function ExportPage() {
     }
     try {
       const blob = await exportApi.downloadCamtrapDPZip(projectId, jobId);
-      downloadBlob(blob, "addaxai-camtrap-dp.zip");
+      downloadBlob(blob, "wsp-cameratrap-camtrap-dp.zip");
     } catch (err) {
       setDpError(errorMessage(err));
     } finally {

@@ -252,7 +252,7 @@ def test_init_db_refuses_a_db_with_no_alembic_version(engine) -> None:
             text("CREATE TABLE files (id TEXT PRIMARY KEY, captured_at TEXT)")
         )
 
-    with pytest.raises(SchemaError, match=r"early AddaxAI beta"):
+    with pytest.raises(SchemaError, match=r"early WSP CameraTrap beta"):
         init_db()
 
     # Left untouched: no alembic_version row written, no migration run.
@@ -273,7 +273,7 @@ def test_init_db_refuses_an_unknown_stamped_revision(engine) -> None:
         )
     before = _row_counts(engine)
 
-    with pytest.raises(SchemaError, match=r"different version of AddaxAI"):
+    with pytest.raises(SchemaError, match=r"different version of WSP CameraTrap"):
         init_db()
 
     assert get_current_revision(engine) == "zzzz99999999"
@@ -293,7 +293,7 @@ def test_init_db_refuses_an_ambiguous_alembic_version(engine) -> None:
             text("INSERT INTO alembic_version (version_num) VALUES ('abc123')")
         )
 
-    with pytest.raises(SchemaError, match=r"different version of AddaxAI"):
+    with pytest.raises(SchemaError, match=r"different version of WSP CameraTrap"):
         init_db()
 
 

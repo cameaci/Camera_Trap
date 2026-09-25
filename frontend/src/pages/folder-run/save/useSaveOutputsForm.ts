@@ -8,9 +8,9 @@
  * and the modal rendering — this hook just exposes the handles.
  *
  * The output dir defaults to the source folder itself. That is safe
- * because the backend writes media copies into an ``addaxai-media``
+ * because the backend writes media copies into an ``wsp-cameratrap-media``
  * subfolder (with a scan-skip marker) and the loose data files carry
- * the ``addaxai-`` prefix, so originals are never overwritten and the
+ * the ``wsp-cameratrap-`` prefix, so originals are never overwritten and the
  * recognition JSON lands where its source-relative paths resolve
  * (what Timelapse needs).
  */
@@ -75,7 +75,7 @@ export interface ExportState {
   spreadsheet: boolean;
   format: SpreadsheetFormat;
   recognitionJson: boolean;
-  /** The addaxai-run-info.txt run manifest (models, settings, results).
+  /** The wsp-cameratrap-run-info.txt run manifest (models, settings, results).
    * Default on: it's the provenance record, but now opt-out like the rest. */
   summary: boolean;
 }
@@ -317,8 +317,8 @@ export function useSaveOutputsForm({
   // Seed a sensible default once the source folder is known: the
   // source folder itself. The recognition JSON only resolves its
   // source-relative paths there (Timelapse requirement), the data
-  // files carry the addaxai- prefix, and media copies go into an
-  // addaxai-media subfolder with a scan-skip marker — so nothing
+  // files carry the wsp-cameratrap- prefix, and media copies go into an
+  // wsp-cameratrap-media subfolder with a scan-skip marker — so nothing
   // collides with the originals. Fires once, and only while the field
   // is still empty, so it never clobbers a user-picked path.
   const hasSeededOutputRef = useRef(false);

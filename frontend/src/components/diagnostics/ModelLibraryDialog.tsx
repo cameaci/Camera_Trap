@@ -29,7 +29,7 @@ interface ModelLibraryDialogProps {
 }
 
 const SOURCE_LABELS: Record<string, string> = {
-  env: "set by ADDAXAI_MODEL_LIBRARY_DIR",
+  env: "set by WSP_MODEL_LIBRARY_DIR",
   settings: "chosen in this dialog",
   autodetect: "found in OneDrive automatically",
 };

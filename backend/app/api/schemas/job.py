@@ -54,7 +54,7 @@ class JobCreate(BaseModel):
                 "type": "deployment_analysis",
                 "payload": {
                     "project_id": "abc-123",
-                    "folder_path": "/Users/peter/camera-traps/site-a",
+                    "folder_path": "C:/Camera traps/site-a",
                     "detection_model": "MD5A-0-0",
                     "classification_model": "EUR-DF-v1-3",
                 },

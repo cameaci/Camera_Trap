@@ -22,9 +22,9 @@ def isolated_db_settings(tmp_path: Path, monkeypatch):
     """Point get_settings() at a fresh empty user-data dir.
 
     Each test gets its own SQLite file so init_db() can run end-to-end
-    without colliding with the developer's real `~/AddaxAI/addaxai.db`.
+    without colliding with the developer's real `~/WSP-CameraTrap/wsp-cameratrap.db`.
     """
-    db_path = tmp_path / "addaxai.db"
+    db_path = tmp_path / "wsp-cameratrap.db"
     settings = Settings(
         user_data_dir=tmp_path,
         database_url=f"sqlite:///{db_path}",

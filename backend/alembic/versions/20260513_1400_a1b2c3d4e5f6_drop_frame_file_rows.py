@@ -6,7 +6,7 @@ delete every `file_type='frame'` File row. Post-2026-05 the pipeline
 no longer creates frame rows; detections live on the video row directly
 and per-frame information is recovered via `frame_number`. The matching
 disk JPEGs (everything under each deployment's
-`.addaxai/projects/*/video_frames/` that isn't the best frame) are
+`.wsp-cameratrap/projects/*/video_frames/` that isn't the best frame) are
 reclaimed by a non-blocking startup task in `main.py:lifespan`, not by
 this migration: alembic stays out of the filesystem.
 

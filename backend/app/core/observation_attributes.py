@@ -8,7 +8,7 @@ never put a value in the database that this file does not know.
 
 `sex` and `life_stage` are Camtrap DP's own enums, so they export as is.
 `behavior` is free text in the standard ("preferably controlled values");
-the list here is the one AddaxAI Connect uses, kept identical so the two
+the list here is the one the web companion app uses, kept identical so the two
 products' exports share a vocabulary. American spelling on the wire and
 in the database, matching the standard's column name.
 

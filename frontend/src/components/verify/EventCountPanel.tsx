@@ -511,7 +511,7 @@ export function EventCountPanel({
 
       {/* Footer: the event's note, reset to the AI proposal, then the
           primary Confirm. Pinned to the panel bottom so Confirm holds a
-          stable position. The note follows AddaxAI Connect: collapsed it
+          stable position. The note follows the web companion app: collapsed it
           is an "Add notes" link or a two-line preview, expanded it is a
           textarea with Done. Done (or leaving the field) saves; Escape
           closes it without saving. */}

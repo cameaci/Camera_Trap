@@ -48,7 +48,7 @@ export function ResetAppDialog({ open, onOpenChange }: ResetAppDialogProps) {
       open={open}
       onOpenChange={onOpenChange}
       title="Reset application"
-      description="Wipes installed environments, models, logs, and other AddaxAI files. The app closes after the wipe; relaunch to start fresh."
+      description="Wipes installed environments, models, logs, and other WSP CameraTrap files. The app closes after the wipe; relaunch to start fresh."
       confirmWord="RESET"
       confirmLabel="Reset and quit"
       pendingLabel="Resetting..."
@@ -71,7 +71,7 @@ export function ResetAppDialog({ open, onOpenChange }: ResetAppDialogProps) {
 
       <Callout variant="info">
         <strong>Your original images and videos are never touched.</strong>{" "}
-        AddaxAI only writes to its own data directory; your files on disk
+        WSP CameraTrap only writes to its own data directory; your files on disk
         are read-only as far as this app is concerned.
       </Callout>
 
@@ -90,7 +90,7 @@ export function ResetAppDialog({ open, onOpenChange }: ResetAppDialogProps) {
             Also remove the project database (irreversible)
           </Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Deletes addaxai.db. All projects, sites, deployments, and
+            Deletes wsp-cameratrap.db. All projects, sites, deployments, and
             detection records are permanently lost. Only check this if
             the database itself is corrupted or you want to start
             completely fresh.

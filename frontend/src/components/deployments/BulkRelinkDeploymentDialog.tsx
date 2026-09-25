@@ -149,7 +149,7 @@ export function BulkRelinkDeploymentDialog({
             {missingLeaf ? `Find folder for ${missingLeaf}` : "Find folder"}
           </DialogTitle>
           <DialogDescription>
-            Tell us where these files are now. AddaxAI will check a few
+            Tell us where these files are now. WSP CameraTrap will check a few
             sample files to make sure it's the right folder before updating
             anything.
           </DialogDescription>

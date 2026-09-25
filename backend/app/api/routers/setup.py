@@ -2,9 +2,11 @@
 First-run setup endpoints.
 
 The desktop app is gated by a one-time setup wizard on first launch.
-Setup has two parts: install env-addaxai-base via micromamba, and
-download the default model weights (MDv5A + DINOv2-S) from HuggingFace.
-Both run in a background thread driven by POST /api/setup/install-env;
+Setup has two parts: install the analysis environment (env-wsp-base,
+downloaded prebuilt from this repository's releases, or built with
+micromamba as a fallback), and install the default models from the WSP
+model library (MegaDetector falls back to its copy in this repository's
+releases). Both run in a background thread driven by POST /api/setup/install-env;
 the wizard polls /api/setup/status at ~1.5s and watches progress.
 
 Polling rather than WebSocket: this is a one-shot UI staring at a
@@ -13,8 +15,8 @@ and keeps the implementation small.
 
 Module-level state intentionally resets when the server restarts: a
 restart while installing is treated as "no install in progress", and
-the user clicks Install again. Both the env manager and the HF
-downloader are idempotent and resume safely.
+the user clicks Install again. Both the env manager and the model
+install are idempotent and resume safely.
 """
 
 import asyncio
@@ -26,7 +28,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from app.core.config import PROJECT_URL, get_settings
+from app.core.config import PROJECT_URL, RUNTIME_RELEASE_URL, get_settings
 from app.core.job_cancellation import JobCancelledError
 from app.core.logging_config import get_logger
 from app.ml import model_library
@@ -35,23 +37,19 @@ from app.ml.environment_manager import (
     TlsRevocationCheckError,
     allow_revocation_skip,
 )
-from app.ml.hf_downloader import NetworkBlockedError
 from app.ml.model_storage import ModelStorage
 from app.ml.schemas.model_manifest import ModelManifest
-from app.services import legacy_install
 from app.utils.fs_remove import safe_rmtree
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/setup", tags=["Setup"])
 
-# Default models the wizard installs from HuggingFace. Held inline rather
-# than read from the catalog so first-run setup works even if the catalog
-# updater is still running or unreachable. The HF repos sit under the
-# Addax-Data-Science org (same convention ModelStorage falls back to).
-# WSP: MegaDetector is the one model setup must install; it comes from the
-# WSP model library or, failing that, from its GitHub release. The DINOv2
-# embedding model (similarity search) is optional and installed from the
-# Models page when the library has it.
+# Default models the wizard installs. Held inline rather than read from
+# the catalog so first-run setup works even if the catalog sync is still
+# running or the library is unreachable. MegaDetector is the one model
+# setup must install: from the WSP model library, else from its copy in
+# this repository's releases. The embedding model (similarity search) is
+# optional and installed from the Models page when the library has it.
 _DEFAULT_MODELS: tuple[dict, ...] = (
     {
         "type_dir": "det",
@@ -60,15 +58,11 @@ _DEFAULT_MODELS: tuple[dict, ...] = (
         "friendly_name": "MegaDetector v5A",
         "emoji": "🦌",
         "model_fname": "md_v5a.0.0.pt",
-        "hf_repo": "Addax-Data-Science/MD5A-0-0",
-        "download_url": (
-            "https://github.com/agentmorris/MegaDetector/releases/download/"
-            "v5.0/md_v5a.0.0.pt"
-        ),
+        "download_url": f"{RUNTIME_RELEASE_URL}/md_v5a.0.0.pt",
     },
 )
 
-# WSP: installed by setup when the WSP model library has them, skipped
+# Installed by setup when the WSP model library has them, skipped
 # otherwise. Setup does not wait for them, so a colleague without the
 # library still gets a working detector.
 _OPTIONAL_DEFAULT_MODELS: tuple[dict, ...] = (
@@ -79,11 +73,10 @@ _OPTIONAL_DEFAULT_MODELS: tuple[dict, ...] = (
         "friendly_name": "SpeciesNet 4.0.2a",
         "emoji": "🌏",
         "model_fname": "always_crop_99710272_22x8_v12_epoch_00148.pt",
-        "env": "pytorch",
     },
 )
 
-_REQUIRED_ENV = "addaxai-base"
+_REQUIRED_ENV = "wsp-base"
 
 
 class _InstallState:
@@ -168,9 +161,9 @@ class SetupStatus(BaseModel):
     error: str | None
     # "tls_revocation" when the build died because Windows could not check
     # certificate revocation and the user has not accepted skipping it.
-    # The wizard uses this to offer that choice. "network_blocked" when a
-    # model download was answered with a web filter's block page; the
-    # wizard links the matching help section. None otherwise.
+    # The wizard uses this to offer that choice. "model_library" when a
+    # model could not be installed because the WSP model library is not
+    # reachable; the wizard links the matching help section. None otherwise.
     error_kind: str | None
     user_data_dir: str
 
@@ -221,9 +214,9 @@ def _build_env_manifest(env_name: str = _REQUIRED_ENV) -> ModelManifest:
 
 def _build_default_model_manifest(spec: dict) -> ModelManifest:
     """
-    Build a synthetic ModelManifest pointing at the HF repo for one of
-    the default models. ModelStorage uses model_category for the
-    on-disk path layout and hf_repo for the source.
+    Build a synthetic ModelManifest for one of the default models.
+    ModelStorage uses model_category for the on-disk path layout and
+    download_url as the fallback source.
     """
     m = ModelManifest(
         model_id=spec["model_id"],
@@ -231,7 +224,6 @@ def _build_default_model_manifest(spec: dict) -> ModelManifest:
         emoji=spec["emoji"],
         env=spec.get("env", _REQUIRED_ENV),
         model_fname=spec["model_fname"],
-        hf_repo=spec.get("hf_repo"),
         download_url=spec.get("download_url"),
         description=f"Default {spec['category']} model installed by the setup wizard.",
         developer="WSP",
@@ -253,9 +245,9 @@ def run_setup(
     force_envs: tuple[str, ...] = (),
 ) -> None:
     """
-    Run setup synchronously: base env install plus HF downloads of the
-    default model weights. All steps are idempotent so retrying after a
-    partial failure picks up where it left off. Raises on failure.
+    Run setup synchronously: base env install plus the default models.
+    All steps are idempotent so retrying after a partial failure picks
+    up where it left off. Raises on failure.
 
     Progress is reported as progress_cb(message, fraction 0..1). Shared
     by the wizard endpoint (via _install_env_blocking) and the --setup
@@ -263,7 +255,7 @@ def run_setup(
 
     `force_envs` lets the drift-rebuild flow request that specific
     envs be wiped and rebuilt regardless of whether they already exist
-    on disk. Caller passes env names like "addaxai-base" or "pytorch".
+    on disk. Caller passes env names like "wsp-base" or "pytorch".
     """
     settings = get_settings()
     models_dir = settings.models_dir
@@ -312,6 +304,18 @@ def run_setup(
                 _build_env_manifest(_name), cb
             )
         steps.append((f"Environment ({env_name})", _force_env_step))
+
+    # The linked WSP model library (a OneDrive share link) is downloaded
+    # before the models, so they install from it. A failure is not fatal:
+    # MegaDetector has its own download, and the Models page can retry.
+    if model_library.get_library_url():
+        def _library_step(cb: Callable[[str, float], None]) -> None:
+            try:
+                model_library.sync_library_url(cb)
+            except Exception as e:
+                logger.warning(f"WSP model library link not available: {e}")
+
+        steps.append(("WSP model library", _library_step))
 
     for spec in _DEFAULT_MODELS:
         weight = (
@@ -379,6 +383,25 @@ def run_setup(
 
         run(cb)
 
+    _refresh_catalog()
+
+
+def _refresh_catalog() -> None:
+    """
+    Write the manifests of the models the library brought, so a model
+    installed during setup shows up at once rather than on the next launch.
+    Best-effort: the next launch's sync does the same.
+    """
+    try:
+        from app.api.routers import ml_models
+        from app.ml.catalog_updater import ModelCatalogUpdater
+
+        asyncio.run(ModelCatalogUpdater().sync())
+        if ml_models.manifest_manager is not None:
+            ml_models.manifest_manager.load_manifests(force_refresh=True)
+    except Exception as e:
+        logger.warning(f"Catalog refresh after setup failed: {e}")
+
 
 def _install_env_blocking(force_envs: tuple[str, ...] = ()) -> None:
     """
@@ -394,11 +417,11 @@ def _install_env_blocking(force_envs: tuple[str, ...] = ()) -> None:
         # failure.
         logger.error(f"Setup install failed: {e}", exc_info=True)
         _install_state.finish(error=str(e), error_kind="tls_revocation")
-    except NetworkBlockedError as e:
-        # Same idea: the message names the blocked host and the wizard
-        # points at the help section for it, instead of inviting retries.
+    except model_library.ModelSourceMissingError as e:
+        # Same idea: the message says how to connect the library and the
+        # wizard points at the help section for it.
         logger.error(f"Setup install failed: {e}", exc_info=True)
-        _install_state.finish(error=str(e), error_kind="network_blocked")
+        _install_state.finish(error=str(e), error_kind="model_library")
     except Exception as e:
         logger.error(f"Setup install failed: {e}", exc_info=True)
         _install_state.finish(error=str(e))
@@ -510,47 +533,8 @@ def _check_disk_space(user_data_dir: Path) -> None:
                 f"Not enough free disk space at {user_data_dir}. "
                 f"Setup needs about {required_gb:.0f} GB free; "
                 f"only {free_gb:.1f} GB available."
-                f"{_legacy_disk_hint()}"
             ),
         )
-
-
-def _legacy_disk_hint() -> str:
-    """
-    Extra sentence for the out-of-disk error naming a legacy AddaxAI, if
-    one is installed.
-
-    A legacy install is 10 to 30 GB and is very often what filled the
-    disk. The remove-old-AddaxAI prompt only appears once setup has
-    finished, so a user who cannot get past this error has no way to
-    reach it and no reason to connect the two. Naming the folder turns a
-    dead end into something they can act on.
-
-    Best-effort: a hint must never turn a clear 507 into a 500, so a
-    failed scan just means no hint. Same reasoning as the swallowed
-    OSError above.
-    """
-    try:
-        found = legacy_install.scan()
-    except OSError as e:
-        logger.warning(f"Legacy scan failed while building disk hint: {e}")
-        return ""
-
-    # Only the install roots, never the junction: it is a link with no
-    # size, so naming it as "using several GB" would be wrong.
-    roots = [p for p in (found.root, *found.manual) if p is not None]
-    if not roots:
-        return ""
-
-    # "it" refers to the old install, not the folder, so the wording holds
-    # up on the rare Windows machine that has two copies.
-    return (
-        " An older AddaxAI is still installed at "
-        + ", ".join(str(p) for p in roots)
-        + " and is using several GB. The new version does not need it, and "
-        "your photos and results are not stored there. You can safely "
-        "remove it and try again."
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -617,7 +601,7 @@ def reset_application(req: ResetRequest) -> ResetResponse:
 
     # Drop the cached EnvironmentManager so the next setup attempt rebuilds
     # one against the wiped filesystem. Without this, the cached manager
-    # still points at the now-deleted ~/AddaxAI/bin/micromamba and the next
+    # still points at the now-deleted ~/WSP-CameraTrap/bin/micromamba and the next
     # install crashes with ENOENT inside subprocess. Production normally
     # quits + relaunches after reset, but dev mode (uvicorn in a browser
     # tab) keeps the process alive, so the cache must be invalidated here.
@@ -635,7 +619,7 @@ def reset_application(req: ResetRequest) -> ResetResponse:
         db_wipe_scheduled = True
         logger.warning(
             "DB wipe scheduled via marker file. The next launch will "
-            "delete addaxai.db before initializing the database."
+            "delete wsp-cameratrap.db before initializing the database."
         )
 
     logger.warning(
@@ -648,113 +632,3 @@ def reset_application(req: ResetRequest) -> ResetResponse:
         removed_files=removed_files,
         db_wipe_scheduled=db_wipe_scheduled,
     )
-
-
-# ---------------------------------------------------------------------------
-# Legacy AddaxAI removal
-#
-# Offers to delete a legacy AddaxAI (v5 / v6) install so a machine that
-# upgraded isn't left carrying two full copies. All the path knowledge lives
-# in app/services/legacy_install.py; these endpoints are just the plumbing.
-# ---------------------------------------------------------------------------
-
-_RETRY_MESSAGE = (
-    "Some files could not be removed. Close the old AddaxAI if it is "
-    "running, then try again."
-)
-
-
-class _PurgeState:
-    """In-memory state for the legacy-removal background task."""
-
-    def __init__(self) -> None:
-        self.in_progress: bool = False
-        self.error: str | None = None
-        self._lock = threading.Lock()
-
-    def start(self) -> bool:
-        """Return True if started, False if already running."""
-        with self._lock:
-            if self.in_progress:
-                return False
-            self.in_progress = True
-            self.error = None
-            return True
-
-    def finish(self, error: str | None = None) -> None:
-        with self._lock:
-            self.in_progress = False
-            self.error = error
-
-
-_purge_state = _PurgeState()
-
-
-class LegacyInstallStatus(BaseModel):
-    """Presence and removal progress in one payload, polled at ~1.5s."""
-
-    found: bool
-    version: str | None
-    removable_paths: list[str]
-    manual_paths: list[str]
-    removal_in_progress: bool
-    removal_error: str | None
-
-
-@router.get("/legacy-install", response_model=LegacyInstallStatus)
-def get_legacy_install() -> LegacyInstallStatus:
-    # WSP: a legacy AddaxAI install is another app here, never ours to offer
-    # to delete. Reporting "not found" keeps every prompt for it hidden.
-    if not get_settings().legacy_cleanup_enabled:
-        return LegacyInstallStatus(
-            found=False,
-            version=None,
-            removable_paths=[],
-            manual_paths=[],
-            removal_in_progress=False,
-            removal_error=None,
-        )
-    found = legacy_install.scan()
-    return LegacyInstallStatus(
-        found=found.found,
-        version=found.version,
-        removable_paths=[str(p) for p in found.removable],
-        manual_paths=[str(p) for p in found.manual],
-        removal_in_progress=_purge_state.in_progress,
-        removal_error=_purge_state.error,
-    )
-
-
-@router.post("/legacy-install/remove", status_code=status.HTTP_202_ACCEPTED)
-async def remove_legacy_install() -> dict[str, str]:
-    """
-    Delete the legacy install in the background.
-
-    Deleting a legacy tree means hundreds of thousands of small files and
-    takes minutes on Windows, so this can't block a request. The frontend
-    polls GET /legacy-install until removal_in_progress clears.
-    """
-    if not get_settings().legacy_cleanup_enabled:  # WSP
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Removing a legacy AddaxAI install is disabled.",
-        )
-    if not _purge_state.start():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A removal is already running.",
-        )
-
-    # Same shape as install_env above: blocking work in a thread so the
-    # event loop keeps serving the status poll that drives the dialog.
-    asyncio.create_task(asyncio.to_thread(_remove_legacy_blocking))
-    return {"status": "started"}
-
-
-def _remove_legacy_blocking() -> None:
-    try:
-        survivors = legacy_install.remove()
-        _purge_state.finish(_RETRY_MESSAGE if survivors else None)
-    except Exception as e:
-        logger.error(f"Legacy removal failed: {e}", exc_info=True)
-        _purge_state.finish(f"Removal failed: {e}")

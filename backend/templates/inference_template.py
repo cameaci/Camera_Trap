@@ -2,19 +2,19 @@
 Template for custom classification model inference
 
 This template provides a framework-agnostic interface for implementing custom
-classification models in AddaxAI. Works with any ML framework (PyTorch, Keras,
+classification models in WSP CameraTrap. Works with any ML framework (PyTorch, Keras,
 TensorFlow, JAX, etc.) as long as it follows the class-based API below.
 
 USAGE:
-See for all these steps examples in ~/AddaxAI/models/cls/
+See for all these steps examples in ~/WSP-CameraTrap/models/cls/
 1. Copy this file to your model's directory as 'inference.py'
 2. Implement the ModelInference class with your model-specific logic
 3. Add your model files (.pt, .h5, .yaml, etc.) to the same directory
 4. Add a valid manifest.json for your model
 5. Add taxonomy.csv with model class names and their taxonomic info
-6. AddaxAI will automatically discover and use your implementation
+6. WSP CameraTrap will automatically discover and use your implementation
 
-Created for AddaxAI (https://github.com/PetervanLunteren/AddaxAI)
+Created for WSP CameraTrap (https://github.com/cameaci/Camera_Trap)
 """
 
 from __future__ import annotations

@@ -14,10 +14,10 @@ A folder run owns:
   `Deployment` once analysis runs.
 
 The user-facing deliverables land in the user's output dir, which
-defaults to the source folder itself: loose ``addaxai-*`` data files
+defaults to the source folder itself: loose ``wsp-cameratrap-*`` data files
 (CSV, XLSX, recognition JSON, summary) at its root, media copies
 (separated subfolders, visualised / blurred images) under the
-``addaxai-media`` subfolder.
+``wsp-cameratrap-media`` subfolder.
 
 Following DEVELOPERS.md principles: type hints everywhere, crash on
 unexpected errors, no silent failures.
@@ -112,7 +112,7 @@ class FolderRunCreate(BaseModel):
     ``force_new`` is the "Discard and start over" path from the
     folder-picker step: when set and an existing folder-run project
     already points at ``source_folder``, the existing project is
-    cascade-deleted (DB rows + on-disk ``.addaxai`` cache) before the
+    cascade-deleted (DB rows + on-disk ``.wsp-cameratrap`` cache) before the
     fresh one is created. Default ``False`` keeps the legacy
     create-or-resume behaviour: an existing run is returned as-is.
 
@@ -203,9 +203,9 @@ class SaveOutputsRequest(BaseModel):
 
     ``output_dir`` is the absolute path the deliverables should land
     in; it defaults to the source folder itself on the frontend. The
-    data exports drop their ``addaxai-*`` files at its root; media
+    data exports drop their ``wsp-cameratrap-*`` files at its root; media
     copies (separation, annotated / blurred images) go under the
-    ``addaxai-media`` subfolder. Each boolean flag toggles one output
+    ``wsp-cameratrap-media`` subfolder. Each boolean flag toggles one output
     module.
 
     ``draw_bboxes`` and ``anonymise`` drive the combined per-file
@@ -254,7 +254,7 @@ class SaveOutputsRequest(BaseModel):
     recognition_json: bool = False
     csv: bool = False
     xlsx: bool = False
-    # Write the ``addaxai-run-info.txt`` manifest. The Save step's "Run
+    # Write the ``wsp-cameratrap-run-info.txt`` manifest. The Save step's "Run
     # details" checkbox. Defaults to True for a client that omits it,
     # which is what the write used to be unconditionally.
     #
@@ -477,7 +477,7 @@ def _unique_project_name(db: Session, base: str) -> str:
 def _find_existing_run(db: Session, source_folder: str) -> Project | None:
     """Find a folder-run project already pointing at this source folder.
 
-    Matches legacy AddaxAI: re-selecting an already-analysed folder
+    Matches the earlier desktop app: re-selecting an already-analysed folder
     re-opens it instead of starting from scratch. Returns the most
     recently updated match so a user with stale duplicates from
     before this resume logic existed still lands on the latest one.
@@ -565,7 +565,7 @@ def create_folder_run(
 ) -> FolderRunResponse:
     """Create or resume a folder run for a source folder.
 
-    Legacy AddaxAI behaviour: picking a folder that has already been
+    Legacy WSP CameraTrap behaviour: picking a folder that has already been
     analysed re-opens that run instead of starting fresh. The
     frontend has no "recent work" list; revisiting is done by
     pointing at the same folder again. So this endpoint is
@@ -590,7 +590,7 @@ def create_folder_run(
 
     if existing is not None and payload.force_new:
         # "Discard and start over": cascade-delete the existing run +
-        # its on-disk .addaxai cache before creating fresh. The
+        # its on-disk .wsp-cameratrap cache before creating fresh. The
         # destructive confirm dialog on the frontend gates this path.
         logger.info(
             f"Discarding existing folder run: project_id={existing.id} "
@@ -772,7 +772,7 @@ def delete_folder_run(run_id: str, db: Session = Depends(get_db)) -> None:
     """Delete a folder run and everything it produced.
 
     Delegates to ``crud_project.delete_folder_run``, which cascades the DB
-    rows AND removes the on-disk ``.addaxai/projects/<id>/`` cache.
+    rows AND removes the on-disk ``.wsp-cameratrap/projects/<id>/`` cache.
     ``delete_project`` would leave that cache behind, so it must not be used
     here. Irreversible: any verification work in the run goes with it.
 
@@ -962,7 +962,7 @@ def rerun_folder_run(
     """Reset a folder run for re-analysis.
 
     Wipes the deployment / file / detection / event / embedding rows
-    plus the on-disk ``.addaxai/projects/<id>/`` cache, and moves the
+    plus the on-disk ``.wsp-cameratrap/projects/<id>/`` cache, and moves the
     queue entry back to ``status='pending'`` so the existing process
     endpoint picks it up. The project row and the queue entry id
     survive, so the URL stays valid and the persisted step stays put.
@@ -980,7 +980,7 @@ def rerun_folder_run(
         )
 
     # Timed so a slow re-run can be attributed from the log alone. The
-    # reset covers both the DB wipe and the on-disk .addaxai cleanup, and
+    # reset covers both the DB wipe and the on-disk .wsp-cameratrap cleanup, and
     # the latter is unbounded on a slow external drive.
     started = time.perf_counter()
     ok = crud_project.reset_folder_run_data(
@@ -1073,11 +1073,11 @@ async def save_outputs(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Could not create output folder: {e}",
         ) from e
-    # The scan-skip marker on addaxai-media is written by the WORKER,
+    # The scan-skip marker on wsp-cameratrap-media is written by the WORKER,
     # never here. The worker wipes a marker-stamped media tree before
     # rebuilding it (retries must replace copies, not duplicate them),
     # and the marker is its proof of ownership. Stamping the folder
-    # here would hand that proof to a pre-existing addaxai-media the
+    # here would hand that proof to a pre-existing wsp-cameratrap-media the
     # app never created, and the wipe would delete the user's files.
     job = job_crud.create_job(
         db,

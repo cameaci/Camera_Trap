@@ -149,13 +149,13 @@ function buildTree({
   const folders: SubFolder[] = [];
   const files: FileEntry[] = [];
 
-  // Media copies, all under the addaxai-media subfolder.
+  // Media copies, all under the wsp-cameratrap-media subfolder.
   // ``by_media_tree`` is the real on-disk tree for the chosen layout:
   // species / observation folders and the preserved source subfolders
   // combined in the chosen order (or just the source subfolders under
   // "No subfolders"). Loose files with no folder at all ("No
   // subfolders" with source-root files) fall back to a capped filename
-  // list inside addaxai-media.
+  // list inside wsp-cameratrap-media.
   if (separate.enabled && preview) {
     const mediaChildren: SubFolder[] = nestedFoldersFromPaths(
       preview.by_media_tree,
@@ -177,22 +177,22 @@ function buildTree({
         });
       }
     }
-    folders.push({ name: "addaxai-media/", children: mediaChildren });
+    folders.push({ name: "wsp-cameratrap-media/", children: mediaChildren });
   }
 
   if (exportOpts.enabled) {
     if (exportOpts.spreadsheet) {
       if (exportOpts.format === "csv") {
-        files.push({ name: "addaxai-summary.csv" });
-        files.push({ name: "addaxai-files.csv" });
-        files.push({ name: "addaxai-detections.csv" });
+        files.push({ name: "wsp-cameratrap-summary.csv" });
+        files.push({ name: "wsp-cameratrap-files.csv" });
+        files.push({ name: "wsp-cameratrap-detections.csv" });
       } else {
-        files.push({ name: "addaxai-spreadsheet.xlsx" });
+        files.push({ name: "wsp-cameratrap-spreadsheet.xlsx" });
       }
     }
     if (exportOpts.recognitionJson)
-      files.push({ name: "addaxai-recognitions.json" });
-    if (exportOpts.summary) files.push({ name: "addaxai-run-info.txt" });
+      files.push({ name: "wsp-cameratrap-recognitions.json" });
+    if (exportOpts.summary) files.push({ name: "wsp-cameratrap-run-info.txt" });
   }
 
   return { folders, files };

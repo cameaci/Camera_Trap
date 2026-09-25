@@ -35,7 +35,7 @@ from app.db.backup import (
 
 
 def _make_sqlite(path: Path) -> None:
-    """Create a tiny but valid AddaxAI-shaped SQLite database at `path`.
+    """Create a tiny but valid WSP CameraTrap-shaped SQLite database at `path`.
 
     `alembic_version` is part of "valid": `validate_backup` requires it,
     because a database without one predates the 2026-05-08 alembic
@@ -57,7 +57,7 @@ def _make_sqlite(path: Path) -> None:
 @pytest.fixture()
 def tmp_settings(tmp_path: Path) -> Settings:
     """A Settings pointing at a fresh tmp user-data dir with a live DB file."""
-    db_path = tmp_path / "addaxai.db"
+    db_path = tmp_path / "wsp-cameratrap.db"
     _make_sqlite(db_path)
     return Settings(
         user_data_dir=tmp_path,
@@ -289,7 +289,7 @@ def test_manual_snapshot_without_note_keeps_legacy_shape(
     """Regression guard for the note-less wipe caller in the lifespan."""
     path = manual_snapshot(tmp_settings)
     assert re.fullmatch(
-        r"addaxai-manual-\d{4}-\d{2}-\d{2}T\d{6}Z\.db", path.name
+        r"wsp-cameratrap-manual-\d{4}-\d{2}-\d{2}T\d{6}Z\.db", path.name
     )
     entry = next(
         e for e in list_ring_buffer(tmp_settings) if e.path.name == path.name
@@ -304,7 +304,7 @@ def test_hand_renamed_manual_backup_stays_listed(tmp_settings: Settings) -> None
     lowercase."""
     backups_dir = tmp_settings.user_data_dir / "backups"
     backups_dir.mkdir(parents=True, exist_ok=True)
-    renamed = backups_dir / "addaxai-manual-2026-01-01T000000Z-a-.db"
+    renamed = backups_dir / "wsp-cameratrap-manual-2026-01-01T000000Z-a-.db"
     renamed.write_bytes(b"x" * 200)
 
     entries = {e.path.name: e for e in list_ring_buffer(tmp_settings)}
@@ -316,7 +316,7 @@ def test_prune_does_not_touch_manual(tmp_path: Path) -> None:
     base_ts = time.time()
     manual_files = []
     for i in range(3):
-        p = tmp_path / f"addaxai-manual-2026-01-0{i + 1}T000000Z-note-{i}.db"
+        p = tmp_path / f"wsp-cameratrap-manual-2026-01-0{i + 1}T000000Z-note-{i}.db"
         _make_dummy_backup(p, mtime=base_ts - i * 86400)
         manual_files.append(p)
 
@@ -364,16 +364,16 @@ def test_list_ring_buffer_ignores_unrelated_files(tmp_settings: Settings) -> Non
     backups_dir = tmp_settings.user_data_dir / "backups"
     backups_dir.mkdir(parents=True, exist_ok=True)
     (backups_dir / "stray.txt").write_text("hello")
-    (backups_dir / "addaxai-not-a-real-backup.db").write_bytes(b"x" * 200)
+    (backups_dir / "wsp-cameratrap-not-a-real-backup.db").write_bytes(b"x" * 200)
     # Uppercase in a note slug is outside the parse language.
-    (backups_dir / "addaxai-manual-2026-01-01T000000Z-CAPS.db").write_bytes(b"x" * 200)
+    (backups_dir / "wsp-cameratrap-manual-2026-01-01T000000Z-CAPS.db").write_bytes(b"x" * 200)
     ring_buffer_backup(tmp_settings)
 
     entries = list_ring_buffer(tmp_settings)
     names = {e.path.name for e in entries}
     assert "stray.txt" not in names
-    assert "addaxai-not-a-real-backup.db" not in names
-    assert "addaxai-manual-2026-01-01T000000Z-CAPS.db" not in names
+    assert "wsp-cameratrap-not-a-real-backup.db" not in names
+    assert "wsp-cameratrap-manual-2026-01-01T000000Z-CAPS.db" not in names
 
 
 # ── restore_db ───────────────────────────────────────────────────────
@@ -397,7 +397,7 @@ def test_restore_db_swaps_and_creates_safety_snapshot(tmp_settings: Settings) ->
     restore_db(tmp_settings, other)
 
     # Live DB now has the source's content.
-    live = tmp_settings.user_data_dir / "addaxai.db"
+    live = tmp_settings.user_data_dir / "wsp-cameratrap.db"
     with sqlite3.connect(str(live)) as conn:
         row = conn.execute("SELECT note FROM marker").fetchone()
     assert row == ("from-source",)
@@ -420,7 +420,7 @@ def test_restore_db_rejects_invalid_source(tmp_settings: Settings) -> None:
 
 def test_schedule_restore_writes_marker_after_validation(tmp_settings: Settings) -> None:
     snap = tmp_settings.user_data_dir / "snap.db"
-    snapshot_db(tmp_settings.user_data_dir / "addaxai.db", snap)
+    snapshot_db(tmp_settings.user_data_dir / "wsp-cameratrap.db", snap)
 
     marker = schedule_restore(tmp_settings, snap)
 
@@ -461,7 +461,7 @@ def test_consume_restore_marker_swaps_db_and_consumes(tmp_settings: Settings) ->
     assert not (tmp_settings.user_data_dir / RESTORE_MARKER_FILENAME).exists()
 
     # Live DB swapped.
-    live = tmp_settings.user_data_dir / "addaxai.db"
+    live = tmp_settings.user_data_dir / "wsp-cameratrap.db"
     with sqlite3.connect(str(live)) as conn:
         row = conn.execute("SELECT note FROM marker").fetchone()
     assert row == ("from-source",)
@@ -480,7 +480,7 @@ def test_consume_restore_marker_self_cleans_on_missing_source(
     # Marker consumed even though the source was bad.
     assert not marker.exists()
     # Live DB untouched.
-    assert (tmp_settings.user_data_dir / "addaxai.db").is_file()
+    assert (tmp_settings.user_data_dir / "wsp-cameratrap.db").is_file()
 
 
 def test_consume_restore_marker_self_cleans_on_corrupt_source(

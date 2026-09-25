@@ -302,7 +302,7 @@ def _build_diagnostic_zip() -> bytes:
         zf.writestr(
             "README.txt",
             (
-                "AddaxAI diagnostic report\n"
+                "WSP CameraTrap diagnostic report\n"
                 "=========================\n\n"
                 "This bundle contains:\n"
                 "  - logs/                 application log files (rotating, last ~7 days)\n"
@@ -314,7 +314,7 @@ def _build_diagnostic_zip() -> bytes:
                 "  - crash-sentinel.json   whether previous app shutdown was clean\n"
                 "  - crash-dumps/          Electron / Chromium minidumps from native\n"
                 "                          renderer crashes (OOM, GPU crash, segfault).\n"
-                "                          Empty if AddaxAI has never crashed natively.\n\n"
+                "                          Empty if WSP CameraTrap has never crashed natively.\n\n"
                 "PII note: log files may contain absolute paths from the user's\n"
                 "filesystem (e.g. paths to camera-trap folders). No detection data,\n"
                 "image bytes, or DB row contents are included.\n\n"
@@ -422,7 +422,7 @@ def _build_diagnostic_zip() -> bytes:
 @router.get("/last-launch-status")
 def last_launch_status() -> dict[str, object]:
     """
-    Return whether the previous AddaxAI shutdown was clean. The frontend
+    Return whether the previous WSP CameraTrap shutdown was clean. The frontend
     polls this once on first load and shows a "previous run crashed"
     banner if not.
 
@@ -460,7 +460,7 @@ def diagnostic_zip() -> StreamingResponse:
     logger.info("Diagnostic ZIP requested")
     payload = _build_diagnostic_zip()
     timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    filename = f"addaxai-diagnostics-{timestamp}.zip"
+    filename = f"wsp-cameratrap-diagnostics-{timestamp}.zip"
     return StreamingResponse(
         io.BytesIO(payload),
         media_type="application/zip",

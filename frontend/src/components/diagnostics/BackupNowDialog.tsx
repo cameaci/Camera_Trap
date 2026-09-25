@@ -2,7 +2,7 @@
  * Manual database backup dialog.
  *
  * Two paths:
- * - Save to the AddaxAI backups folder (~/AddaxAI/backups/). Force-
+ * - Save to the WSP CameraTrap backups folder (~/WSP-CameraTrap/backups/). Force-
  *   writes a daily-format file even on the same UTC day, so users can
  *   trigger an extra snapshot before doing something risky.
  * - Save to a folder of the user's choosing. Uses the existing

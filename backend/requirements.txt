@@ -43,8 +43,7 @@ openpyxl==3.1.5       # XLSX writer for observations export
 pyshp==2.3.1          # Shapefile writer for spatial export
 
 # ML & Model Management
-huggingface-hub>=0.20.0
-requests>=2.31.0  # Required by huggingface-hub
+requests>=2.31.0
 truststore>=0.9.1  # Route TLS through the OS trust store (frozen-build CA fix)
 ijson>=3.2.0  # Stream large results JSON without loading it all into RAM
 pyyaml==6.0.2

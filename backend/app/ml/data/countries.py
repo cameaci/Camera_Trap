@@ -1,5 +1,5 @@
 """
-AddaxAI Geographic Data
+WSP CameraTrap Geographic Data
 
 Country and US state data with flag emojis and ISO codes for location selection.
 

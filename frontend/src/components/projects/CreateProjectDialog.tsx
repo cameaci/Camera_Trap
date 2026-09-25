@@ -344,7 +344,7 @@ export function CreateProjectDialog({
               <DialogTitle>Create new project</DialogTitle>
               <DialogDescription>
                 A project is a persistent workspace. You record where each
-                camera was, and AddaxAI uses that to turn the results into
+                camera was, and WSP CameraTrap uses that to turn the results into
                 insight: dashboards, maps, rates, and Camtrap DP exports, with
                 a verification history kept over time.
               </DialogDescription>

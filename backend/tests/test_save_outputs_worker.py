@@ -3,7 +3,7 @@
 Cover the two behaviors added after Wayne's 2026-08 report:
 - retries rebuild the media tree instead of duplicating every copy
   with `_2` / `_3` suffixes (nothing covered a second save into a
-  non-empty ``addaxai-media`` before)
+  non-empty ``wsp-cameratrap-media`` before)
 - per-module start/done log lines with elapsed time and process RSS,
   the only trace left when a module kills the process.
 """
@@ -131,7 +131,7 @@ def test_second_save_replaces_media_copies(db, tmp_path, monkeypatch):
 def test_markerless_media_dir_is_not_wiped_or_claimed(
     db, tmp_path, monkeypatch
 ):
-    """A pre-existing addaxai-media without our marker is not ours to
+    """A pre-existing wsp-cameratrap-media without our marker is not ours to
     delete; its content survives the save. It must not be stamped
     either: a stamp would hand the NEXT save's wipe the ownership proof
     and delete the same files one save later."""

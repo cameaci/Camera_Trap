@@ -5,7 +5,6 @@ Following DEVELOPERS.md principles:
 - Type hints everywhere
 - Clear documentation
 
-Based on proven patterns from streamlit-AddaxAI.
 """
 
 from typing import Literal
@@ -18,24 +17,6 @@ from pydantic import BaseModel
 ModelRegion = Literal[
     "global", "africa", "americas", "asia", "europe", "oceania"
 ]
-
-# HuggingFace org that hosts the model repos. A manifest may override the
-# repo with an explicit `hf_repo`; everything else follows the convention
-# `<DEFAULT_HF_ORG>/<model_id>`.
-DEFAULT_HF_ORG = "Addax-Data-Science"
-
-
-def resolve_hf_repo(model_id: str, hf_repo: str | None = None) -> str:
-    """
-    Return the HuggingFace repo id for a model.
-
-    Always go through this helper rather than rebuilding the convention
-    at the call site. Forgetting the `hf_repo or ...` half is exactly how
-    the catalog's taxonomy download ended up pinned to the default org
-    and silently 404'ing for the one model that overrides it.
-    """
-    return hf_repo or f"{DEFAULT_HF_ORG}/{model_id}"
-
 
 class ModelManifest(BaseModel):
     """
@@ -61,14 +42,13 @@ class ModelManifest(BaseModel):
     # Environment & Model Files
     env: str
     model_fname: str
-    hf_repo: str | None = None
-    # WSP: public URL of a single-file model (weights only, e.g. a GitHub
-    # release asset). Used when the model is not in the WSP model library.
+    # Public URL of a single-file model (weights only). Used when the WSP
+    # model library does not have the model.
     download_url: str | None = None
     # A local manifest.json holds nothing beyond its catalog entry. Whether
-    # an install still matches upstream is answered by comparing the files
-    # themselves (model_storage.find_stale_files), so there is no recorded
-    # state here to fall out of date or to be overwritten by write_manifest.
+    # an install still matches the library is answered by comparing the
+    # files themselves (model_library.find_stale_files), so there is no
+    # recorded state here to fall out of date.
 
     # Metadata
     description: str
@@ -111,7 +91,6 @@ class ModelManifest(BaseModel):
                 "emoji": "🔍",
                 "env": "megadetector",
                 "model_fname": "md_v5a.0.0.pt",
-                "hf_repo": "Addax-Data-Science/MD5A-0-0",
                 "description": "MegaDetector v5a for animal detection in camera trap images",
                 "developer": "Dan Morris",
                 "license": "MIT",

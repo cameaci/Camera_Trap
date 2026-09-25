@@ -32,7 +32,7 @@ const RELEASES_API = `https://api.github.com/repos/${REPO}/releases?per_page=1`;
 
 // Where a user goes to get the new version. Not the GitHub release
 // page: that is a wall of assets and checksums written for developers,
-// and most people running AddaxAI are ecologists. The site owns the
+// and most people running WSP CameraTrap are ecologists. The site owns the
 // download story and can change it without an app release.
 export const DOWNLOAD_URL = RELEASES_URL; // WSP
 

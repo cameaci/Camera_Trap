@@ -21,10 +21,10 @@ def skip_preflight(monkeypatch):
 
 
 def test_resolves_env_binary_first(tmp_path, monkeypatch, skip_preflight):
-    """The env-addaxai-base binary wins over PATH, and the env's bin is
+    """The env-wsp-base binary wins over PATH, and the env's bin is
     prepended to PATH so the script's `#!/usr/bin/env perl` shebang
     resolves the env's perl instead of the system one."""
-    env_bin = tmp_path / "envs" / "env-addaxai-base" / "bin"
+    env_bin = tmp_path / "envs" / "env-wsp-base" / "bin"
     env_bin.mkdir(parents=True)
     binary = env_bin / "exiftool"
     binary.write_text("#!/usr/bin/env perl\n")
@@ -78,7 +78,7 @@ def test_windows_uses_bat_and_extends_path(tmp_path, monkeypatch, skip_preflight
     """On Windows the .bat wrapper wins (the extensionless perl script
     also exists but is not executable there: WinError 193), and the
     env's binary dirs land on PATH so the wrapper can find perl.exe."""
-    env_dir = tmp_path / "envs" / "env-addaxai-base"
+    env_dir = tmp_path / "envs" / "env-wsp-base"
     env_bin = env_dir / "bin"
     env_bin.mkdir(parents=True)
     (env_bin / "exiftool").write_text("#!perl\n")

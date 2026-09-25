@@ -1,7 +1,7 @@
 """
 Tests for similarity_script cohort grouping and descendant filter.
 
-The script runs as a subprocess in env-addaxai-base for production use,
+The script runs as a subprocess in env-wsp-base for production use,
 but its grouping pass (`_group_cohorts`) and neighbour signal pass
 (`_compute_neighbor_signals`) are pure Python helpers that import
 cleanly into the main venv. FAISS is not needed here: `_group_cohorts`

@@ -1,7 +1,7 @@
 """
 Micromamba environment manager with static YAML-based environments.
 
-Based on proven patterns from streamlit-AddaxAI.
+Based on proven patterns from the earlier prototype.
 Reads environment.yml files from backend/app/ml/envs/{env_name}/{platform}/.
 
 Following DEVELOPERS.md principles:
@@ -38,7 +38,7 @@ logger = get_logger(__name__)
 # built from. Lives inside the env directory so it gets removed
 # automatically when the env is deleted via _safe_rmtree. Drift
 # detection compares this to the current bundled YAML hash.
-ENV_YAML_SHA_FILENAME = ".addaxai-yaml-sha256"
+ENV_YAML_SHA_FILENAME = ".wsp-cameratrap-yaml-sha256"
 
 # Boot probe run by _validate_env. Imports the stdlib C extension
 # modules, which live as individual .pyd files in the env's DLLs
@@ -80,14 +80,14 @@ _REVOCATION_MARKERS = (
 REVOCATION_MARKER_FILENAME = ".allow-no-revocation-check"
 
 _REVOCATION_MARKER_NOTE = """\
-AddaxAI skips the certificate revocation check when it builds analysis
+WSP CameraTrap skips the certificate revocation check when it builds analysis
 environments, because this network blocks that check.
 
 Certificates are still verified: the issuing authority, the host name and
 the expiry date are all checked as usual. Only the question "has this
 certificate been revoked?" is skipped.
 
-Created {created} from the AddaxAI setup screen.
+Created {created} from the WSP CameraTrap setup screen.
 Delete this file to restore the default.
 """
 
@@ -128,7 +128,7 @@ def _rename_with_retries(src: Path, dst: Path) -> None:
             f"even after {attempts} attempts over "
             f"{sum(_RENAME_WAITS)} seconds ({e}). Another program is "
             f"holding files in that folder, usually the antivirus. Add an "
-            f"antivirus exclusion for the AddaxAI folder in your user "
+            f"antivirus exclusion for the WSP CameraTrap folder in your user "
             f"profile, or ask your IT department to, then try again."
         ) from e
 
@@ -194,10 +194,11 @@ ENV_PROGRESS_FLOOR = 0.10
 # finds them from source and frozen alike. See pip-wheels/README.md.
 BUNDLED_WHEELS_DIR = Path(__file__).resolve().parent / "pip-wheels"
 
-# The URL the env YAMLs pin the wheel by. Kept in the YAMLs because it
-# records where the file came from; never fetched.
+# The URL the env YAMLs pin the wheel by (its copy in this repository).
+# Kept in the YAMLs because it records where the file came from; the
+# build always uses the copy shipped in the app.
 _WHEEL_URL_PREFIX = (
-    "https://huggingface.co/Addax-Data-Science/pip-wheels/resolve/main/"
+    "https://github.com/cameaci/Camera_Trap/raw/main/backend/app/ml/pip-wheels/"
 )
 
 _WHEEL_REF_RE = re.compile(re.escape(_WHEEL_URL_PREFIX) + r"([^\s#]+)")
@@ -211,9 +212,7 @@ def substitute_bundled_wheels(yaml_text: str, wheels_dir: Path) -> str:
     requirement: --index-url, --extra-index-url and --find-links only
     affect index resolution, so `name @ https://...` is always fetched
     literally. On a network that blocks the host, that single line fails
-    the whole env build and nothing the user configures can help. That is
-    what stopped setup in mainland China, where hf-mirror.com answers
-    /resolve/ with a redirect back to the blocked huggingface.co.
+    the whole env build and nothing the user configures can help.
     Shipping the wheel removes the download on every platform.
 
     The URL stays in the YAML, so the #sha256= fragment survives the
@@ -371,7 +370,7 @@ class EnvironmentManager:
     Manages micromamba environments using static YAML files.
 
     Environments are defined in backend/app/ml/envs/{env_name}/{platform}/environment.yml
-    and created in ~/AddaxAI/envs/env-{env_name}/
+    and created in ~/WSP-CameraTrap/envs/env-{env_name}/
     """
 
     # Class-level so the locks are shared across every `EnvironmentManager`
@@ -414,7 +413,7 @@ class EnvironmentManager:
         """
         Make sure the on-disk state this manager depends on actually exists.
         Called at construction time and again before any micromamba invocation
-        so the manager self-heals if `~/AddaxAI/bin` or `~/AddaxAI/envs` got
+        so the manager self-heals if `~/WSP-CameraTrap/bin` or `~/WSP-CameraTrap/envs` got
         wiped underneath us (Reset application, antivirus quarantine, manual
         rm). Without this we hit ENOENT inside subprocess.Popen and there is
         no recovery without a server restart.
@@ -776,7 +775,7 @@ class EnvironmentManager:
 
             # Subprocess env tuning. Verbose pip is needed for the line
             # parser below to surface progress. The retry / timeout knobs
-            # mirror the legacy AddaxAI Windows workflow: a single dropped
+            # mirror the the earlier desktop app Windows workflow: a single dropped
             # TCP packet during the 2.3 GB torch download otherwise nukes
             # the whole install and the user has to start over.
             # clean_python_env keeps the user's personal site-packages and

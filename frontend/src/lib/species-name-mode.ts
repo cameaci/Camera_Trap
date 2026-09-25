@@ -12,7 +12,7 @@
 
 export type SpeciesNameMode = "common" | "scientific";
 
-const STORAGE_KEY = "addaxai:species-name-mode";
+const STORAGE_KEY = "wsp:species-name-mode";
 
 function readStored(): SpeciesNameMode {
   try {

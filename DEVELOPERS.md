@@ -1,14 +1,5 @@
 # Developer Documentation
 
-## Runbooks (skills)
-
-Recurring, gotcha-heavy jobs (adding a classifier to the zoo, building its
-taxonomy.csv, running the `test_models.py` harness, publishing a release) are
-Claude Code skills under `.claude/skills/` on Peter's machine. That folder is
-gitignored, so a clone does not carry them. The sections below are the
-reference material those skills point at, and they are the source of truth for
-anyone working without them.
-
 ## After cloning
 
 Activate the commit-msg hook that strips auto-generated co-author lines:
@@ -21,11 +12,11 @@ This only needs to be run once per clone.
 
 ## Logging & Debugging
 
-**Log files:** All logs (backend + frontend) are written to `~/AddaxAI/logs/backend.log`
+**Log files:** All logs (backend + frontend) are written to `~/WSP-CameraTrap/logs/backend.log`
 
 **Watch logs in real-time:**
 ```bash
-tail -f ~/AddaxAI/logs/backend.log
+tail -f ~/WSP-CameraTrap/logs/backend.log
 ```
 
 **Add logging in code:**
@@ -87,9 +78,9 @@ Nothing detects for you whether your migration needs one of these. That is delib
 3. A stamped revision that is not on disk, or more than one version row: refused. Alembic raises `CommandError` while resolving the chain, before running anything, and `ensure_upgradable` rejects an ambiguous version table up front rather than letting `get_current_revision` read whichever row SQLite returned first.
 4. After upgrading, `schema_problems()` must be empty. Anything missing means the stamp lied, so we stop.
 
-Every refusal raises `SchemaError`, whose message is written for the end user. The lifespan writes it to `~/AddaxAI/.startup-error.txt` and the Electron error page shows it verbatim with **Restore from backup** and **Delete database and start fresh** buttons, because the backend exits before the API or the frontend exist and the in-app dialogs are unreachable at that moment. Those buttons write the same `.restore-on-next-launch` / `.wipe-db-on-next-launch` markers the in-app flows use, so there is one recovery mechanism, not two. Electron deletes the error file just before every spawn, so a message there always belongs to the current launch.
+Every refusal raises `SchemaError`, whose message is written for the end user. The lifespan writes it to `~/WSP-CameraTrap/.startup-error.txt` and the Electron error page shows it verbatim with **Restore from backup** and **Delete database and start fresh** buttons, because the backend exits before the API or the frontend exist and the in-app dialogs are unreachable at that moment. Those buttons write the same `.restore-on-next-launch` / `.wipe-db-on-next-launch` markers the in-app flows use, so there is one recovery mechanism, not two. Electron deletes the error file just before every spawn, so a message there always belongs to the current launch.
 
-**A slow migration is not a failure.** `waitForBackend` waits on a live backend indefinitely; the only failure is the process dying. After `BACKEND_SLOW_NOTICE_MS` (60s, `ADDAXAI_SLOW_NOTICE_MS` to override) the splash is replaced by a "Still working" page with Open logs and Quit, and **no Retry**. That omission is the point. A backend part-way through a migration has not finished its lifespan, so it does not answer `/health` and looks identical to a wedged one. The old three-minute deadline sent the user to the error page, and its Retry re-entered `ensureBackend`, which probed `/health`, saw nothing, concluded the port was free, and spawned a *second* backend running `alembic upgrade head` against the same SQLite file, orphaning the first. The bigger the database, the likelier that was. The trade made here is that a genuinely wedged backend now waits forever rather than erroring, which is the right side to be wrong on when the two cannot be told apart and Quit is one click away.
+**A slow migration is not a failure.** `waitForBackend` waits on a live backend indefinitely; the only failure is the process dying. After `BACKEND_SLOW_NOTICE_MS` (60s, `WSP_SLOW_NOTICE_MS` to override) the splash is replaced by a "Still working" page with Open logs and Quit, and **no Retry**. That omission is the point. A backend part-way through a migration has not finished its lifespan, so it does not answer `/health` and looks identical to a wedged one. The old three-minute deadline sent the user to the error page, and its Retry re-entered `ensureBackend`, which probed `/health`, saw nothing, concluded the port was free, and spawned a *second* backend running `alembic upgrade head` against the same SQLite file, orphaning the first. The bigger the database, the likelier that was. The trade made here is that a genuinely wedged backend now waits forever rather than erroring, which is the right side to be wrong on when the two cannot be told apart and Quit is one click away.
 
 **The chain is not replay-safe, and does not need to be.** The forward path runs each migration exactly once against the input it expects. A DB whose stamp is legitimately behind (a restored older backup) replays forward, which is that same once-each path, not a re-run. Nothing replays a migration over its own output: stamp an at-head DB back to base and upgrade and it dies immediately on `table audit_log already exists`. Making that work would mean guarding all 24 shipped migrations including the initial `CREATE TABLE`s, for no benefit. **Do not write a test asserting the chain is idempotent.** There was one; it re-ran zero migrations, because alembic no-ops at head, so it was green and asserted nothing.
 
@@ -99,7 +90,7 @@ Every refusal raises `SchemaError`, whose message is written for the end user. T
 
 **Migrations run with foreign keys off.** `alembic/env.py` sets `PRAGMA foreign_keys=OFF` on the migration connection, as alembic's SQLite batch mode requires. `set_sqlite_pragma` in `db/base.py` turns them on for every engine, alembic's included, and batch mode rebuilds a table with CREATE, copy, `DROP TABLE`, RENAME. With foreign keys on, `DROP TABLE` runs an implicit `DELETE FROM` first and every `ON DELETE CASCADE` fires: rebuilding `projects` emptied sites, deployments, files and detections in the test that found this (2026-08-27). Two consequences. A batch rebuild of a parent table is safe now and was not before, so treat any pre-June-2026 database with care. And a `DELETE` inside a migration no longer cascades: a data migration that removes parent rows must delete the children itself. `f2a3b4c5d6e7` shipped relying on the cascade and leaves orphan `detection_embeddings` behind on such old databases; harmless (every join ignores them), recorded in `_ORPHANS_KNOWN` in the test below, and not worth a cleanup migration until someone actually upgrades from that far back.
 
-**Every migration is run on a database with a row in every table.** `tests/db/test_migration_keeps_rows.py` stands the database up at the revision before each migration, seeds one row per table with the foreign keys wired, runs that one step and asserts no table lost a row and SQLite's `integrity_check` and `foreign_key_check` are clean. It needs no backups, so it runs in CI. A migration that deletes rows on purpose gets an entry in `_DELETES_ON_PURPOSE` there, together with its test in `test_migration_data.py`. `backend/scripts/check_migration_on_backups.py` does the same on copies of every backup in `~/AddaxAI/backups/`, real rows included; run it before releasing a migration on a machine that has backups. Both share `app/db/migration_check.py`.
+**Every migration is run on a database with a row in every table.** `tests/db/test_migration_keeps_rows.py` stands the database up at the revision before each migration, seeds one row per table with the foreign keys wired, runs that one step and asserts no table lost a row and SQLite's `integrity_check` and `foreign_key_check` are clean. It needs no backups, so it runs in CI. A migration that deletes rows on purpose gets an entry in `_DELETES_ON_PURPOSE` there, together with its test in `test_migration_data.py`. `backend/scripts/check_migration_on_backups.py` does the same on copies of every backup in `~/WSP-CameraTrap/backups/`, real rows included; run it before releasing a migration on a machine that has backups. Both share `app/db/migration_check.py`.
 
 **SQLite 3.45 reports a false NULL after `ADD COLUMN <x> REAL NOT NULL DEFAULT`.** The rows are not rewritten by the add, the default is filled in on read, and every version reads the value back fine; but `integrity_check` in 3.45.x (the CI runner, and the frozen macOS and Windows builds) says `NULL value in <table>.<x>` until each row is rewritten by an UPDATE. Integer, text and boolean defaults are not affected, and 3.46 fixed it. `c5d6e7f8a9b0` is the one shipped case; it is harmless because `e7f8a9b0c1d2` drops a column right after, which rewrites every projects row, and every release ships both. The test lists it in `_INTEGRITY_FALSE_POSITIVE`. The trap that stays open: a future float column with no row rewrite behind it would make `validate_backup` refuse to restore a backup on the shipped build. Add such a column as nullable, or follow it with an `UPDATE`.
 
@@ -162,7 +153,7 @@ Also index the columns a hot query filters on, not only foreign keys. `files.fil
 - Already-loaded collections still cascade in Python. `passive_deletes` suppresses *loading*, never cascading of what is loaded.
 - A missing `ON DELETE CASCADE` fails loudly with `FOREIGN KEY constraint failed`, not silently with orphan rows, because the child foreign keys are `NOT NULL`.
 
-**Timing.** `POST /api/folder-runs/{id}/rerun` and `_delete_deployment_artifacts` both log elapsed seconds. The on-disk `.addaxai` cleanup stays inside the request and is unbounded on a slow external drive, so when a delete is reported as slow, those two lines are what tell you whether it was the database or the disk.
+**Timing.** `POST /api/folder-runs/{id}/rerun` and `_delete_deployment_artifacts` both log elapsed seconds. The on-disk `.wsp-cameratrap` cleanup stays inside the request and is unbounded on a slow external drive, so when a delete is reported as slow, those two lines are what tell you whether it was the database or the disk.
 
 ### Empty the leaves first
 
@@ -186,7 +177,7 @@ Three things this must keep doing, all pinned in `tests/api/test_delete_cascade.
 
 **The endpoint reads `Deployment.folder_path`, not `Deployment`.** It needs the paths for the on-disk cleanup, and loading the entities instead would put every deployment in the session, at which point `db.delete(project)` cascades to them in Python, one `DELETE` each, which is the thing `passive_deletes=True` exists to prevent.
 
-**The on-disk cleanup is best-effort, in every path.** By the time it runs the rows are committed, so an OS error there cannot be reported as a failed delete without lying. Every caller goes through `_delete_deployment_artifacts`, which logs and swallows. The project endpoint used to have its own inline `shutil.rmtree` instead, and a `.addaxai` folder on a disconnected external drive answered `500 Internal Server Error` for a project that was already gone, then skipped the cleanup for every remaining deployment. Camera trap folders live on external drives, so that is the ordinary case. Pinned by `test_a_folder_that_cannot_be_cleaned_does_not_fail_the_delete`.
+**The on-disk cleanup is best-effort, in every path.** By the time it runs the rows are committed, so an OS error there cannot be reported as a failed delete without lying. Every caller goes through `_delete_deployment_artifacts`, which logs and swallows. The project endpoint used to have its own inline `shutil.rmtree` instead, and a `.wsp-cameratrap` folder on a disconnected external drive answered `500 Internal Server Error` for a project that was already gone, then skipped the cleanup for every remaining deployment. Camera trap folders live on external drives, so that is the ordinary case. Pinned by `test_a_folder_that_cannot_be_cleaned_does_not_fail_the_delete`.
 
 **A percentage is not available, and that is a design consequence.** The teardown is one transaction and nothing is visible outside it until it commits, so no polling can watch it progress. The per-stage row counts `purge_deployment_data` returns are the only real numbers there are; they go to the log today. If a progress display is ever wanted, those are what it would have to show, over a websocket from inside the transaction. The dialog instead shows the scale up front and a running clock, which answers "is it stuck" without inventing a number.
 
@@ -233,17 +224,17 @@ Three things have to line up and all three are true in a shipped build, so remov
 
 ## Database backups
 
-The DB at `~/AddaxAI/addaxai.db` holds irreversible work (human verifications). It is the only piece of user state that cannot be rebuilt by re-running analysis, so it gets a backup story. Backups live under `~/AddaxAI/backups/` and use SQLite's online backup API (`sqlite3.Connection.backup`) so they are WAL-safe and produce a single consolidated `.db` file with no `-wal` / `-shm` siblings.
+The DB at `~/WSP-CameraTrap/wsp-cameratrap.db` holds irreversible work (human verifications). It is the only piece of user state that cannot be rebuilt by re-running analysis, so it gets a backup story. Backups live under `~/WSP-CameraTrap/backups/` and use SQLite's online backup API (`sqlite3.Connection.backup`) so they are WAL-safe and produce a single consolidated `.db` file with no `-wal` / `-shm` siblings.
 
 Four kinds of snapshot:
 
 | Kind | When | Filename pattern | Retention |
 |---|---|---|---|
-| Daily rolling | App startup, throttled to one per UTC date | `addaxai-<utc-iso>.db` | Keep 5 newest |
-| Pre-upgrade | Startup, only when alembic detects a pending upgrade | `addaxai-pre-upgrade-<rev>-<utc-iso>.db` | Keep 5 newest, one per revision |
-| Pre-restore | Right before a restore swaps a backup in | `addaxai-pre-restore-<utc-iso>.db` | Keep 5 newest |
-| Manual | User clicks "Back up database", or the app is about to wipe the DB | `addaxai-manual-<utc-iso>[-<note>].db` | Never auto-pruned |
-| Manual to chosen folder | User clicks "Back up database" → "Save to chosen folder…" | `addaxai-manual-<utc-iso>[-<note>].db` in user-picked dir | Untouched by the app |
+| Daily rolling | App startup, throttled to one per UTC date | `wsp-cameratrap-<utc-iso>.db` | Keep 5 newest |
+| Pre-upgrade | Startup, only when alembic detects a pending upgrade | `wsp-cameratrap-pre-upgrade-<rev>-<utc-iso>.db` | Keep 5 newest, one per revision |
+| Pre-restore | Right before a restore swaps a backup in | `wsp-cameratrap-pre-restore-<utc-iso>.db` | Keep 5 newest |
+| Manual | User clicks "Back up database", or the app is about to wipe the DB | `wsp-cameratrap-manual-<utc-iso>[-<note>].db` | Never auto-pruned |
+| Manual to chosen folder | User clicks "Back up database" → "Save to chosen folder…" | `wsp-cameratrap-manual-<utc-iso>[-<note>].db` in user-picked dir | Untouched by the app |
 
 **The optional note lives in the filename.** The backup dialog offers a short note ("before the big run"), slugged to lowercase `[a-z0-9-]` and capped at 40 chars by `_slugify_note` in `backup.py`; the restore picker parses it back out of `_MANUAL_RE` and shows it on the card. No sidecar files and no registry, so the note travels with the file and there is no state to fall out of sync. Consequence: app versions from before the note feature do not match the noted filename and will not list such a backup in their restore picker (it stays restorable via "Restore from a file"). The frontend input mirrors the slug rule (`normalizeNote` in `BackupNowDialog.tsx`) so the field shows exactly what the filename gets.
 
@@ -251,7 +242,7 @@ Four kinds of snapshot:
 
 **Deleting the DB takes a manual snapshot first.** The `.wipe-db-on-next-launch` marker used to be reachable only by typing `RESET` in the Settings dialog. The startup error page can now write it behind a native confirm, which is a lighter gate on an irreversible action, so the lifespan snapshots the DB before it unlinks it. Manual snapshots are never auto-pruned and show up in the restore picker, so the wipe stays undoable.
 
-**Restore flow.** The frontend posts `/api/backup/restore` with a source path. The backend validates it and writes `~/AddaxAI/.restore-on-next-launch` containing the absolute path. The renderer then asks Electron to quit; the next launch's lifespan calls `consume_restore_marker(settings)` before `init_db()`, which force-snapshots the current live DB to the ring buffer first, then swaps the source file in. The marker is consumed unconditionally even on failure, so a corrupt request can't loop the user through restore-fail-restore-fail forever; the live DB is left untouched on validation failure. The Electron startup error page writes the same marker directly, since a refused DB means the API never comes up.
+**Restore flow.** The frontend posts `/api/backup/restore` with a source path. The backend validates it and writes `~/WSP-CameraTrap/.restore-on-next-launch` containing the absolute path. The renderer then asks Electron to quit; the next launch's lifespan calls `consume_restore_marker(settings)` before `init_db()`, which force-snapshots the current live DB to the ring buffer first, then swaps the source file in. The marker is consumed unconditionally even on failure, so a corrupt request can't loop the user through restore-fail-restore-fail forever; the live DB is left untouched on validation failure. The Electron startup error page writes the same marker directly, since a refused DB means the API never comes up.
 
 **Validation is `PRAGMA integrity_check` plus an `alembic_version` row.** The version row is not pedantry: a DB without one predates 2026-05-08 and `init_db` refuses it, so accepting it here would restore a file that fails on the very next launch, with nothing telling the user that the file they picked was the problem.
 
@@ -268,47 +259,7 @@ Four kinds of snapshot:
 | `frontend/src/components/layout/AppHamburger.tsx` | Back up / Restore / Open backups folder menu items |
 | `electron/src/main.ts` (`db:restore`, `db:reset`) | The same two actions when the backend will not start |
 
-Pre-init backups in lifespan are best-effort. If `~/AddaxAI/` is read-only or the disk is full, the failed snapshot is logged at error level and startup continues, so the user can at least open the app to see the diagnostic banner and react.
-
-## Removing the legacy AddaxAI install
-
-AddaxAI 7 installs to different locations than AddaxAI 6, so upgrading leaves two full apps on the machine, the old one holding 10 to 30 GB of conda envs and model weights. The app finds the old install and offers to delete it.
-
-**Where legacy lives** (verified against the legacy repo's own install scripts):
-
-| OS | Install root | Also |
-|---|---|---|
-| Windows | `%USERPROFILE%\AddaxAI_files\` | junction `%USERPROFILE%\EcoAssist_files` pointing at the root, plus a manual-install variant at `%ProgramFiles%\AddaxAI_files` |
-| macOS | `/Applications/AddaxAI_files/` | desktop symlink `~/Desktop/AddaxAI.app` |
-| Linux | `~/.AddaxAI_files/` | `~/Desktop/Linux_open_AddaxAI_shortcut.desktop`, `~/.icons/logo_small_bg.png` |
-
-Legacy writes nothing outside that tree. Its analysis outputs land in the user's own image folders and a destination folder they picked, so no user data is at risk.
-
-**Why this is not in the installers.** macOS ships a dmg and drag-to-Applications runs no code. The Linux deb `postinst` runs as root, so `$HOME` is root's home and `$SUDO_USER` is unset under App Center / PackageKit. Only Windows NSIS could do it, which would mean one platform covered and three implementations. One Python implementation running as the logged-in user covers all three, with the right permissions on each.
-
-**Detection is one rule on every platform:** `<root>/AddaxAI/AddaxAI_GUI.py` exists. Folder name alone would be wrong on Windows, where our own installer creates `AddaxAI_files` just to hold the Timelapse shim.
-
-**The Windows shim exception.** `electron/build/installer.nsh` writes a Timelapse launcher to `%USERPROFILE%\AddaxAI_files\AddaxAI\open.bat`, inside the legacy install root. Timelapse still looks for that path, so the purge deletes everything under `AddaxAI_files` **except** that one file. Do not "simplify" this into deleting the whole root.
-
-**Junctions.** NSIS `RMDir /r` follows a junction and deletes through it. Python's `shutil.rmtree` has not followed junctions since 3.8 but raises on a top-level one, so `legacy_install._remove` detects a junction and calls `os.rmdir()`, which drops the reparse point and leaves its target alone. `os.path.isjunction()` is not usable: the frozen build runs Python 3.11 and that helper landed in 3.12.
-
-**Desktop entries are only touched during removal, never during the scan.** On macOS, reading `~/Desktop` triggers a permission prompt for a non-sandboxed app. The scan runs on every launch, so scanning the Desktop would prompt every user including those who never had legacy installed.
-
-**Failure handling.** There is no pre-flight "is legacy running" check. The purge runs, then `remove()` re-checks the marker and returns any surviving paths, and the UI says to close the old app and retry. One rule that covers a running legacy app, antivirus locks and open file managers, on every platform, with no extra dependency.
-
-**The disk-space dead end.** Setup refuses with a 507 below 7 GB free, and the removal prompt only appears once setup has finished. A user with a 15 GB legacy install and a nearly-full disk could therefore never reach the thing that would free the space. `_legacy_disk_hint()` in `routers/setup.py` appends the legacy path to that error so they can delete it by hand. Keep the hint best-effort: it must never turn a clear 507 into a 500.
-
-**Not covered:** installs moved by hand to a custom path (legacy's docs sanction moving to Program Files; EcoAssist 4.x let users type any path). The Program Files copy is reported so the user can delete it, everything else is out of scope. No disk scan.
-
-| File | Purpose |
-|---|---|
-| `backend/app/services/legacy_install.py` | Path table, detection, purge |
-| `backend/app/utils/fs_remove.py` | `safe_rmtree`, shared with the reset flow |
-| `backend/app/api/routers/setup.py` | `/api/setup/legacy-install` and `.../remove` |
-| `frontend/src/components/diagnostics/RemoveLegacyDialog.tsx` | The dialog |
-| `frontend/src/components/layout/MenuCommands.tsx` | Auto-prompt, menu command, dismissal flag |
-
-The junction branch cannot be tested on the Linux and macOS CI runners, so it is verified by hand on Windows.
+Pre-init backups in lifespan are best-effort. If `~/WSP-CameraTrap/` is read-only or the disk is full, the failed snapshot is logged at error level and startup continues, so the user can at least open the app to see the diagnostic banner and react.
 
 ## Background photos
 
@@ -329,26 +280,6 @@ Blur first, then encode; the order is the whole trick. Resolution is the cheapes
 The scrim over the photo is a CSS gradient, not baked into the image, so darkening or lightening it later costs no re-encode. Keep it that way.
 
 Both screens put the teal wordmark on a frosted plate (`components/layout/LogoPlate.tsx`), because the wordmark is teal on transparent and disappears straight into a forest without one.
-
-### The macOS installer window
-
-The drag-to-Applications window gets the same treatment, from `electron/build/background.png` plus `background@2x.png`. No configuration points at them: `dmg-builder` looks in the build resources folder for `background.tiff`, then `background.png`, and only falls back to its own grey template if neither is there. Drop the files in and they are used. Two rules decide everything about them.
-
-**The size sets the window.** With no `dmg.window` in `package.json`, electron-builder takes `windowWidth` / `windowHeight` straight off the background image, and the icon coordinates already in `dmg.contents` (`130,220` and `410,220`, which are icon *centres*) are placed for the 540x380 default. So the image is exactly 540x380 and the retina copy exactly 1080x760. Change the size and the icons land wrong. `tiffutil` merges the pair at build time; it lives in `/usr/bin` on stock macOS, so the runner has it.
-
-**The wash is not decoration.** With a background *picture*, Finder stops adapting the filename colour to dark mode and draws `AddaxAI` and `Applications` in black in both modes. There is no light/dark trade-off to solve, only one rule: the photo has to be light where those two labels sit. Raw, this photo puts them at 3:1. The 55% white blend takes them to 7.7:1. Measure before changing the photo; the two labels sit in the bands `x 75..185` and `x 355..465`, `y 258..280`.
-
-```python
-im = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
-im = ImageOps.fit(im, (540 * s, 380 * s), Image.LANCZOS)          # s = 1, then 2
-im = im.filter(ImageFilter.GaussianBlur(3.0 * 540 * s / 1600))    # same scaling as above
-im = Image.blend(im, Image.new("RGB", im.size, "white"), 0.55)
-# then the arrow, on top of the blur, never under it:
-#   line (215,220)->(320,220) width 5, head (340,220),(318,208),(318,232), fill #0f6064 at alpha 170
-im.save(out, "PNG", optimize=True)                                # PNG or TIFF only
-```
-
-The arrow is drawn in because the default template had one and it is the only thing telling a first-time user what to do. Keep it above the blur or it smears.
 
 ## Linting (CI enforcement)
 
@@ -406,7 +337,7 @@ Coverage is collected automatically (`--cov=app` in `pyproject.toml`).
 
 SQLAlchemy's default is `autoflush=True`, where every query writes the session's pending changes before running. Code that sets an attribute and then asks the database about it therefore reads the new value in a test and the old row in the app. Anything shaped "set it, then query it" is correct in the suite and stale in production, and nothing points at the difference.
 
-That is how the `File.verified` rollup shipped broken. `recompute_file_verified` counts a file's unverified detections in SQL, and its callers set `det.verified = True` in Python first. Relabelling a detection left the file unverified, so `addaxai-files.csv` exported `is_verified = FALSE` for files the user had judged; relabelling the same detection a second time corrected it, because by then the first write had landed. The fix is one `db.flush()` at the top of `recompute_file_verified`, put there rather than at each call site so no caller can forget.
+That is how the `File.verified` rollup shipped broken. `recompute_file_verified` counts a file's unverified detections in SQL, and its callers set `det.verified = True` in Python first. Relabelling a detection left the file unverified, so `wsp-cameratrap-files.csv` exported `is_verified = FALSE` for files the user had judged; relabelling the same detection a second time corrected it, because by then the first write had landed. The fix is one `db.flush()` at the top of `recompute_file_verified`, put there rather than at each call site so no caller can forget.
 
 Aligning conftest surfaced three further failures of the same family (`test_events.py`, `test_export.py`). All three were test setup rather than app code, and all three are fixed by flushing at the point the test stops being able to lean on autoflush. Resist the other repair: adding a defensive flush inside the production function makes the tests pass and hides that they were building state the app never builds.
 
@@ -430,8 +361,8 @@ They exist for the startup error page, which has no unit-testable seam: the back
 
 Two settings exist so they can run in isolation, and both are worth knowing about outside tests too:
 
-- `ADDAXAI_USER_DATA_DIR` is honoured by the Electron side as well as the backend, so the whole app can point at a throwaway directory. Every path in `main.ts` derives from it. It has to: the two processes talk to each other through files in there, so a value they disagree on means markers land where nothing reads them. On the backend, `database_url` and `models_dir` derive from it too (a `model_validator` in `config.py`); explicit `ADDAXAI_DATABASE_URL` / `ADDAXAI_MODELS_DIR` still win, and `tests/test_config.py` pins the derivation plus a guard that bans `Path.home()` outside `config.py` and `legacy_install.py`. This is also the supported way to run on machines where group policy blocks executables in user profiles: install the app to an allowed folder and set `ADDAXAI_USER_DATA_DIR` machine-wide (user docs: `docs/docs/help/locked-down-computers.mdx`). Every backend env var carries the `ADDAXAI_` prefix (`env_prefix` in `config.py`), because generic names like `DATABASE_URL` collide with other tooling; the one deliberate exception is that the HuggingFace mirror settings also honour the ecosystem names `HF_ENDPOINT` / `HF_HUB_DISABLE_XET` as fallbacks (`app/__init__.py` propagates the prefixed names to them for huggingface_hub itself).
-- `ADDAXAI_BACKEND_PORT` moves the backend off 8000. The app kills any AddaxAI backend already holding its port, so without this a test run would kill your dev server.
+- `WSP_USER_DATA_DIR` is honoured by the Electron side as well as the backend, so the whole app can point at a throwaway directory. Every path in `main.ts` derives from it. It has to: the two processes talk to each other through files in there, so a value they disagree on means markers land where nothing reads them. On the backend, `database_url` and `models_dir` derive from it too (a `model_validator` in `config.py`); explicit `WSP_DATABASE_URL` / `WSP_MODELS_DIR` still win, and `tests/test_config.py` pins the derivation plus a guard that bans `Path.home()` outside `config.py` and `legacy_install.py`. This is also the supported way to run on machines where group policy blocks executables in user profiles: install the app to an allowed folder and set `WSP_USER_DATA_DIR` machine-wide (user docs: `docs/docs/help/locked-down-computers.mdx`). Every backend env var carries the `WSP_` prefix (`env_prefix` in `config.py`), because generic names like `DATABASE_URL` collide with other tooling; the one deliberate exception is that the HuggingFace mirror settings also honour the ecosystem names `HF_ENDPOINT` / `HF_HUB_DISABLE_XET` as fallbacks (`app/__init__.py` propagates the prefixed names to them for huggingface_hub itself).
+- `WSP_BACKEND_PORT` moves the backend off 8000. The app kills any WSP CameraTrap backend already holding its port, so without this a test run would kill your dev server.
 
 Native dialogs cannot be driven from Playwright, so `dialog.showOpenDialog` / `showMessageBox` are stubbed via `electronApp.evaluate()`, along with `app.relaunch` (which would otherwise leave a second app running). What is under test is the wiring from button to marker file, not Electron's own APIs.
 
@@ -441,17 +372,17 @@ Note that `npm run build` only typechecks `src/`; Playwright transpiles the spec
 
 Three confidence values exist and must not be confused:
 
-1. **MD output**: MegaDetector always runs at `MD_OUTPUT_CONFIDENCE_THRESHOLD = 0.01`, passed as `--threshold` (images) and `--json_confidence_threshold` (videos). Everything at or above it is stored: raw results.json, the database, and `addaxai-recognitions.json`, which is the one export that still carries every stored box on every frame.
+1. **MD output**: MegaDetector always runs at `MD_OUTPUT_CONFIDENCE_THRESHOLD = 0.01`, passed as `--threshold` (images) and `--json_confidence_threshold` (videos). Everything at or above it is stored: raw results.json, the database, and `wsp-cameratrap-recognitions.json`, which is the one export that still carries every stored box on every frame.
 
    **That 0.01 is our cap, not MegaDetector's.** MD's own floor is 0.005 and its docs advise never going below that. We cap higher because 0.005 stored a tail nothing in the app could address: every confidence slider bottoms out at 0.01 (`CONFIDENCE_SCALE_MIN`), the classification gate at 0.1, counting at 0.2, best-frame scoring at 0.3. Measured on a real 24,337-detection database before the change, **19% of all detection rows sat between 0.005 and 0.01**, none ever verified, classified, counted or visible. They cost disk, delete time and query time and bought nothing. Raising it changes no behaviour, because every consumer already sits far above 0.01.
 
-   It applies to new analyses only. Rows already stored below 0.01 stay put, harmless and unreachable, until a re-analysis replaces them; there is deliberately no migration deleting them (a data migration touching rows needs its own test, and a re-analysis clears them for free). Consequence to know: `addaxai-recognitions.json` from a new run carries fewer near-noise boxes than one from an old run of the same folder, which is what Timelapse reads.
+   It applies to new analyses only. Rows already stored below 0.01 stay put, harmless and unreachable, until a re-analysis replaces them; there is deliberately no migration deleting them (a data migration touching rows needs its own test, and a re-analysis clears them for free). Consequence to know: `wsp-cameratrap-recognitions.json` from a new run carries fewer near-noise boxes than one from an old run of the same folder, which is what Timelapse reads.
 
 All confidence defaults live in `backend/app/core/confidence.py`, mirrored by `frontend/src/lib/confidence.ts`. Change them there, never as literals at call sites.
 2. **`Project.classification_gate`** (default 0.1): detection confidence above which animal crops are classified and embedded. Inference-time; changing it applies to new analyses. Gating both per-crop model passes is what keeps the untresholded MD output from multiplying compute.
 3. **`Project.counting_threshold`** (default 0.2): the counting/visualization filter described below. A folder run gets the same default and the same meaning; it is not pinned to the classification gate (that pinning was removed, see the comment in `routers/folder_runs.py`).
 
-**One scope for every table, in both modes.** `get_scoped_detection_rows` always applies the threshold plus the verified override, and `build_detection_rows` additionally drops boxes off a video's visible frame. So `addaxai-detections.csv`, the XLSX detections sheet, `addaxai-files.csv`, `addaxai-summary.csv` and `counts.csv` all describe the same population, and that population is what the Labels grid shows. The summary is built from the same scoped rows as the detections table, so its `n_detections` is that table's row count per species by construction. There used to be an `apply_threshold=False` escape hatch that the two folder-run table writers passed; it produced a workbook whose own sheets disagreed, and users read the surplus rows as species the app was hiding from them. Deleted. The complete record is `addaxai-recognitions.json`.
+**One scope for every table, in both modes.** `get_scoped_detection_rows` always applies the threshold plus the verified override, and `build_detection_rows` additionally drops boxes off a video's visible frame. So `wsp-cameratrap-detections.csv`, the XLSX detections sheet, `wsp-cameratrap-files.csv`, `wsp-cameratrap-summary.csv` and `counts.csv` all describe the same population, and that population is what the Labels grid shows. The summary is built from the same scoped rows as the detections table, so its `n_detections` is that table's row count per species by construction. There used to be an `apply_threshold=False` escape hatch that the two folder-run table writers passed; it produced a workbook whose own sheets disagreed, and users read the surplus rows as species the app was hiding from them. Deleted. The complete record is `wsp-cameratrap-recognitions.json`.
 
 Detections below `counting_threshold` are hidden from the UI. However, verified detections always pass, regardless of confidence. A human verification is a stronger signal than a model score.
 
@@ -591,7 +522,7 @@ Two places apply it, because they are two different queries:
 - `strongest_passing_detection` (`ml/observation_type.py`) skips them, which fixes `observation_type` and therefore `files.csv`, folder placement and annotated copies in one move.
 - `_is_a_real_observation` in `crud/event_observation.py` skips them in the MaxN query, which groups by `COALESCE(label, category)` in its own SQL and never goes through the function above.
 
-**The row is kept, not deleted.** A human looked at that box and judged it. Keeping it preserves the undo stack on the Labels page, and keeps `addaxai-detections.csv` an honest record of what the detector found and what was rejected. A file sign-off keeps its rejected weak boxes for the same reason (see the section above); the difference is that those were never examined individually, so `threshold_or_verified` keeps them below the surface while a box someone actually pressed X on stays visible in the grid.
+**The row is kept, not deleted.** A human looked at that box and judged it. Keeping it preserves the undo stack on the Labels page, and keeps `wsp-cameratrap-detections.csv` an honest record of what the detector found and what was rejected. A file sign-off keeps its rejected weak boxes for the same reason (see the section above); the difference is that those were never examined individually, so `threshold_or_verified` keeps them below the surface while a box someone actually pressed X on stays visible in the grid.
 
 `tests/api/test_mark_false.py` pins it, including that a real animal beside a falsed box still names the file, and that all six non-label classes behave alike.
 
@@ -634,7 +565,7 @@ One rule, everywhere:
 
 `backend/app/ml/observation_type.py` is the only implementation, and it is two functions: `strongest_passing_detection` picks the box, `derive_observation_type` reads that box's category. Anything needing another attribute of the deciding box calls the first one rather than re-deriving the ordering. The Files export does exactly that, carrying `detection_confidence` / `classification_label` / `classification_confidence` / the five taxon ranks / `scientific_name` / `common_name` off the same box `observation_type` came from. Note the consequence for `detection_confidence`: because the ordering puts verified first, it is the deciding box's score and not the file's highest, so it can sit below the project threshold and filtering a CSV on it drops verified files. Documented in `docs/docs/reference/exports.md` rather than solved with another column. The rule knows no category vocabulary, needs no classifier, and works for any detector.
 
-**For a video, "its detections" means the best frame's.** The module itself is frame-blind: every caller passes it the file's *visible surface* first, via `on_visible_frame()` / `on_visible_frame_of()` in a query or `visible_detections(file, dets)` on a list already in memory. So one sentence covers a video everywhere: AddaxAI saves one frame per video, and every still surface and every summary of that video comes from that frame. (`VideoPlayer` still draws every frame's boxes on the real video, deliberately, which is why the sentence says "still surface" and not "everything".) Consequences worth knowing: a video whose best frame holds nothing passing reads `blank` even when a confident box sits on another frame, and a video with no `best_frame_number` at all has no visible surface, so only a verified box can speak for it. Both are the honest answer, because those boxes have no card in the Labels grid, no MaxN count and no crop. They are still in `detections.csv` and the recognition JSON. Migration `6f7a8b9c0d1e` backfilled existing videos; it is scoped to `file_type = 'video'` so an image, whose `frame_number` and `best_frame_number` are both NULL, can never be touched by the comparison.
+**For a video, "its detections" means the best frame's.** The module itself is frame-blind: every caller passes it the file's *visible surface* first, via `on_visible_frame()` / `on_visible_frame_of()` in a query or `visible_detections(file, dets)` on a list already in memory. So one sentence covers a video everywhere: WSP CameraTrap saves one frame per video, and every still surface and every summary of that video comes from that frame. (`VideoPlayer` still draws every frame's boxes on the real video, deliberately, which is why the sentence says "still surface" and not "everything".) Consequences worth knowing: a video whose best frame holds nothing passing reads `blank` even when a confident box sits on another frame, and a video with no `best_frame_number` at all has no visible surface, so only a verified box can speak for it. Both are the honest answer, because those boxes have no card in the Labels grid, no MaxN count and no crop. They are still in `detections.csv` and the recognition JSON. Migration `6f7a8b9c0d1e` backfilled existing videos; it is scoped to `file_type = 'video'` so an image, whose `frame_number` and `best_frame_number` are both NULL, can never be touched by the comparison.
 
 **An event uses a different rule, on purpose. Do not unify them.** `build_event_primary_labels` in `postprocessing_outputs/separate_folders.py` picks a burst's species by the *most common* verified species, not by the strongest single box. That is not drift, and "fixing" it in either direction breaks something.
 
@@ -644,7 +575,7 @@ The reverse is worse. A file usually has one to three boxes, so a mode over them
 
 The two never meet today: the event label is used only by `separate_folders` and its preview, only when `group_events` is on, and reaches no export. **If an event-level label is ever added to an export, revisit this**, because then two rules for "what is this about" sit side by side in one file and the difference has to be explained to users rather than only to maintainers.
 
-**Why not a category priority.** Until 2026-07-31 this ranked categories instead (animal > human > vehicle), so one animal box at 0.21 beat thirty person boxes at 0.95. A test clip of a person in camouflage inspecting a camera produced 31 person boxes at 0.65 to 0.95 and one false-positive animal box that SpeciesNet called "chimpanzee" at 29%. Priority made the file an animal, that lone box was then the only labelled detection so it named the folder, and the run wrote `addaxai-media/chimpanzee/IMG_0001_still.jpg` containing a picture correctly labelled `Person 73%`. Ranking categories cannot be right when the thing being ranked is the detector's own guess about the category.
+**Why not a category priority.** Until 2026-07-31 this ranked categories instead (animal > human > vehicle), so one animal box at 0.21 beat thirty person boxes at 0.95. A test clip of a person in camouflage inspecting a camera produced 31 person boxes at 0.65 to 0.95 and one false-positive animal box that SpeciesNet called "chimpanzee" at 29%. Priority made the file an animal, that lone box was then the only labelled detection so it named the folder, and the run wrote `wsp-cameratrap-media/chimpanzee/IMG_0001_still.jpg` containing a picture correctly labelled `Person 73%`. Ranking categories cannot be right when the thing being ranked is the detector's own guess about the category.
 
 **The category is the detector's, and is never translated.** `Detection.category` and `File.observation_type` carry whatever the run's own `detection_categories` map said: `animal` / `person` / `vehicle` from MegaDetector, `shark` / `fish` / `turtle` from a detector that emits those. `json_pipeline` reads that map rather than assuming, and **refuses an id the run never declared** instead of defaulting it to `animal`, which is what silently turned every class of a non-MegaDetector model into wildlife.
 
@@ -699,7 +630,7 @@ There are two kinds of datetimes in this codebase and they must never be mixed i
 
 - **Offered only when there is no alternative.** The folder scan surfaces the checkbox only when `missing_datetime` is true, i.e. it found no capture date at all.
 - **The user sees the result first.** `scan_folder` computes `mtime_start_date` / `mtime_end_date` over *every* media file (a `stat()` is not an EXIF decode) and only when the metadata pass came back empty, so those two fields are non-null exactly when the opt-in is shown. That displayed range is the whole safeguard: there is no heuristic behind it, and a folder copied last week reads as this week.
-- **It fills gaps, never overrides.** `_resolve_capture_timestamp` puts mtime dead last, after the `addaxai-` filename marker. That ordering is load-bearing, not stylistic: `file_mtime_datetime` succeeds for every readable file, so anywhere earlier it would shadow every source below it.
+- **It fills gaps, never overrides.** `_resolve_capture_timestamp` puts mtime dead last, after the `wsp-cameratrap-` filename marker. That ordering is load-bearing, not stylistic: `file_mtime_datetime` succeeds for every readable file, so anywhere earlier it would shadow every source below it.
 - **One helper, three call sites.** `app/utils/media_dates.file_mtime_datetime` is used by the scanner, by `GET /api/deployments/file-datetime`, and by the ingest. The probe endpoint matters more than it looks: without it the Adjust-dates modal shows "unknown" for every file in such a folder and the offset can never be worked out.
 - **The clock is the user's computer, not `Project.timezone`.** `fromtimestamp` gives the naive local time the OS file browser shows, which is exactly what the preview showed before they ticked the box. The preview endpoint takes a path and knows nothing about a project, so it could not do anything else even if we wanted to. A user whose cameras ran on another clock corrects the whole-hour shift with `datetime_offset_seconds`, which applies downstream of resolution and so lands on these values for free.
 - **Nothing records that a date came this way.** Deliberate, and the main cost of the design: once ingested these are indistinguishable from camera dates. The only trace is one `logger.info` counting them per run, which is why that line stays even though it looks redundant.
@@ -720,7 +651,7 @@ A row in `event_observations` is one cohort: a species in an event, a count, and
 
 **Notes survive a regroup, counts do not, on purpose.** A count is a claim about one exact file set, so `generate_events_for_project` carries counts and the sign-off only onto a new event with the same files; a merged or split event gets the AI's numbers back. A note is text nobody can rebuild, so `_RegroupCarry.inherited_notes` gives every new event the notes of every old event it shares a file with: a split copies the note to each child, a merge joins them in time order, one per line. Misplaced beats lost. Deployment split copies the note to each child the same way.
 
-**NULL means unknown, never a stored `"unknown"`.** Camtrap DP's `sex` and `lifeStage` enums have no such value (AddaxAI-Connect stores the literal and its exports fail the enum), every query would special-case it, and it is what turned a defaulted field into silent data loss over there. The vocabularies live once in `app/core/observation_attributes.py` and the API validates against them; `frontend/src/lib/observation-attributes.ts` mirrors them for the dropdowns, the same pairing as `confidence.py` / `confidence.ts`. `behavior` is free text in the standard; the fixed list is a product choice, kept identical to Connect so the two products' exports share a vocabulary.
+**NULL means unknown, never a stored `"unknown"`.** Camtrap DP's `sex` and `lifeStage` enums have no such value (the web companion app stores the literal and its exports fail the enum), every query would special-case it, and it is what turned a defaulted field into silent data loss over there. The vocabularies live once in `app/core/observation_attributes.py` and the API validates against them; `frontend/src/lib/observation-attributes.ts` mirrors them for the dropdowns, the same pairing as `confidence.py` / `confidence.ts`. `behavior` is free text in the standard; the fixed list is a product choice, kept identical to Connect so the two products' exports share a vocabulary.
 
 **Order is rowid.** The rows have no timestamp and random ids, so `_rows_in_stored_order` reads them by SQLite rowid and the rebuild reinserts them in that order. That is what keeps the cohorts of a species where the user left them through a relabel. `list_event_observations` sorts species by AI MaxN and keeps rowid order inside a species.
 
@@ -788,7 +719,7 @@ References that motivate the design choices: Ridout & Linkie 2009 (J Agric Biol 
 
 An analysis is all-or-nothing per deployment: nothing reaches the database before phase 6, and the intermediate JSONs were wiped by the very action that restarts the run. A beta tester lost a 5,073-image folder to a power cut (2026-08-21) and asked for the checkpoints v6 had. The answer covers **image detection only**, which is where the hours go (measured: detection 3:12 against classification 0:44 for 2,281 images on an M-series Mac, and a far larger share on a CPU laptop).
 
-**Three files in `<folder>/.addaxai/projects/<project_id>/`**, named in `app/ml/detection_checkpoint.py`, which is the one place that knows the rules:
+**Three files in `<folder>/.wsp-cameratrap/projects/<project_id>/`**, named in `app/ml/detection_checkpoint.py`, which is the one place that knows the rules:
 
 | File | Written by | Meaning |
 |---|---|---|
@@ -865,7 +796,7 @@ Weighting one category above the rest does not encode "animals matter more", it 
 
 **Changing the scoring here now changes `File.observation_type` too.** Since `6f7a8b9c0d1e` a video is summarised by its best frame, so the frame this function picks decides what the file is, not just which JPEG is shown. `CONFIDENCE_THRESHOLD = 0.3` in `scoring.py` is the reason a video only reads `blank` on a project threshold above roughly 0.6: the chosen frame carries the confidence mass. Move that floor and observation types move with it, silently, for new analyses only, with no migration to catch it.
 
-**Storage:** No separate frame JPEG is saved; `best_frame_path` points to the frame inside `video_frames/`: `{deployment_folder}/.addaxai/video_frames/{video_name}/frame{N:06d}.jpg`. The `files` table stores `best_frame_number` (0-based index) and `best_frame_path` (absolute path to the JPEG). Both are `NULL` for images.
+**Storage:** No separate frame JPEG is saved; `best_frame_path` points to the frame inside `video_frames/`: `{deployment_folder}/.wsp-cameratrap/video_frames/{video_name}/frame{N:06d}.jpg`. The `files` table stores `best_frame_number` (0-based index) and `best_frame_path` (absolute path to the JPEG). Both are `NULL` for images.
 
 **Usage:** The best frame is the canonical image representation of a video. Use it anywhere you'd use a photo for an image file:
 - Thumbnails in the UI
@@ -905,7 +836,7 @@ Enforced in:
 
 ## Media copies of videos
 
-The folder-run Save step copies a video as the file it is, whole and under its own name, the same as an image. Until 2026-09-03 it wrote the best-frame JPEG only (`<stem>_still.jpg`), to keep the output small and to give boxes and blur a picture to land on. Three users asked for the clips back in the first week of v7: they sort media into species folders to keep the animal clips apart from the junk they delete, which is what legacy v6 did (verified in `v6.37:AddaxAI_GUI.py`, `move_files`: one `shutil.copy2` for images and videos alike; visualise, crop and plot were images only and warned as much). One rule, said on the Save step in the same words: copies are your files; boxes and blur are drawn on images, and a video gets a still with the boxes beside it.
+The folder-run Save step copies a video as the file it is, whole and under its own name, the same as an image. Until 2026-09-03 it wrote the best-frame JPEG only (`<stem>_still.jpg`), to keep the output small and to give boxes and blur a picture to land on. Three users asked for the clips back in the first week of v7: they sort media into species folders to keep the animal clips apart from the junk they delete, which is what legacy v6 did (verified in `v6.37:WSP CameraTrap_GUI.py`, `move_files`: one `shutil.copy2` for images and videos alike; visualise, crop and plot were images only and warned as much). One rule, said on the Save step in the same words: copies are your files; boxes and blur are drawn on images, and a video gets a still with the boxes beside it.
 
 **Blur is the one exception.** A blurred still beside the unblurred clip it came from is no anonymisation, so with blur on a video is written as its blurred still only. `videos_as_stills` on `separate_into_folders` and `build_output_preview` carries it, the worker passes `anonymise` into it, and the blur row's caption says so. Nothing else sets it; do not grow it into a general "videos as stills" toggle unless someone asks.
 
@@ -913,7 +844,7 @@ The folder-run Save step copies a video as the file it is, whole and under its o
 
 **Placement is still decided by the best frame.** The folder a clip lands in comes from the same visible-surface rule as its card, its row in the Files export and the still beside it (see "What a file is about"). The still shows that frame, so it normally shows why the clip is there; the one exception is a clip filed by a verified box on another frame, which gets no still because its best frame has nothing to draw. A clip whose best frame is empty but has a confident box elsewhere files under `blank/`, consistent with everything else that describes it. No EXIF tags go into containers (`is_image_path`).
 
-**There is no move mode, and the dead one was removed.** Legacy offered move; v7 never wired it up and the branch went with this change. Four reasons, all in the code: the worker wipes `addaxai-media` before every re-save using the marker as proof of ownership, so moved originals would be deleted one save later; the output folder defaults to the source folder, so a move would move originals into a subfolder of themselves while the recognition JSON's relative paths, the detection checkpoint and the video-frame cache all hang off the source tree; across drives `shutil.move` is copy plus delete anyway; and the FAQ and the Save step promise originals are never moved. A user who wants the source gone deletes it themselves, once, after checking the copies.
+**There is no move mode, and the dead one was removed.** Legacy offered move; v7 never wired it up and the branch went with this change. Four reasons, all in the code: the worker wipes `wsp-cameratrap-media` before every re-save using the marker as proof of ownership, so moved originals would be deleted one save later; the output folder defaults to the source folder, so a move would move originals into a subfolder of themselves while the recognition JSON's relative paths, the detection checkpoint and the video-frame cache all hang off the source tree; across drives `shutil.move` is copy plus delete anyway; and the FAQ and the Save step promise originals are never moved. A user who wants the source gone deletes it themselves, once, after checking the copies.
 
 **Cost to know.** Re-saving wipes and re-copies every clip, and cancel is only honoured between modules, so a large video copy runs to the end of its module. Pinned by the video tests in `tests/ml/test_separate_folders_placement.py`, `tests/ml/test_annotated_copies.py`, `tests/ml/test_output_preview.py`, the `anonymise` preview test in `tests/api/test_folder_runs.py` and the two worker end-to-end tests in `tests/test_save_outputs_worker.py`.
 
@@ -930,57 +861,52 @@ Two defences, both small:
 
 Pinned by `tests/ml/test_video_detector_retry.py` and the frame-0 pixel assertions in `tests/ml/test_video_iter.py`. The end-to-end proof is a folder run over real Bushnell files on a Windows machine, which is how this was verified.
 
-## Keeping installed models up to date
+## Installing models: the WSP model library
 
-A model that is already downloaded is never re-fetched by the normal flows: `check_weights_ready` only tests that the weights file exists, so once the `.pt` is on disk, preparing the model downloads nothing. That is fine for weights and wrong for everything else in the repo, because a fixed `inference.py` or a corrected `taxonomy.csv` would never reach anyone who already had the model.
+Models never come from a model hub. `app/ml/model_library.py` is the whole
+story; `ModelStorage.download_weights` and `ModelCatalogUpdater` call into it.
 
-On startup, `ModelCatalogUpdater.sync()` therefore asks HuggingFace for one file listing per **installed** model (a catalog stub with no weights next to it costs no request) and compares it to what is on disk. `find_stale_files` in `backend/app/ml/model_storage.py` is the whole rule:
+**Where the library is.** `get_library_dir()` answers, in order:
+`WSP_MODEL_LIBRARY_DIR`; the folder saved from *File › WSP model library*
+(`<user data>/wsp-config.json`); the downloaded copy of the linked library
+(`<user data>/library-cache/models`); a `WSP CameraTrap/models` folder found
+under the usual OneDrive roots. A configured folder that is missing is
+reported as missing rather than replaced by a guess.
 
-- **LFS files are skipped.** Those are the weights. HuggingFace's `blob_id` for an LFS file is the hash of the pointer stub rather than of the content, so comparing it would report every install as stale forever, and hashing the real file means reading gigabytes on every launch. Weights are versioned by `model_id` instead: re-uploading weights in place under the same id will not be noticed, so bump the id (`EUR-DF-v1-1` through `v1-4`, `AFR-DFV-v1` to `v2`).
-- **Documentation and OS litter are skipped** by basename: `README.md`, `LICENSE`, `LICENSE.md`, `.gitattributes`, `.DS_Store`, `manifest.json`.
-- **Everything else is compared by git blob SHA-1**, which is exactly what `blob_id` holds for a non-LFS file, so nothing is downloaded to reach a verdict. That covers `inference.py`, `taxonomy.csv`, `taxon-mapping.csv`, class lists, geofence JSON, `hubconf.py` and the vendored `dinov2/` and `dinov3/` trees with no allowlist to maintain. Covering all of them rather than just the obvious two matters: commits routinely touch several files at once, and shipping half of one leaves new code reading an old data file.
+**The linked library.** `model_library_url` (env `WSP_MODEL_LIBRARY_URL`,
+else the app setting, else `wsp/config.json`) is a OneDrive/SharePoint share
+link to a `.zip` of the library. `sync_library_url()` adds `download=1` to
+share links, refuses an HTML answer (a sign-in page) with a message the user
+can act on, skips the download when the link, ETag, Last-Modified and size
+match the last one, and only swaps the new copy in once it is complete. It
+runs at the start of every catalog sync and as a setup step.
 
-`POST /api/ml/models/{id}/update` recomputes the stale set server-side (a client can never name a path) and downloads only those files, via the `include` and `overwrite` options on the HF downloader. `overwrite` is not decoration: the downloader otherwise skips any file whose byte size already matches, so an upstream edit of the same length would be skipped by the very call that came to replace it.
+**Installing.** A model folder is copied from the library with the old
+downloader's rules: every file via a `.tmp` sibling and an atomic rename, a
+file already present with the same size is skipped, a failure keeps what
+landed so a retry only fetches what is missing, a cancel removes the partial
+install but never `manifest.json` (written from the catalog and nowhere
+else). A single-file public model can instead name a `download_url`;
+MegaDetector's points at this repository's `runtime` release.
 
-**Nothing about upstream is recorded on disk.** An earlier design stored an `hf_revision_sha` in the local `manifest.json`, which `write_manifest` then overwrote from the catalog on the next launch, so the check silently never fired and every model was logged as refreshed forever. Comparing the files themselves has no state to fall out of date, works on an install that predates the feature, and self-heals a partial download. Keep it that way: if you add a local-only key to `manifest.json`, you reintroduce that bug.
+**The catalog.** `wsp/models.json` ships with the app; the library's own
+`models.json` is merged over it by `model_id`, so a model is published by
+adding it to the library, without an app release.
 
-**`~/AddaxAI/models` is a managed cache, not a source tree.** Editing a model's `inference.py` in place now shows up as an available update on every launch, and applying it overwrites your edit with no backup.
+**Updates.** `find_stale_files()` compares every library file with the
+installed copy: by content up to 20 MB, by size above (the weights).
+Publish new weights under a new `model_id` rather than replacing them in
+place. `POST /api/ml/models/{id}/update` copies only the stale files.
 
 ### Environment drift is answered per request, model drift is not
 
-`GET /api/ml/updates` returns two lists and they are computed at different times, on purpose.
-
-`drifted_models` is the startup snapshot in `app.state.model_updates`. Answering it needs HuggingFace, so it cannot be recomputed per request, and `POST /api/ml/models/{id}/update` patches the model it just fixed out of the stored list.
-
-`drifted_envs` is recomputed by `find_drifted_envs()` on every request. It reads a 64-byte sentinel and hashes a 2.7 KB YAML per env, all local, so the cost does not justify a cache, and a cache here is wrong rather than merely stale: rebuilding a drifted env rewrites `.addaxai-yaml-sha256`, but the snapshot kept saying "drifted" until the next launch. The frontend caches the response with `staleTime: Infinity`, so nothing refetched inside a session, but a window reload builds a new query client, asked again, and got the same stale answer. The user was told to rebuild the environment they had just spent a minute rebuilding, over and over, and `EnvRebuildButton` could only hide it with React state that the next reload threw away.
-
-The recomputed list is returned, never written back into `app.state`: the stored snapshot is what the startup log line `N env(s) drifted` described, and it stays that.
-
-`ADDAXAI_DISABLE_MODEL_UPDATES` still covers both. It turns off the whole notice, so env drift must not slip past it on its own.
-
-## Reaching HuggingFace through something that is not HuggingFace
-
-`Settings.hf_base_url` is the single source for every HuggingFace request, so a mirror or a company repository manager (Artifactory, Nexus) covers all of them or none. `ADDAXAI_HF_TOKEN` rides along for an endpoint that will not serve anonymously; our own repos are public, so it is unset for everyone else.
-
-**The token has to be attached twice, because two clients do the work.** `huggingface_hub` handles the metadata calls and reads the token itself, but the file downloads are plain `requests`, so a token set only on the first client lists a repo perfectly and 401s every file in it. `hf_auth_headers()` in `hf_downloader.py` is the one helper both raw-HTTP sites use (the downloader session and the taxonomy fetch), and `HfApi(token=...)` is passed explicitly so the value comes from `Settings` rather than from whatever `HF_TOKEN` happens to be. requests drops the header again on a redirect to another host (`Session.rebuild_auth`), which is what keeps a corporate token off `us.aws.cdn.hf.co` when the endpoint is the real HuggingFace.
-
-**Only two of the four calls are fatal on the far end.** `GET /api/models/{repo}/tree/{rev}` (the file listing; huggingface_hub 1.x resolves `list_repo_files` through `list_repo_tree`, not through the older model-info route) and `GET /{repo}/resolve/{rev}/{path}`. `paths-info` only sizes the progress bar, `model_info(files_metadata=True)` only feeds the staleness check, and both are caught and degrade. So a proxy answering those two is enough, which is worth knowing before promising a user their repository manager will work.
-
-### The relay, for networks that block HuggingFace outright
-
-Some web filters forbid `huggingface.co` and `*.hf.co` as a category (a US state laptop on 2026-09-11: "AI content", on every network, hotspot included), and only IT can change that. `infra/hf-relay/worker.js` is our own Cloudflare Worker that forwards requests for the `Addax-Data-Science` repos to huggingface.co, follows the CDN redirect itself and streams the answer back. It stores nothing, so there is no second copy of any model to keep in sync: a fixed `inference.py` on HuggingFace is live through the relay the same second. Its address is `DEFAULT_HF_FALLBACK_ENDPOINT` in `config.py` (`ADDAXAI_HF_FALLBACK_ENDPOINT` overrides it).
-
-`_download_repo_with_relay` in `model_storage.py` is the whole rule. Every download goes to HuggingFace first. Only `NetworkBlockedError`, the block-page signal, sends the same download once through the relay, and only when `Settings.hf_fallback_url` is set, which it is not when the user configured their own mirror through `ADDAXAI_HF_ENDPOINT`: that is where their organisation allows downloads from, and a block page from it must not be answered by routing around it. If the relay cannot help either (blocked too, unreachable, over its daily quota), the *original* error is raised, so the wizard keeps naming huggingface.co, the host IT has to allow, instead of falling back to a generic "Download failed". A plain download failure never reaches the relay. The Worker strips the client's `Authorization` header: our repos are public, and a user's own `HF_TOKEN` must not travel through it.
-
-Not covered, on purpose: the startup staleness check and the catalog's `taxonomy.csv` fetch. Both degrade quietly, and `taxonomy.csv` is in the repo download anyway. A user behind such a filter gets no "update available" notices until IT opens the hosts.
-
-The Worker runs on the free plan (no card; 100,000 requests a day, then it errors until midnight UTC, never a bill). One model download is roughly 15 to 30 requests. Test it locally with `npx wrangler dev --local` in a scratch folder (a `compatibility_date` newer than the local runtime refuses to start), then run the two curl checks from the locked-down docs page against `http://127.0.0.1:8787` and a real `download_repo` with `ADDAXAI_HF_ENDPOINT` pointed at it. Pinned by `tests/ml/test_hf_relay_fallback.py`.
-
-## The catalog we ship as a fallback
-
-`models.json` is bundled by `backend.spec` and read by `_bundled_catalog_path()` when the remote catalog cannot be fetched. **It is a fallback, not a cache: never write the fetched catalog over it.** That would turn the one file describing what this build shipped with into a copy of whatever upstream said last, and the guarantee it exists to give (an install can always name its own models) with it.
-
-Without it, a first launch on a network that blocks `raw.githubusercontent.com` downloaded every weight file successfully and then showed no models at all, because `manifest.json` is written from the catalog and from nowhere else, and `ManifestManager` skips any model directory without one. The symptom lands far from the cause, as **"Classification model '<id>' not found"** from `POST /api/projects`.
+`GET /api/ml/updates` returns two lists computed at different times, on
+purpose. `drifted_models` is the startup snapshot in `app.state.model_updates`
+(it reads the library, which may be a slow share). `drifted_envs` is
+recomputed by `find_drifted_envs()` on every request: it reads a 64-byte
+sentinel and hashes a small YAML per env, all local, and a cached answer
+would keep telling the user to rebuild an environment they just rebuilt.
+`WSP_DISABLE_MODEL_UPDATES` turns both off.
 
 ## The wheel we ship instead of downloading
 
@@ -998,7 +924,7 @@ Without it, a first launch on a network that blocks `raw.githubusercontent.com` 
 
 ## Why the PyTorch index is ours to replace
 
-`ADDAXAI_PYTORCH_INDEX_URL` swaps `https://download.pytorch.org/whl/` in the YAML copy for a mirror, keeping whatever CUDA suffix follows so one replacement covers the cu128 and cu118 lines.
+`WSP_PYTORCH_INDEX_URL` swaps `https://download.pytorch.org/whl/` in the YAML copy for a mirror, keeping whatever CUDA suffix follows so one replacement covers the cu128 and cu118 lines.
 
 **pip has no index priority**, and that is the whole reason this exists. Every index in the set is equal and pip picks whichever candidate it likes, so a mirror added through `pip.ini` competes with our `--extra-index-url` rather than replacing it. A user in mainland China can configure a fast mirror correctly and still be served the 3.4 GB torch wheel from the slow origin. Our entry is the one thing they cannot remove, so removing it is the only lever that works.
 
@@ -1006,28 +932,9 @@ Without it, a first launch on a network that blocks `raw.githubusercontent.com` 
 
 Unset, the substitution is a no-op, so nothing changes outside China. `tests/ml/test_pytorch_index.py` fails if a shipped YAML ever spells the index differently, since a plain prefix swap would silently miss it.
 
-## What a download leaves behind when it does not finish
-
-Two rules in `download_weights`, and the difference between them is deliberate:
-
-| Outcome | What happens to the model directory |
-|---|---|
-| Failed | Nothing is removed. A retry fetches only what is missing. |
-| Cancelled | Every downloaded file is removed, `manifest.json` is kept. |
-
-**A failed download must not clean up.** `download_file` streams every file to a `.tmp` sibling and only `replace()`s it into place once it is complete and its size matches, so a file sitting at its final path is whole, and the size check at the top of `download_file` skips it next time. There is no resume *within* a file: an interrupted file restarts from byte 0, so what a retry saves is whole files, which for a model is nearly all of the bytes.
-
-This used to `shutil.rmtree` the whole directory. That was written in December 2025 for a downloader that streamed straight to the final path and could therefore leave truncated files behind; the `.tmp` plus atomic rename that landed two weeks later removed that failure mode, and the wipe was never revisited. On 2026-08-12 it cost a beta run twice: one 12 KB `inference.py` that could not resolve `huggingface.co` deleted the 1.13 GB weights file that had downloaded perfectly beside it, so the retry paid for the whole model again, and it deleted `manifest.json`.
-
-**`manifest.json` is never deleted by either path.** It is written from `models.json` by the catalog updater, no HF repo ships one (it is in `_IGNORED_REPO_FILES`), so a download can remove it but nothing except the next launch's `sync()` puts it back. Without it `ManifestManager` skips the directory entirely, and the model is gone from the catalog while its weights sit on disk. The symptom appears far from the cause: `POST /api/projects` refuses with **"Classification model '<id>' not found"**, and because `routers/ml_models.py` holds a process-lifetime `ManifestManager` cache while `routers/projects.py` builds a fresh one per request, the model still lists as installed and still reports "prepared successfully" in the same session. `_clear_downloaded_files` is the one cleanup helper, and the only place that deletes selectively inside a model directory. The Settings reset is not an exception: it removes the whole `models/` tree (`_WIPE_DIRS` in `routers/setup.py`), which the next launch's `sync()` rebuilds from scratch.
-
-**One transient failure no longer fails a whole download.** The `requests` session carries urllib3's default `Retry(total=0)`, so a single DNS or connection blip on any one file used to end the run. `download_file` now makes `_FILE_ATTEMPTS` (3) attempts per file with a 1s then 2s pause, and re-checks `should_cancel` before each retry. Files at or above `_PARALLEL_MIN_BYTES` effectively had a second chance already, since a failed range falls back to a single connection; this gives every file the same. The cost is that a link which dies at 90% repeatedly now re-transfers up to three times instead of failing to the user after one, which is the right trade until someone reports otherwise. Byte-range resume within a file is the real fix and is not built (YAGNI).
-
-Pinned by `tests/ml/test_download_cleanup.py` and the retry tests in `tests/ml/test_hf_downloader.py`.
-
 ## Creating a custom classification model
 
-To add a new classification model to AddaxAI, create an `inference.py` file in your model's directory that implements the `ModelInference` class.
+To add a new classification model to WSP CameraTrap, create an `inference.py` file in your model's directory that implements the `ModelInference` class.
 
 **Template:** See `/backend/templates/inference_template.py` for a complete template with examples.
 
@@ -1066,8 +973,8 @@ class ModelInference:
 - IDE autocomplete and type checking work properly
 
 **Examples:**
-- NAM-ADS-v1: YOLOv8 (PyTorch) - `/Users/peter/AddaxAI/models/cls/NAM-ADS-v1/inference.py`
-- TAS-BB-v1: MEWC-Keras (Keras/JAX) - `/Users/peter/AddaxAI/models/cls/TAS-BB-v1/inference.py`
+- SpeciesNet: `wsp/models/SPECIESNET-v4-0-2-A/inference.py`
+- WSP classifiers: `wsp/models/templates/torchvision_inference.py` (published by `wsp/tools/wsp_library.py add-model`)
 
 ## Label taxonomy and the hierarchical filter tree
 

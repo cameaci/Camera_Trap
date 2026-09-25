@@ -47,7 +47,7 @@ export const diagnosticsApi = {
     }
     const blob = await res.blob();
     const filename = parseFilename(res.headers.get("content-disposition")) ||
-      "addaxai-diagnostics.zip";
+      "wsp-cameratrap-diagnostics.zip";
     triggerBrowserDownload(blob, filename);
   },
 };

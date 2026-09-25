@@ -56,7 +56,7 @@ export function ClassificationModelGroupedItems({ models }: Props) {
                   <>
                     <br />
                     <span className="text-xs text-muted-foreground">
-                      Needs AddaxAI {formatVersion(model.min_app_version!)} or newer
+                      Needs WSP CameraTrap {formatVersion(model.min_app_version!)} or newer
                     </span>
                   </>
                 ) : (

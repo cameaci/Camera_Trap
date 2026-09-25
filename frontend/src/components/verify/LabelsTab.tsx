@@ -376,11 +376,11 @@ export function LabelsTab({
   // icons, so they own their own open state).
   const [relabelOpen, setRelabelOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(
-    () => !localStorage.getItem("addaxai:labelsWelcomeDismissed")
+    () => !localStorage.getItem("wsp:labelsWelcomeDismissed")
   );
   const handleDismissWelcome = useCallback(() => {
     setShowWelcome(false);
-    localStorage.setItem("addaxai:labelsWelcomeDismissed", "1");
+    localStorage.setItem("wsp:labelsWelcomeDismissed", "1");
   }, []);
 
   // Explicit sorting flag — avoids isPending getting stuck in Strict Mode

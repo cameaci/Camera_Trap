@@ -22,22 +22,22 @@ from app.utils.exiftool_bin import resolve_exiftool
 logger = get_logger(__name__)
 
 # Strict, opt-in filename date fallback. A user whose files have no readable
-# EXIF/metadata date can rename them to end with `addaxai-YYYYMMDD-HHMMSS`
-# before the extension (e.g. `clip_addaxai-20250222-072314.mp4`); we parse the
-# capture time from that. The `addaxai-` marker makes the match unambiguous (no
+# EXIF/metadata date can rename them to end with `wsp-cameratrap-YYYYMMDD-HHMMSS`
+# before the extension (e.g. `clip_wsp-cameratrap-20250222-072314.mp4`); we parse the
+# capture time from that. The `wsp-cameratrap-` marker makes the match unambiguous (no
 # false positives from serial numbers), so this is a silent last resort with no
 # settings. The marker is case-insensitive; the separator is strictly `-`, and
 # the block must end the filename stem.
-_ADDAXAI_FILENAME_RE = re.compile(r"addaxai-(\d{8})-(\d{6})$", re.IGNORECASE)
+_WSP_FILENAME_RE = re.compile(r"wsp-cameratrap-(\d{8})-(\d{6})$", re.IGNORECASE)
 
 
-def parse_addaxai_filename_datetime(filename: str) -> datetime | None:
-    """Capture time from a `…addaxai-YYYYMMDD-HHMMSS.<ext>` filename, else None.
+def parse_wsp_filename_datetime(filename: str) -> datetime | None:
+    """Capture time from a `…wsp-cameratrap-YYYYMMDD-HHMMSS.<ext>` filename, else None.
 
     Returns the naive local datetime, or None when the marker is absent or the
     digits are not a real calendar datetime.
     """
-    match = _ADDAXAI_FILENAME_RE.search(Path(filename).stem)
+    match = _WSP_FILENAME_RE.search(Path(filename).stem)
     if match is None:
         return None
     try:

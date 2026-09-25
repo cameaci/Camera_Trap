@@ -19,7 +19,7 @@ from app.db.backup import (
 
 @pytest.fixture()
 def live_db(tmp_path: Path):
-    """Plant a real SQLite file at settings.user_data_dir/addaxai.db.
+    """Plant a real SQLite file at settings.user_data_dir/wsp-cameratrap.db.
 
     The conftest's `client` fixture uses an in-memory engine; backup
     endpoints read the on-disk file, so we build one here. The backups
@@ -31,7 +31,7 @@ def live_db(tmp_path: Path):
     the user back to the startup error page.
     """
     settings = get_settings()
-    live = settings.user_data_dir / "addaxai.db"
+    live = settings.user_data_dir / "wsp-cameratrap.db"
 
     conn = sqlite3.connect(str(live))
     try:
@@ -131,7 +131,7 @@ def test_snapshot_with_unusable_note_falls_back_to_plain(client, live_db) -> Non
     resp = client.post("/api/backup/snapshot", json={"note": "!!!"})
     assert resp.status_code == 200, resp.text
     path = Path(resp.json()["path"])
-    assert re.fullmatch(r"addaxai-manual-\d{4}-\d{2}-\d{2}T\d{6}Z\.db", path.name)
+    assert re.fullmatch(r"wsp-cameratrap-manual-\d{4}-\d{2}-\d{2}T\d{6}Z\.db", path.name)
 
 
 def test_snapshot_force_ignores_daily_throttle(client, live_db) -> None:

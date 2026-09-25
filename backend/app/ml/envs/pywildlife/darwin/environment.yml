@@ -8,7 +8,7 @@ dependencies:
       # Dedicated env for the Colombian Amazon classifier (pywildlife,
       # CAM-AI4G-v1). It cannot share the `pytorch` env: PytorchWildlife
       # needs torch 2.4, while that env is pinned to torch 2.0.1 and
-      # ultralytics 8.0.191 for the addax-yolov8 and SpeciesNet-finetune
+      # ultralytics 8.0.191 for the yolov8 and SpeciesNet-finetune
       # models. One model paying for its own env beats twenty models
       # sharing a compromise.
       #
@@ -34,14 +34,14 @@ dependencies:
       - humanfriendly==10.0
       - jsonpickle==3.0.2
       # PytorchWildlife pulls in yolov5, which imports pkg_resources.
-      # Same pin and same reason as the addaxai-base env.
+      # Same pin and same reason as the wsp-base env.
       - setuptools<82
       # PytorchWildlife depends on ultralytics-yolov5. Use the same
-      # prebuilt wheel as the addaxai-base env: the PyPI release is
+      # prebuilt wheel as the wsp-base env: the PyPI release is
       # sdist-only and its setup.py downloads a README from GitHub at
       # build time, which crashes where Python cannot load the Windows
       # certificate store (ssl ASN1 error, beta report 2026-06-10).
-      - ultralytics-yolov5 @ https://huggingface.co/Addax-Data-Science/pip-wheels/resolve/main/ultralytics_yolov5-0.1.1-py3-none-any.whl#sha256=d532e62d6d7cd6c7381e4453810f31f10fd269cf9f237494bc570e74168dc2e1
+      - ultralytics-yolov5 @ https://github.com/cameaci/Camera_Trap/raw/main/backend/app/ml/pip-wheels/ultralytics_yolov5-0.1.1-py3-none-any.whl#sha256=d532e62d6d7cd6c7381e4453810f31f10fd269cf9f237494bc570e74168dc2e1
       - torch==2.4.1
       - torchvision==0.19.1
       # OpenCV (headless variant: no GUI deps, only the cv2 module).

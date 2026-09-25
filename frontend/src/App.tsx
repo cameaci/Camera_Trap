@@ -267,12 +267,12 @@ function BackendDownScreen({ onRetry }: { onRetry: () => void }) {
           Backend not responding
         </h1>
         <p className="text-sm text-muted-foreground">
-          AddaxAI's backend stopped responding. This usually means it
+          WSP CameraTrap's backend stopped responding. This usually means it
           crashed during startup or hit a database migration error.
           Check <code className="text-xs">logs/backend.log</code> inside
           the app's data folder (by default{" "}
-          <code className="text-xs">~/AddaxAI</code>, or{" "}
-          <code className="text-xs">%USERPROFILE%\AddaxAI</code> on
+          <code className="text-xs">~/WSP-CameraTrap</code>, or{" "}
+          <code className="text-xs">%USERPROFILE%\WSP-CameraTrap</code> on
           Windows) and report the issue if it persists.
         </p>
         <Button onClick={onRetry}>Retry now</Button>

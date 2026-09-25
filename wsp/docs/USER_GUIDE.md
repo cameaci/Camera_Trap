@@ -70,7 +70,7 @@ to your laptop; it keeps working offline afterwards.
 |---|---|
 | The app | `%LOCALAPPDATA%\Programs\WSP CameraTrap` |
 | Your projects database, installed models, logs | `%USERPROFILE%\WSP-CameraTrap` |
-| Analysis results of a folder run | a hidden `.addaxai` folder inside the analysed folder, plus wherever you saved outputs |
+| Analysis results of a folder run | a hidden `.wsp-cameratrap` folder inside the analysed folder, plus wherever you saved outputs |
 
 Uninstalling the app (Windows Settings › Apps) asks whether to delete your
 data folder as well. Your images are never touched.

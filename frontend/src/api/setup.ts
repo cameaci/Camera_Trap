@@ -1,7 +1,7 @@
 /**
  * First-run setup wizard API.
  *
- * Backend gates the wizard: until env-addaxai-base is installed, the rest
+ * Backend gates the wizard: until env-wsp-base is installed, the rest
  * of the app is unreachable. Default model weights are already on disk by
  * the time the wizard runs (copied from the bundle by app/main.py
  * lifespan), so the wizard's only real job is to install the conda env.
@@ -29,22 +29,6 @@ export interface SetupStatus {
   user_data_dir: string;
 }
 
-/**
- * A legacy AddaxAI (v5 / v6) install found on this machine, plus the
- * progress of a removal if one is running. Presence and progress share
- * one payload so the dialog needs a single poll.
- */
-export interface LegacyInstallStatus {
-  found: boolean;
-  version: string | null;
-  /** Paths the app will delete. */
-  removable_paths: string[];
-  /** Paths found but needing admin rights, so the user deletes them. */
-  manual_paths: string[];
-  removal_in_progress: boolean;
-  removal_error: string | null;
-}
-
 export const setupApi = {
   getStatus: () => api.get<SetupStatus>("/api/setup/status"),
   installEnv: () => api.post<{ status: string }>("/api/setup/install-env", {}),
@@ -67,9 +51,4 @@ export const setupApi = {
       "/api/setup/allow-no-revocation-check",
       {},
     ),
-
-  getLegacyInstall: () =>
-    api.get<LegacyInstallStatus>("/api/setup/legacy-install"),
-  removeLegacyInstall: () =>
-    api.post<{ status: string }>("/api/setup/legacy-install/remove", {}),
 };

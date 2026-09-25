@@ -50,7 +50,7 @@ def _seed(db, tmp_path: Path, *, folder_path: str | None = "") -> tuple[str, Pat
 
 def _write_results_json(folder: Path, project_id: str) -> None:
     """Minimal results.json matching the seeded file and bbox."""
-    path = folder / ".addaxai" / "projects" / project_id / "results.json"
+    path = folder / ".wsp-cameratrap" / "projects" / project_id / "results.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps({
@@ -104,7 +104,7 @@ def _run_job(db, monkeypatch, project_id: str) -> dict:
 def test_missing_results_json_is_reported_and_leaves_hash_unset(
     db, tmp_path, monkeypatch
 ):
-    """Folder is there, its .addaxai artifacts are not: reported under
+    """Folder is there, its .wsp-cameratrap artifacts are not: reported under
     `no_results`, and the project still reads as needing a reprocess."""
     from app.models import Project
 
@@ -162,7 +162,7 @@ def test_unreadable_results_are_skipped_not_fatal(db, tmp_path, monkeypatch):
 
     project_id, folder = _seed(db, tmp_path)
     _write_results_json(folder, project_id)
-    (folder / ".addaxai" / "projects" / project_id / "results.json").write_text(
+    (folder / ".wsp-cameratrap" / "projects" / project_id / "results.json").write_text(
         "{ this is not json "
     )
 
@@ -181,7 +181,7 @@ def test_unreadable_folder_does_not_abort_the_whole_job(
     job for every other deployment in the project, with the raw errno
     shown to the user."""
     project_id, folder = _seed(db, tmp_path)
-    artifacts = folder / ".addaxai"
+    artifacts = folder / ".wsp-cameratrap"
     artifacts.mkdir(parents=True, exist_ok=True)
     artifacts.chmod(0o000)
     try:

@@ -23,7 +23,7 @@ def _valid_manifest(model_id: str) -> dict:
     return {
         "model_id": model_id,
         "friendly_name": f"Friendly {model_id}",
-        "env": "addaxai-base",
+        "env": "wsp-base",
         "model_fname": f"{model_id}.pt",
         "description": "A model.",
         "developer": "Someone",

@@ -19,7 +19,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { TileSize } from "./CropGrid";
 
-const LS_KEY = "addaxai:labelsSettings";
+const LS_KEY = "wsp:labelsSettings";
 
 export function readLabelsSettings(): Record<string, unknown> {
   try {

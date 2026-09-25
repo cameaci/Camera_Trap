@@ -139,7 +139,7 @@ export function RestoreBackupDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Restore database from backup"
-      description="Pick a point to roll back to. AddaxAI restarts to finish the swap. A snapshot of the current database is saved first, so this is reversible."
+      description="Pick a point to roll back to. WSP CameraTrap restarts to finish the swap. A snapshot of the current database is saved first, so this is reversible."
       confirmWord="RESTORE"
       confirmLabel="Restore and restart"
       pendingLabel="Restoring…"
@@ -166,7 +166,7 @@ export function RestoreBackupDialog({
 
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Backups in AddaxAI
+          Backups in WSP CameraTrap
         </p>
         <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-lg border bg-muted/30 p-2">
           {isLoading ? (

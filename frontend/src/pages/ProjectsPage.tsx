@@ -87,7 +87,7 @@ export function ProjectsPage() {
               <HomeButton />
               <img
                 src="/branding/logo-mark.png"
-                alt="AddaxAI"
+                alt="WSP CameraTrap"
                 className="h-12 w-12 shrink-0"
               />
               <div>

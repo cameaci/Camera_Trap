@@ -1,6 +1,6 @@
 """Tests for the recognition_json postprocess output module.
 
-Pins the canonical AddaxAI / Timelapse recognition JSON shape so a
+Pins the canonical WSP CameraTrap / Timelapse recognition JSON shape so a
 folder run's output stays interchangeable with what the Timelapse
 Analyser and existing downstream tooling expect.
 """
@@ -87,15 +87,15 @@ def test_output_has_canonical_top_level_keys(db, tmp_path):
         "2": "person",
         "3": "vehicle",
     }
-    # info.addaxai is the canonical metadata block.
-    assert "addaxai" in payload["info"]
-    info = payload["info"]["addaxai"]
+    # info.wsp-cameratrap is the canonical metadata block.
+    assert "wsp" in payload["info"]
+    info = payload["info"]["wsp"]
     assert info["detection_model"] == project.detection_model_id
     assert "classification_completion_time" in info
 
 
 def test_info_block_carries_reproducibility_settings(db, tmp_path):
-    """info.addaxai records the app version and the result-affecting run
+    """info.wsp-cameratrap records the app version and the result-affecting run
     settings, so the run is reproducible from the JSON alone."""
     project = make_project(
         db,
@@ -109,14 +109,14 @@ def test_info_block_carries_reproducibility_settings(db, tmp_path):
     write_recognition_json(db, project.id, target)
     payload = _load_json(target)
 
-    addaxai = payload["info"]["addaxai"]
+    wsp = payload["info"]["wsp"]
     from app import __version__ as APP_VERSION
 
-    assert addaxai["version"] == APP_VERSION
-    assert addaxai["export_source"] == "folder-run"
+    assert wsp["version"] == APP_VERSION
+    assert wsp["export_source"] == "folder-run"
     # deployment_id and the trimmed settings are intentionally absent.
-    assert "deployment_id" not in addaxai
-    settings = addaxai["settings"]
+    assert "deployment_id" not in wsp
+    settings = wsp["settings"]
     # No detection threshold: the file is the complete record, nothing
     # in it is threshold-filtered (Dan's must-fix).
     assert "counting_threshold" not in settings
@@ -446,7 +446,7 @@ def test_detection_without_label_omits_classifications(db, tmp_path):
 def test_verified_flag_per_detection(db, tmp_path):
     """Each detection carries its human-verified state, so the folder JSON
     captures review status from the DB (not present in raw results-mode
-    output, but a deliberate addaxai extension)."""
+    output, but a deliberate wsp extension)."""
     project = make_project(db, name="rj-verified")
     dep = make_deployment(
         db, project_id=project.id, folder_path=str(tmp_path / "src"),
@@ -625,8 +625,8 @@ def test_filename_is_canonical(db, tmp_path):
 
     # One canonical filename, so existing downstream scripts (and the
     # Timelapse Analyser) find it.
-    assert result.output_path.endswith("addaxai-recognitions.json")
-    assert (target / "addaxai-recognitions.json").is_file()
+    assert result.output_path.endswith("wsp-cameratrap-recognitions.json")
+    assert (target / "wsp-cameratrap-recognitions.json").is_file()
 
 
 def test_unknown_project_raises(db, tmp_path):

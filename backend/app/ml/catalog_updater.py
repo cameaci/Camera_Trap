@@ -1,5 +1,5 @@
 """
-Model catalog updater - fetches central manifest and creates stubs for new models.
+Model catalog updater - reads the WSP catalog and creates stubs for its models.
 
 Following DEVELOPERS.md principles:
 - Fail silently if offline (non-critical operation)
@@ -10,7 +10,6 @@ Following DEVELOPERS.md principles:
 import asyncio
 import json
 import sys
-import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,32 +17,21 @@ from typing import Any
 from app.core.config import get_settings
 from app.core.logging_config import get_logger
 from app.ml import model_library
-from app.ml.hf_downloader import hf_auth_headers
-from app.ml.model_storage import find_stale_files
-from app.ml.schemas.model_manifest import resolve_hf_repo
 
 logger = get_logger(__name__)
 
 
 def _bundled_catalog_path() -> Path | None:
     """
-    The models.json shipped inside the app, or None if it is not there.
+    The catalog shipped inside the app (wsp/models.json), or None.
 
-    Two locations, the same two `app/__init__.py` reads VERSION from: the
-    PyInstaller bundle root when frozen, the repo root when running from
-    source.
+    Two locations: the PyInstaller bundle when frozen, the repo when
+    running from source.
     """
     candidates: list[Path] = []
-    if get_settings().model_source == "library":
-        # WSP: the catalog shipped with WSP CameraTrap (wsp/models.json),
-        # never the upstream AddaxAI one, whose models live on HuggingFace.
-        if hasattr(sys, "_MEIPASS"):
-            candidates.append(Path(sys._MEIPASS) / "wsp" / "models.json")
-        candidates.append(Path(__file__).resolve().parents[3] / "wsp" / "models.json")
-    else:
-        if hasattr(sys, "_MEIPASS"):
-            candidates.append(Path(sys._MEIPASS) / "models.json")
-        candidates.append(Path(__file__).resolve().parents[3] / "models.json")
+    if hasattr(sys, "_MEIPASS"):
+        candidates.append(Path(sys._MEIPASS) / "wsp" / "models.json")
+    candidates.append(Path(__file__).resolve().parents[3] / "wsp" / "models.json")
     for path in candidates:
         if path.is_file():
             return path
@@ -64,7 +52,7 @@ def _validate_catalog(catalog: Any) -> dict[str, Any] | None:
 # than in EnvironmentManager because env_manager treats env_name as an
 # opaque parameter; this list tracks which ones the app actually ships.
 _DRIFT_CHECKED_ENVS: tuple[str, ...] = (
-    "addaxai-base",
+    "wsp-base",
     "pytorch",
     "pywildlife",
     "tensorflow-v1",
@@ -107,71 +95,26 @@ class ModelCatalogUpdater:
     Only creates manifest.json files - does not download weights.
     """
 
-    def __init__(self, models_dir: Path | None = None, catalog_url: str | None = None):
+    def __init__(self, models_dir: Path | None = None):
         """
-        Initialize catalog updater.
-
         Args:
             models_dir: Directory where models are stored (default: settings.models_dir)
-            catalog_url: URL to fetch catalog from (default: from config)
         """
         self.models_dir = models_dir or get_settings().models_dir
         self.models_dir.mkdir(parents=True, exist_ok=True)
 
-        # Default to GitHub raw URL
-        self.catalog_url = catalog_url or (
-            "https://raw.githubusercontent.com/PetervanLunteren/AddaxAI/main/models.json"
-        )
-
-    def fetch_catalog(self, timeout: int = 2) -> dict[str, Any] | None:
+    def fetch_catalog(self) -> dict[str, Any] | None:
         """
-        Fetch the model catalog, falling back to the copy shipped in the app.
+        The WSP model library's catalog merged over the shipped one.
 
-        The bundled copy is not a cache, it is what keeps a blocked
-        catalog host from emptying the app: manifest.json is written from
-        this catalog and nothing else writes it, and ManifestManager
-        skips any model directory without one. So a first launch behind a
-        firewall used to download the weights and then show no models at
-        all. The bundled file lists what this app version shipped with,
-        which is the honest answer when upstream cannot be reached.
+        The shipped catalog is what keeps an unreachable library from
+        emptying the app: manifest.json is written from this catalog and
+        nothing else writes it, and ManifestManager skips any model
+        directory without one.
 
-        Args:
-            timeout: Request timeout in seconds (default: 2)
-
-        Returns:
-            Catalog dict, or None when neither source yields a valid one
-
-        Raises:
-            Never raises - logs errors and returns None
+        Never raises; returns None when neither source yields a catalog.
         """
-        if get_settings().model_source == "library":  # WSP
-            return self._library_catalog()
-
-        try:
-            logger.info(f"Fetching model catalog from {self.catalog_url}")
-
-            with urllib.request.urlopen(self.catalog_url, timeout=timeout) as response:
-                data = response.read()
-
-            catalog = _validate_catalog(json.loads(data))
-            if catalog is not None:
-                det_count = len(catalog['models']['det'])
-                cls_count = len(catalog['models']['cls'])
-                emb_count = len(catalog["models"].get("emb", []))
-                logger.info(
-                    f"Fetched catalog: {det_count} det, "
-                    f"{cls_count} cls, {emb_count} emb models"
-                )
-                return catalog
-
-        except urllib.error.URLError as e:
-            logger.warning(f"Failed to fetch model catalog (offline or unreachable): {e}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse model catalog JSON: {e}")
-        except Exception as e:
-            logger.error(f"Unexpected error fetching model catalog: {e}", exc_info=True)
-
-        return self._bundled_catalog()
+        return self._library_catalog()
 
     def _library_catalog(self) -> dict[str, Any] | None:
         """
@@ -241,57 +184,20 @@ class ModelCatalogUpdater:
         )
         return local_models
 
-    def download_taxonomy(
-        self, model_id: str, model_dir: Path, hf_repo: str | None = None
-    ) -> None:
+    def download_taxonomy(self, model_id: str, model_dir: Path) -> None:
         """
-        Download taxonomy.csv from HuggingFace repo.
-
-        Args:
-            model_id: Model ID (used to construct HF repo URL)
-            model_dir: Local directory to save taxonomy.csv
-            hf_repo: Explicit repo override from the manifest. None means
-                     follow the `<DEFAULT_HF_ORG>/<model_id>` convention.
-
-        Raises:
-            Never raises - logs errors and continues
+        Copy taxonomy.csv for a model from the WSP model library, if it has
+        one. Never raises.
         """
-        if get_settings().model_source == "library":  # WSP
-            model_type = model_dir.parent.name
-            src = model_library.library_model_dir(model_type, model_id)
-            if src is not None and (src / "taxonomy.csv").is_file():
-                try:
-                    model_library.copy_model(src, model_dir, include={"taxonomy.csv"})
-                    logger.info(f"Copied taxonomy.csv for {model_id} from the library")
-                except Exception as e:
-                    logger.warning(f"Failed to copy taxonomy.csv for {model_id}: {e}")
+        src = model_library.library_model_dir(model_dir.parent.name, model_id)
+        if src is None or not (src / "taxonomy.csv").is_file():
+            logger.debug(f"No taxonomy.csv in the library for {model_id}")
             return
-
-        taxonomy_url = (
-            f"{get_settings().hf_base_url}/{resolve_hf_repo(model_id, hf_repo)}"
-            f"/resolve/main/taxonomy.csv?download=true"
-        )
-        taxonomy_path = model_dir / "taxonomy.csv"
-
         try:
-            logger.info(f"Downloading taxonomy.csv from {taxonomy_url}")
-
-            request = urllib.request.Request(taxonomy_url, headers=hf_auth_headers())
-            with urllib.request.urlopen(request, timeout=5) as response:
-                data = response.read()
-
-            with open(taxonomy_path, "wb") as f:
-                f.write(data)
-
-            logger.info(f"Downloaded taxonomy.csv for {model_id}")
-
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
-                logger.debug(f"No taxonomy.csv found for {model_id} (404)")
-            else:
-                logger.warning(f"Failed to download taxonomy.csv for {model_id}: HTTP {e.code}")
+            model_library.copy_model(src, model_dir, include={"taxonomy.csv"})
+            logger.info(f"Copied taxonomy.csv for {model_id} from the library")
         except Exception as e:
-            logger.warning(f"Failed to download taxonomy.csv for {model_id}: {e}")
+            logger.warning(f"Failed to copy taxonomy.csv for {model_id}: {e}")
 
     def write_manifest(
         self, model_type: str, manifest_data: dict[str, Any]
@@ -334,7 +240,7 @@ class ModelCatalogUpdater:
                 with open(manifest_path, "w", encoding="utf-8") as f:
                     json.dump(manifest_data, f, indent=2)
 
-            # Taxonomy ships in the HF repo, not the catalog, so fetch it
+            # Taxonomy ships in the model folder, not the catalog, so fetch it
             # whenever it is missing rather than only on first creation.
             # This check must sit outside the `unchanged` branch: a stub
             # whose taxonomy never landed (model published before its
@@ -345,9 +251,7 @@ class ModelCatalogUpdater:
             # on disk this costs nothing; a repo that genuinely has no
             # taxonomy.csv pays one cheap 404 per launch.
             if model_type == "cls" and not (model_dir / "taxonomy.csv").exists():
-                self.download_taxonomy(
-                    model_id, model_dir, manifest_data.get("hf_repo")
-                )
+                self.download_taxonomy(model_id, model_dir)
 
             if unchanged:
                 return "unchanged"
@@ -370,34 +274,21 @@ class ModelCatalogUpdater:
         self, model_type: str, manifest_data: dict[str, Any]
     ) -> list[str] | None:
         """
-        Repo-relative paths of this model's local files that no longer
-        match HuggingFace, or None when the model is not installed or the
-        question could not be answered.
+        Relative paths of this model's local files that no longer match the
+        WSP model library, or None when the model is not installed or the
+        library does not have it.
 
-        Only models the user actually downloaded can be stale, so a
-        catalog stub (a manifest with no weights next to it) is skipped
-        without any HTTP call. Deliberately not `check_weights_ready`:
-        that answers "can inference run", and reports False for an install
-        that has its weights but is missing a support file, which is
-        exactly the install whose missing files this should restore.
+        Only installed models can be stale, so a catalog stub (a manifest
+        with no weights next to it) is skipped.
         """
         model_dir = self.models_dir / model_type / manifest_data["model_id"]
         if not (model_dir / manifest_data["model_fname"]).is_file():
             return None
-
-        if get_settings().model_source == "library":  # WSP
-            src = model_library.library_model_dir(model_type, manifest_data["model_id"])
-            if src is None:
-                return None
-            return await asyncio.to_thread(model_library.find_stale_files, model_dir, src)
-
-        hf_repo = resolve_hf_repo(
-            manifest_data["model_id"], manifest_data.get("hf_repo")
-        )
-        # One blocking HTTPS call plus a handful of local file reads, per
-        # installed model. Off the event loop so a slow or black-holed
-        # network cannot make the whole API unresponsive during startup.
-        return await asyncio.to_thread(find_stale_files, model_dir, hf_repo)
+        src = model_library.library_model_dir(model_type, manifest_data["model_id"])
+        if src is None:
+            return None
+        # Off the event loop: a slow network share must not stall startup.
+        return await asyncio.to_thread(model_library.find_stale_files, model_dir, src)
 
     async def sync(self) -> dict[str, Any]:
         """
@@ -412,9 +303,9 @@ class ModelCatalogUpdater:
                 "refreshed_models": [{"model_id", "friendly_name"}, ...],
                 "drifted_models":   [{"model_id", "friendly_name", "emoji"}, ...],
                     installed models with at least one file that no longer
-                    matches upstream. The file names go to the log rather
+                    matches the library. The file names go to the log rather
                     than over the wire: nothing renders them, and this
-                    snapshot goes stale the moment upstream moves, so the
+                    snapshot goes stale the moment the library changes, so the
                     update endpoint recomputes the list itself.
                 "drifted_envs":     [{"env_name"}, ...],
                 "checked_at":       "<UTC ISO timestamp>",
@@ -432,6 +323,17 @@ class ModelCatalogUpdater:
         }
 
         try:
+            # A linked library (OneDrive share link) is refreshed first, so a
+            # model published since the last launch is in the catalog below.
+            try:
+                await asyncio.to_thread(model_library.sync_library_url)
+            except model_library.LibraryDownloadError as e:
+                logger.warning(f"WSP model library link not refreshed: {e}")
+                result["library_error"] = str(e)
+            except Exception as e:
+                logger.error(f"WSP model library link sync failed: {e}", exc_info=True)
+                result["library_error"] = str(e)
+
             catalog = self.fetch_catalog()
             if catalog is None:
                 result["error"] = "Failed to fetch catalog"
@@ -468,7 +370,7 @@ class ModelCatalogUpdater:
                             }
                         )
 
-                    # Compare the installed files against the upstream repo.
+                    # Compare the installed files against the library.
                     # Skipped on fresh installs: nothing is on disk yet.
                     if not is_fresh_install:
                         stale = await self._find_stale_files(model_type, manifest_data)

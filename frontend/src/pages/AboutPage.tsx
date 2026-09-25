@@ -153,8 +153,8 @@ export default function AboutPage() {
               <a href={LICENSE_URL} className="text-primary hover:underline">
                 MIT
               </a>
-              . {PRODUCT_NAME} is built on AddaxAI by Peter van Lunteren
-              (Addax Data Science), released under the MIT license.
+              . Third-party open-source components and their notices are
+              listed in the LICENSE file installed with the app.
             </div>
             <p>
               The detection and classification models come from various

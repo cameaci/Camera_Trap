@@ -2,11 +2,11 @@
 Locate the exiftool binary.
 
 The installers do not bundle exiftool and fresh machines do not have it
-on PATH, so the binary ships inside the env-addaxai-base micromamba
+on PATH, so the binary ships inside the env-wsp-base micromamba
 environment (conda-forge package, available for all three platforms).
 Resolution order:
 
-1. The env-addaxai-base environment (production path)
+1. The env-wsp-base environment (production path)
 2. PATH (dev machines and CI, which install exiftool system-wide)
 
 Raises RuntimeError when neither is present so callers fail loudly with
@@ -46,7 +46,7 @@ _verified: set[str] = set()
 
 def resolve_exiftool() -> str:
     """Return the absolute path to the exiftool binary."""
-    env_dir = get_settings().user_data_dir / "envs" / "env-addaxai-base"
+    env_dir = get_settings().user_data_dir / "envs" / "env-wsp-base"
 
     if os.name == "nt":
         candidate = env_dir / "bin" / "exiftool.bat"

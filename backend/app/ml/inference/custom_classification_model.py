@@ -239,7 +239,7 @@ class CustomClassificationModel:
             # the interpreter exits before any user code runs because
             # `Lib/encodings/` is missing or unreadable. Most often
             # caused by Windows Defender quarantining files under
-            # `~/AddaxAI/envs/` between sessions. Without this signal
+            # `~/WSP-CameraTrap/envs/` between sessions. Without this signal
             # we'd surface a useless "exited with code 1" to the user.
             env_corrupted = False
             CORRUPTED_ENV_MARKERS = (
@@ -299,10 +299,10 @@ class CustomClassificationModel:
                         f"The analysis environment 'env-{self.env_name}' is "
                         f"corrupted (its Python stdlib is missing). This "
                         f"usually means antivirus or system cleanup removed "
-                        f"files under your AddaxAI folder. Restart AddaxAI: "
+                        f"files under your WSP CameraTrap folder. Restart WSP CameraTrap: "
                         f"it will detect the broken environment and prompt "
                         f"you to rebuild it. If that does not help, reinstall "
-                        f"AddaxAI."
+                        f"WSP CameraTrap."
                     )
                 raise RuntimeError(
                     f"Classification worker exited with code {process.returncode} "

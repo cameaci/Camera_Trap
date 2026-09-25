@@ -131,13 +131,13 @@ def test_real_capture_date_always_wins(deployment_scaffold):
     assert rows[str(s["img_paths"][1])] == MTIME_B
 
 
-def test_addaxai_filename_beats_mtime(deployment_scaffold):
+def test_wsp_filename_beats_mtime(deployment_scaffold):
     """Resolution order: the filename marker is a deliberate statement by
     the user about one file, mtime is a blanket fallback, so the marker
     wins. mtime must stay last because it succeeds for every readable
     file and would otherwise shadow everything below it."""
     s = deployment_scaffold
-    marked = s["deploy_dir"] / "subdir" / "clip_addaxai-20250222-072314.jpg"
+    marked = s["deploy_dir"] / "subdir" / "clip_wsp-cameratrap-20250222-072314.jpg"
     s["img_paths"][0].rename(marked)
     _set_mtime(marked, MTIME_A)
     rel = str(marked.relative_to(s["deploy_dir"]))

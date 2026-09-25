@@ -294,8 +294,8 @@ async def prepare_model_weights(model_id: str, request: Request) -> ModelPrepare
 @router.post("/models/{model_id}/update", response_model=ModelUpdateResponse)
 async def update_model(model_id: str, request: Request) -> ModelUpdateResponse:
     """
-    Re-download the files of an installed model that no longer match
-    HuggingFace, and nothing else. The weights are never fetched, so this
+    Copy again the files of an installed model that no longer match
+    the WSP model library, and nothing else. The weights are never fetched, so this
     is a few kilobytes and finishes while the user waits, which is why it
     answers when the work is done rather than returning 202.
 
@@ -364,8 +364,8 @@ async def update_model(model_id: str, request: Request) -> ModelUpdateResponse:
         _forget_model_update(request.app.state, "drifted_models", model_id)
 
     # Nothing invalidates the ManifestManager cache on purpose: manifest.json
-    # is owned by the catalog, is not part of any HF repo, and is in
-    # model_storage._IGNORED_REPO_FILES, so an update can never rewrite it.
+    # is owned by the catalog and is in model_library.IGNORED_FILES, so an
+    # update can never rewrite it.
     return ModelUpdateResponse(
         model_id=model_id,
         updated_files=updated,
@@ -493,10 +493,12 @@ async def _prepare_model_task(
             )
             return
 
-        # Step 1: Download weights from HuggingFace (if needed)
+        # Step 1: Install the weights from the WSP model library (if needed)
         if needs_weights:
             await ws_manager.send_progress(
-                task_id, "Downloading model weights from HuggingFace...", weights_range[0] + 0.05
+                task_id,
+                "Installing the model from the WSP model library...",
+                weights_range[0] + 0.05,
             )
 
             def weights_progress(message: str, progress: float):
@@ -563,7 +565,7 @@ async def _prepare_model_task(
             )
 
         # No torch.hub pre-warm: DINOv2 architecture now ships inside each
-        # Addax-Data-Science/DINOV2-* HF repo alongside the .pth weights,
+        # DINOV2-* model folder alongside the .pth weights,
         # and embedding_script.py loads it via source="local". So this step
         # no longer needs network access to github.com.
 
@@ -729,8 +731,8 @@ def get_model_updates(request: Request) -> dict:
     """
     Get new models discovered during last startup check.
 
-    The model half is a snapshot taken at startup: answering it needs
-    HuggingFace, so it cannot be recomputed per request.
+    The model half is a snapshot taken at startup: answering it reads
+    the WSP model library, so it is not recomputed per request.
 
     The env half is recomputed here every time. It only reads a sentinel
     and hashes a small local YAML per env, and a snapshot is wrong the
@@ -745,7 +747,7 @@ def get_model_updates(request: Request) -> dict:
     # Access app.state from request
     updates = getattr(request.app.state, "model_updates", {"new_models": [], "checked_at": None})
 
-    # `disabled` is the switch for ADDAXAI_DISABLE_MODEL_UPDATES, which
+    # `disabled` is the switch for WSP_DISABLE_MODEL_UPDATES, which
     # turns off the whole update notice. Honour it here too rather than
     # letting env drift slip past it.
     if not updates.get("disabled"):
@@ -928,7 +930,7 @@ def get_model_taxonomy(model_id: str):
     Get taxonomy tree for a classification model.
 
     Returns the hierarchical taxonomy structure and a flat list of all species.
-    Reads from ~/AddaxAI/models/cls/{model_id}/taxonomy.csv
+    Reads from ~/WSP-CameraTrap/models/cls/{model_id}/taxonomy.csv
 
     Args:
         model_id: Classification model identifier (e.g., "NAM-ADS-v1")
@@ -967,7 +969,7 @@ def get_model_taxonomy(model_id: str):
         )
 
     # Find taxonomy.csv in model directory
-    # Look in ~/AddaxAI/models/cls/{model_id}/taxonomy.csv
+    # Look in ~/WSP-CameraTrap/models/cls/{model_id}/taxonomy.csv
     taxonomy_path = settings.models_dir / "cls" / model_id / "taxonomy.csv"
 
     if not taxonomy_path.exists():

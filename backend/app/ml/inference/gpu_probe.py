@@ -1,4 +1,4 @@
-"""Standalone GPU facts probe — runs as subprocess in env-addaxai-base.
+"""Standalone GPU facts probe — runs as subprocess in env-wsp-base.
 
 The bundled torch cu128 wheels only contain kernels for compute
 capability 7.0 to 12.0. On an older GPU (e.g. Pascal, 6.1) torch still

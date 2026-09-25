@@ -5,7 +5,7 @@
  * Three booleans drive up to three circular badges: confirmed (teal),
  * favorited (dark red), flagged (light teal). Stacked right-to-left with
  * an overlapping ring-2 ring-background treatment so the badges protrude
- * from the card's corner. Matches AddaxAI-Connect's ImagesPage pattern
+ * from the card's corner. Matches the web companion app's ImagesPage pattern
  * (services/frontend/src/pages/ImagesPage.tsx:306-334) and WebUI's status
  * colour palette (#882000 / #71b7ba / #0f6064).
  *

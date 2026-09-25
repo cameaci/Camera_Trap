@@ -54,7 +54,7 @@ Known edge cases the boundary-subtraction rule does not fully solve:
   day zero times instead of once). Rare; off by one day.
 
 Frame rows (`file_type='frame'`) are pipeline artifacts living inside
-`.addaxai/video_frames/...`; they are filtered out. Each original capture
+`.wsp-cameratrap/video_frames/...`; they are filtered out. Each original capture
 is represented by an `image` or `video` row.
 """
 

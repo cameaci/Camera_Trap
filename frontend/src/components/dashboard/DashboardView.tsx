@@ -52,7 +52,7 @@ import { useNoSiteDeployments } from "../../hooks/useNoSiteDeployments";
 import { buildSiteOptions } from "../../lib/site-filter-options";
 import { resolveSpeciesName } from "../../lib/species-name-mode";
 
-// One colour for every bar, matching AddaxAI Connect's species chart:
+// One colour for every bar, matching the web companion app's species chart:
 // the species name is already on the axis, so per-bar colours read as
 // meaning something when they don't.
 const BAR_FILL = "rgba(15, 96, 100, 0.18)";

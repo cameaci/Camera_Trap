@@ -47,7 +47,7 @@ interface PlotExplainerProps {
   references?: PlotReference[];
 }
 
-const STORAGE_PREFIX = "addaxai:plots:";
+const STORAGE_PREFIX = "wsp:plots:";
 
 function readStoredExpanded(plotKey: string): boolean {
   try {

@@ -591,7 +591,7 @@ def delete_project(project_id: str, db: Session = Depends(get_db)) -> None:
     # Through the shared helper, which swallows OS errors, because the rows
     # are already committed by now: a folder we cannot remove must not turn
     # a delete that succeeded into a 500 that says it failed. This used to
-    # be an inline `shutil.rmtree`, and a `.addaxai` folder on a
+    # be an inline `shutil.rmtree`, and a `.wsp-cameratrap` folder on a
     # disconnected external drive (the normal place for camera trap files)
     # returned "Internal Server Error" for a project that was already gone,
     # and skipped the cleanup for every remaining deployment as well.

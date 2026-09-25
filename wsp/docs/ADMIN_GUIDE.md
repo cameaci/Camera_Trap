@@ -104,26 +104,3 @@ destekliyor. SpeciesNet omurgası üzerine fine-tune edeceğin modeller için
 İmza: WSP IT'den bir code-signing sertifikası (`.pfx`) alırsan, repo
 ayarlarında `WSP_PFX_BASE64` ve `WSP_PFX_PASSWORD` secret'larını tanımla.
 Bundan sonra installer imzalı çıkar ve SmartScreen uyarısı kaybolur.
-
-## 4. AddaxAI'daki güncellemeleri almak
-
-Bu repo AddaxAI'ın ince bir fork'u. WSP değişiklikleri `# WSP` yorumlarıyla
-işaretli ve az sayıda dosyada:
-
-- `backend/app/ml/model_library.py`
-- `backend/app/api/routers/wsp.py`
-- `frontend/src/lib/wsp.ts`
-- `frontend/src/api/wsp.ts`
-- `wsp/`
-
-```bash
-git remote add upstream https://github.com/PetervanLunteren/AddaxAI.git   # bir kez
-git fetch upstream
-git checkout -b upstream-sync
-git merge upstream/main          # çakışmaları çöz; WSP satırlarını koru
-# testler: backend (pytest), frontend (npm run typecheck), wsp/tests
-```
-
-Upstream'in `models.json` dosyası WSP'de kullanılmaz (HuggingFace
-modellerini listeler). WSP kataloğu `wsp/models.json` ve kütüphanedeki
-`models.json` dosyalarıdır.

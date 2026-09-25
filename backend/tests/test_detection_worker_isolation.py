@@ -11,8 +11,8 @@ The queue row already carries a per-entry status and error, and
 failure, so the fix only had to make the worker produce that state.
 
 **Fault injection without test hooks in production code.** A folder
-holding one image plus a regular *file* named `.addaxai` makes
-`mkdir_hidden_addaxai` raise `NotADirectoryError`, because the artifacts
+holding one image plus a regular *file* named `.wsp-cameratrap` makes
+`mkdir_hidden_wsp` raise `NotADirectoryError`, because the artifacts
 directory cannot be created underneath a file. That lands inside the loop
 just after the placeholder deployment is created, so it exercises the
 rollback too, and it never reaches a model. Folders with no media take the
@@ -34,7 +34,7 @@ from tests.conftest import make_job, make_project
 
 
 class _FakeManifest:
-    env = "addaxai-base"
+    env = "wsp-base"
     full_image_cls = False
 
 
@@ -90,7 +90,7 @@ def _broken_folder(tmp_path: Path, name: str) -> Path:
     folder = tmp_path / name
     folder.mkdir()
     (folder / "IMG_0001.jpg").write_bytes(b"not really a jpeg")
-    (folder / ".addaxai").write_text("a file where a directory is expected")
+    (folder / ".wsp-cameratrap").write_text("a file where a directory is expected")
     return folder
 
 
@@ -191,7 +191,7 @@ async def test_one_failed_deployment_does_not_stop_the_others(db, tmp_path):
 
     failed = db.get(DeploymentQueue, entries[1].id)
     assert failed.error, "a failed entry with no error renders no log row"
-    assert "Not a directory" in failed.error or "addaxai" in failed.error
+    assert "Not a directory" in failed.error or "wsp" in failed.error
 
     # A run where something landed is a completed run, which is what opens
     # the modal's summary block (it is gated on isComplete && !hasError).
@@ -256,7 +256,7 @@ async def test_cancel_still_aborts_the_whole_queue(db, tmp_path, monkeypatch):
     def _cancel(*a, **kw):
         raise JobCancelledError()
 
-    monkeypatch.setattr(detection_worker, "mkdir_hidden_addaxai", _cancel)
+    monkeypatch.setattr(detection_worker, "mkdir_hidden_wsp", _cancel)
 
     await _process_batch_job(
         job.id, project.id, [e.id for e in entries], db

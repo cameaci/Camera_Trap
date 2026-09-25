@@ -1,7 +1,7 @@
 """
 Taxonomy CSV parser with advanced tree building.
 
-Implements the same logic as streamlit-AddaxAI:
+Implements the same logic as the earlier prototype:
 - Handles missing/partial taxonomy gracefully
 - Sorts leaves before parents (both alphabetically)
 - Adds descendant counts to parent nodes

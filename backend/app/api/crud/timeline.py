@@ -125,7 +125,7 @@ def _daily_file_counts(
     if not deployment_ids:
         return []
 
-    # SQLite's date() on the stored ISO datetime. AddaxAI is SQLite-only
+    # SQLite's date() on the stored ISO datetime. WSP CameraTrap is SQLite-only
     # (`config.py` derives database_url), so the dialect-specific call is
     # safe; it returns a "YYYY-MM-DD" string.
     day = func.date(File.captured_at_local)

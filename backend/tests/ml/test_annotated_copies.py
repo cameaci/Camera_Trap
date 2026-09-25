@@ -519,7 +519,7 @@ def test_deferred_separation_writes_each_file_once(db, tmp_path):
         observation_type="blank",
     )  # no detections → nothing to draw
 
-    media_root = tmp_path / "out" / "addaxai-media"
+    media_root = tmp_path / "out" / "wsp-cameratrap-media"
     ctx = OutputContext(output_root=media_root)
 
     sep = separate_into_folders(

@@ -1,6 +1,6 @@
 /**
  * WSP: where WSP CameraTrap lives. Every help, update and about link in
- * the app points here, never at the upstream AddaxAI site.
+ * the app points here, never at the upstream WSP CameraTrap site.
  */
 
 export const PRODUCT_NAME = "WSP CameraTrap";

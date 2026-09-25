@@ -1,6 +1,10 @@
-"""WSP: models installed from the model library folder or a public URL."""
+"""The WSP model library: folders, the OneDrive link, installs and updates."""
 
+import http.server
+import io
 import json
+import threading
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -14,11 +18,10 @@ from app.ml.schemas.model_manifest import ModelManifest
 
 @pytest.fixture
 def library(tmp_path, monkeypatch) -> Path:
-    """An empty library, switched on as the model source."""
+    """An empty library folder, named by the env var."""
     lib = tmp_path / "library"
     lib.mkdir()
-    monkeypatch.setenv("ADDAXAI_MODEL_SOURCE", "library")
-    monkeypatch.setenv("ADDAXAI_MODEL_LIBRARY_DIR", str(lib))
+    monkeypatch.setenv("WSP_MODEL_LIBRARY_DIR", str(lib))
     return lib
 
 
@@ -26,7 +29,7 @@ def _manifest(model_id="WSP-UK-v1", fname="model.pt", category="classification",
     m = ModelManifest(
         model_id=model_id,
         friendly_name=model_id,
-        env="pytorch",
+        env="wsp-base",
         model_fname=fname,
         description="test",
         developer="WSP",
@@ -38,8 +41,21 @@ def _manifest(model_id="WSP-UK-v1", fname="model.pt", category="classification",
     return m
 
 
-def _put(lib: Path, rel: str, data: bytes = b"x") -> Path:
-    path = lib / rel
+def _entry(model_id="WSP-UK-v1", fname="model.pt"):
+    return {
+        "model_id": model_id,
+        "friendly_name": model_id,
+        "env": "wsp-base",
+        "model_fname": fname,
+        "description": "d",
+        "developer": "WSP",
+        "info_url": "https://example.invalid",
+        "min_app_version": "0.1.0",
+    }
+
+
+def _put(root: Path, rel: str, data: bytes = b"x") -> Path:
+    path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
     return path
@@ -55,18 +71,20 @@ def test_env_var_names_the_library(library):
 
 
 def test_saved_folder_is_used_when_no_env_var(tmp_path, monkeypatch):
-    monkeypatch.delenv("ADDAXAI_MODEL_LIBRARY_DIR", raising=False)
+    monkeypatch.delenv("WSP_MODEL_LIBRARY_DIR", raising=False)
     lib = tmp_path / "saved"
     _put(lib, "cls/X/model.pt")
     model_library.write_library_dir(lib)
-    assert model_library.get_library_dir() == lib
-    model_library.write_library_dir(None)
+    try:
+        assert model_library.get_library_dir() == lib
+    finally:
+        model_library.write_library_dir(None)
     assert model_library.get_library_dir() is None
 
 
 def test_a_configured_folder_that_is_missing_is_not_guessed(tmp_path, monkeypatch):
-    monkeypatch.setenv("ADDAXAI_MODEL_LIBRARY_DIR", str(tmp_path / "offline-share"))
-    monkeypatch.setenv("ADDAXAI_MODEL_LIBRARY_AUTODETECT", "true")
+    monkeypatch.setenv("WSP_MODEL_LIBRARY_DIR", str(tmp_path / "offline-share"))
+    monkeypatch.setenv("WSP_MODEL_LIBRARY_AUTODETECT", "true")
     onedrive = tmp_path / "OneDrive - WSP"
     _put(onedrive / "WSP CameraTrap" / "models", "models.json", b"{}")
     monkeypatch.setenv("OneDriveCommercial", str(onedrive))
@@ -74,13 +92,160 @@ def test_a_configured_folder_that_is_missing_is_not_guessed(tmp_path, monkeypatc
 
 
 def test_autodetect_finds_the_onedrive_folder(tmp_path, monkeypatch):
-    monkeypatch.delenv("ADDAXAI_MODEL_LIBRARY_DIR", raising=False)
-    monkeypatch.setenv("ADDAXAI_MODEL_LIBRARY_AUTODETECT", "true")
+    monkeypatch.delenv("WSP_MODEL_LIBRARY_DIR", raising=False)
+    monkeypatch.setenv("WSP_MODEL_LIBRARY_AUTODETECT", "true")
     onedrive = tmp_path / "OneDrive - WSP"
     target = onedrive / "Ecology - Shared" / "WSP CameraTrap" / "models"
     _put(target, "models.json", b"{}")
     monkeypatch.setenv("OneDriveCommercial", str(onedrive))
     assert model_library.autodetect_library_dir() == target
+
+
+def test_library_url_order(monkeypatch):
+    monkeypatch.setenv("WSP_MODEL_LIBRARY_URL", "")
+    assert model_library.get_library_url() is None
+    monkeypatch.delenv("WSP_MODEL_LIBRARY_URL")
+    model_library.write_library_url("https://example.invalid/saved.zip")
+    try:
+        assert model_library.get_library_url() == "https://example.invalid/saved.zip"
+        monkeypatch.setenv("WSP_MODEL_LIBRARY_URL", "https://example.invalid/env.zip")
+        assert model_library.get_library_url() == "https://example.invalid/env.zip"
+    finally:
+        model_library.write_library_url(None)
+
+
+def test_the_shipped_config_has_a_library_url_key():
+    assert "model_library_url" in model_library.bundled_config()
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        (
+            "https://wsponline-my.sharepoint.com/:u:/g/personal/me/EAbc?e=xyz",
+            "https://wsponline-my.sharepoint.com/:u:/g/personal/me/EAbc?e=xyz&download=1",
+        ),
+        ("https://1drv.ms/u/s!Abc", "https://1drv.ms/u/s!Abc?download=1"),
+        (
+            "https://wsponline.sharepoint.com/x.zip?download=1",
+            "https://wsponline.sharepoint.com/x.zip?download=1",
+        ),
+        ("https://example.com/library.zip", "https://example.com/library.zip"),
+    ],
+)
+def test_normalize_share_url(url, expected):
+    assert model_library.normalize_share_url(url) == expected
+
+
+# --- the linked library ---------------------------------------------------
+
+
+def _bundle(files: dict[str, bytes], prefix: str = "models/") -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for rel, data in files.items():
+            z.writestr(prefix + rel, data)
+    return buf.getvalue()
+
+
+class _Server:
+    """A tiny local HTTP server with a swappable response."""
+
+    def __init__(self) -> None:
+        self.body = b""
+        self.content_type = "application/zip"
+        self.status = 200
+        self.etag = '"1"'
+        outer = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                self.send_response(outer.status)
+                self.send_header("Content-Type", outer.content_type)
+                self.send_header("Content-Length", str(len(outer.body)))
+                self.send_header("ETag", outer.etag)
+                self.end_headers()
+                self.wfile.write(outer.body)
+
+            def log_message(self, *args):
+                pass
+
+        self.httpd = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self.httpd.server_port}/library.zip"
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+
+    def close(self) -> None:
+        self.httpd.shutdown()
+
+
+@pytest.fixture
+def server(monkeypatch):
+    srv = _Server()
+    monkeypatch.delenv("WSP_MODEL_LIBRARY_DIR", raising=False)
+    monkeypatch.setenv("WSP_MODEL_LIBRARY_URL", srv.url)
+    yield srv
+    srv.close()
+
+
+def test_linked_library_is_downloaded_and_used(server):
+    catalog = {"models": {"det": [], "cls": [_entry()]}}
+    server.body = _bundle({
+        "models.json": json.dumps(catalog).encode(),
+        "cls/WSP-UK-v1/model.pt": b"weights",
+    })
+    progress = []
+
+    lib = model_library.sync_library_url(lambda m, p: progress.append(p))
+
+    assert lib == model_library.library_cache_dir()
+    assert model_library.get_library_dir() == lib
+    assert (lib / "cls" / "WSP-UK-v1" / "model.pt").read_bytes() == b"weights"
+    assert progress and progress[-1] == 1.0
+
+
+def test_linked_library_is_not_downloaded_again_when_unchanged(server, monkeypatch):
+    server.body = _bundle({"models.json": b'{"models": {"det": [], "cls": []}}'})
+    model_library.sync_library_url()
+    lib = model_library.library_cache_dir()
+    assert (lib / "models.json").is_file()
+
+    extracted = []
+    real_zipfile = zipfile.ZipFile
+    monkeypatch.setattr(
+        model_library.zipfile,
+        "ZipFile",
+        lambda *a, **k: extracted.append(1) or real_zipfile(*a, **k),
+    )
+    model_library.sync_library_url()
+    assert extracted == []
+
+    # A new file behind the same link is picked up.
+    server.etag = '"2"'
+    server.body = _bundle({
+        "models.json": b'{"models": {"det": [], "cls": []}}',
+        "cls/NEW/model.pt": b"n",
+    })
+    model_library.sync_library_url()
+    assert (lib / "cls" / "NEW" / "model.pt").is_file()
+
+
+def test_a_sign_in_page_is_reported_and_keeps_the_old_copy(server):
+    server.body = _bundle({"models.json": b'{"models": {"det": [], "cls": []}}'})
+    model_library.sync_library_url()
+
+    server.content_type = "text/html; charset=utf-8"
+    server.body = b"<html>Sign in</html>"
+    server.etag = '"3"'
+    with pytest.raises(model_library.LibraryDownloadError, match="web page"):
+        model_library.sync_library_url()
+    assert (model_library.library_cache_dir() / "models.json").is_file()
+
+
+def test_a_bundle_without_catalog_is_rejected(server):
+    server.etag = '"4"'
+    server.body = _bundle({"cls/X/model.pt": b"x"})
+    with pytest.raises(model_library.LibraryDownloadError, match="models.json"):
+        model_library.sync_library_url()
 
 
 # --- copying --------------------------------------------------------------
@@ -135,7 +300,7 @@ def test_find_stale_files_compares_content(library, tmp_path):
     assert model_library.find_stale_files(dst, src) == ["inference.py", "taxonomy.csv"]
 
 
-# --- ModelStorage in library mode ------------------------------------------
+# --- installing -------------------------------------------------------------
 
 
 def test_download_weights_copies_from_the_library(library, tmp_path):
@@ -161,12 +326,12 @@ def test_download_weights_falls_back_to_the_url(library, tmp_path, monkeypatch):
     storage = ModelStorage(tmp_path / "models")
     manifest = _manifest(
         "MD5A-0-0", "md_v5a.0.0.pt", "detection",
-        download_url="https://github.com/example/md_v5a.0.0.pt",
+        download_url="https://example.invalid/md_v5a.0.0.pt",
     )
 
     storage.download_weights(manifest)
 
-    assert calls == ["https://github.com/example/md_v5a.0.0.pt"]
+    assert calls == ["https://example.invalid/md_v5a.0.0.pt"]
     assert (tmp_path / "models" / "det" / "MD5A-0-0" / "md_v5a.0.0.pt").is_file()
 
 
@@ -174,19 +339,45 @@ def test_download_weights_names_the_fix_when_no_source(library, tmp_path):
     storage = ModelStorage(tmp_path / "models")
     with pytest.raises(model_library.ModelSourceMissingError) as err:
         storage.download_weights(_manifest())
-    assert "WSP CameraTrap" in str(err.value)
+    assert "WSP model library" in str(err.value)
     assert "WSP-UK-v1" in str(err.value)
 
 
-def test_download_weights_never_contacts_huggingface(library, tmp_path, monkeypatch):
-    import app.ml.model_storage as storage_module
+def test_an_installed_model_is_not_copied_again(library, tmp_path, monkeypatch):
+    local = tmp_path / "models" / "cls" / "WSP-UK-v1"
+    _put(local, "model.pt", b"weights")
+    monkeypatch.setattr(model_library, "copy_model", lambda *a, **k: pytest.fail("copied"))
+    assert ModelStorage(tmp_path / "models").download_weights(_manifest()) == local
 
-    def forbidden(*args, **kwargs):
-        raise AssertionError("HuggingFace must not be contacted in library mode")
 
-    monkeypatch.setattr(storage_module, "_download_repo_with_relay", forbidden)
+def test_cancelled_install_clears_files_but_keeps_the_manifest(library, tmp_path, monkeypatch):
+    local = tmp_path / "models" / "cls" / "WSP-UK-v1"
+    _put(local, "manifest.json", b"{}")
     _put(library, "cls/WSP-UK-v1/model.pt", b"weights")
-    ModelStorage(tmp_path / "models").download_weights(_manifest())
+
+    def cancel_midway(src, dst, progress_callback=None, should_cancel=None, **kw):
+        _put(dst, "a.txt", b"a")
+        raise JobCancelledError("stop")
+
+    monkeypatch.setattr(model_library, "copy_model", cancel_midway)
+    with pytest.raises(JobCancelledError):
+        ModelStorage(tmp_path / "models").download_weights(_manifest())
+    assert (local / "manifest.json").is_file()
+    assert not (local / "a.txt").exists()
+
+
+def test_failed_install_keeps_what_was_copied(library, tmp_path, monkeypatch):
+    local = tmp_path / "models" / "cls" / "WSP-UK-v1"
+    _put(library, "cls/WSP-UK-v1/model.pt", b"weights")
+
+    def fail_midway(src, dst, progress_callback=None, should_cancel=None, **kw):
+        _put(dst, "inference.py", b"code")
+        raise OSError("share went away")
+
+    monkeypatch.setattr(model_library, "copy_model", fail_midway)
+    with pytest.raises(RuntimeError, match="share went away"):
+        ModelStorage(tmp_path / "models").download_weights(_manifest())
+    assert (local / "inference.py").is_file()
 
 
 def test_update_stale_files_refreshes_from_the_library(library, tmp_path):
@@ -202,47 +393,99 @@ def test_update_stale_files_refreshes_from_the_library(library, tmp_path):
     assert (local / "inference.py").read_bytes() == b"fixed"
 
 
-# --- catalog in library mode ------------------------------------------------
+def test_update_raises_when_the_library_is_missing(library, tmp_path):
+    local = tmp_path / "models" / "cls" / "WSP-UK-v1"
+    _put(local, "model.pt", b"weights")
+    with pytest.raises(ConnectionError):
+        ModelStorage(tmp_path / "models").update_stale_files(_manifest())
 
 
-def test_library_catalog_adds_and_overrides_bundled_entries(library, tmp_path):
-    entry = {
-        "model_id": "WSP-UK-v1",
-        "friendly_name": "WSP UK v1",
-        "env": "pytorch",
-        "model_fname": "model.pt",
-        "description": "d",
-        "developer": "WSP",
-        "info_url": "https://example.invalid",
-        "min_app_version": "0.1.0",
-    }
-    override = dict(entry, model_id="MD5A-0-0", friendly_name="MD from library")
-    catalog = {"models": {"det": [override], "cls": [entry], "emb": []}}
+# --- catalog ----------------------------------------------------------------
+
+
+def test_library_catalog_adds_and_overrides_shipped_entries(library, tmp_path):
+    override = dict(_entry("MD5A-0-0", "md_v5a.0.0.pt"), friendly_name="MD from library")
+    catalog = {"models": {"det": [override], "cls": [_entry()], "emb": []}}
     _put(library, "models.json", json.dumps(catalog).encode())
 
     merged = ModelCatalogUpdater(tmp_path / "models").fetch_catalog()
 
     cls_ids = [m["model_id"] for m in merged["models"]["cls"]]
     assert "WSP-UK-v1" in cls_ids
-    assert "SPECIESNET-v4-0-2-A" in cls_ids  # from the bundled WSP catalog
+    assert "SPECIESNET-v4-0-2-A" in cls_ids  # from the shipped catalog
     det = {m["model_id"]: m for m in merged["models"]["det"]}
     assert det["MD5A-0-0"]["friendly_name"] == "MD from library"
 
 
-def test_bundled_wsp_catalog_is_used_without_a_library(tmp_path, monkeypatch):
-    monkeypatch.setenv("ADDAXAI_MODEL_SOURCE", "library")
-    monkeypatch.delenv("ADDAXAI_MODEL_LIBRARY_DIR", raising=False)
+def test_shipped_catalog_is_used_without_a_library(tmp_path, monkeypatch):
+    monkeypatch.delenv("WSP_MODEL_LIBRARY_DIR", raising=False)
     catalog = ModelCatalogUpdater(tmp_path / "models").fetch_catalog()
     ids = [m["model_id"] for t in ("det", "cls") for m in catalog["models"][t]]
     assert ids == ["MD5A-0-0", "SPECIESNET-v4-0-2-A"]
+
+
+async def test_sync_reports_installed_models_with_stale_files(library, tmp_path):
+    models = tmp_path / "models"
+    _put(library, "models.json", json.dumps({"models": {"det": [], "cls": [_entry()]}}).encode())
+    _put(library, "cls/WSP-UK-v1/model.pt", b"weights")
+    _put(library, "cls/WSP-UK-v1/inference.py", b"v2")
+    # Something else is already installed, so this is not a fresh install.
+    _put(models, "det/OTHER/manifest.json", b"{}")
+    _put(models, "cls/WSP-UK-v1/model.pt", b"weights")
+    _put(models, "cls/WSP-UK-v1/inference.py", b"v1")
+
+    result = await ModelCatalogUpdater(models).sync()
+
+    assert [m["model_id"] for m in result["drifted_models"]] == ["WSP-UK-v1"]
+
+
+async def test_sync_never_checks_a_stub_without_weights(library, tmp_path):
+    models = tmp_path / "models"
+    _put(library, "models.json", json.dumps({"models": {"det": [], "cls": [_entry()]}}).encode())
+    _put(library, "cls/WSP-UK-v1/model.pt", b"weights")
+    _put(models, "det/OTHER/manifest.json", b"{}")
+
+    result = await ModelCatalogUpdater(models).sync()
+
+    assert result["drifted_models"] == []
+    assert (models / "cls" / "WSP-UK-v1" / "manifest.json").is_file()
+
+
+async def test_a_failing_library_link_does_not_fail_the_sync(tmp_path, monkeypatch):
+    monkeypatch.delenv("WSP_MODEL_LIBRARY_DIR", raising=False)
+    monkeypatch.setenv("WSP_MODEL_LIBRARY_URL", "http://127.0.0.1:9/unreachable.zip")
+
+    result = await ModelCatalogUpdater(tmp_path / "models").sync()
+
+    assert "library_error" in result
+    assert (tmp_path / "models" / "det" / "MD5A-0-0" / "manifest.json").is_file()
+
+
+def test_taxonomy_is_copied_for_a_cls_model(library, tmp_path):
+    _put(library, "cls/WSP-UK-v1/taxonomy.csv", b"model_class\nbadger\n")
+    updater = ModelCatalogUpdater(tmp_path / "models")
+
+    assert updater.write_manifest("cls", _entry()) == "created"
+
+    taxonomy = tmp_path / "models" / "cls" / "WSP-UK-v1" / "taxonomy.csv"
+    assert taxonomy.read_text().startswith("model_class")
+    # A later launch with an unchanged manifest leaves it alone.
+    taxonomy.write_text("edited")
+    assert updater.write_manifest("cls", _entry()) == "unchanged"
+    assert taxonomy.read_text() == "edited"
+
+
+def test_missing_taxonomy_is_not_fatal(library, tmp_path):
+    updater = ModelCatalogUpdater(tmp_path / "models")
+    assert updater.write_manifest("cls", _entry()) == "created"
+    assert not (tmp_path / "models" / "cls" / "WSP-UK-v1" / "taxonomy.csv").exists()
 
 
 # --- settings endpoint ------------------------------------------------------
 
 
 def test_library_endpoint_saves_and_reports_the_folder(client, tmp_path, monkeypatch):
-    monkeypatch.setenv("ADDAXAI_MODEL_SOURCE", "library")
-    monkeypatch.delenv("ADDAXAI_MODEL_LIBRARY_DIR", raising=False)
+    monkeypatch.delenv("WSP_MODEL_LIBRARY_DIR", raising=False)
     lib = tmp_path / "WSP CameraTrap" / "models"
     _put(lib, "models.json", json.dumps({"models": {"det": [], "cls": []}}).encode())
 
@@ -251,7 +494,7 @@ def test_library_endpoint_saves_and_reports_the_folder(client, tmp_path, monkeyp
     assert body["source"] == "settings"
     assert client.get("/api/wsp/library").json()["library_dir"] == str(lib)
 
-    client.post("/api/wsp/library", json={"library_dir": None})
+    client.post("/api/wsp/library", json={})
     assert client.get("/api/wsp/library").json()["library_dir"] is None
 
 
@@ -259,3 +502,8 @@ def test_library_endpoint_rejects_a_folder_that_is_not_a_library(client, tmp_pat
     response = client.post("/api/wsp/library", json={"library_dir": str(tmp_path)})
     assert response.status_code == 400
     assert "models.json" in response.json()["detail"]
+
+
+def test_library_endpoint_rejects_a_link_that_is_not_a_url(client):
+    response = client.post("/api/wsp/library", json={"library_url": "OneDrive folder"})
+    assert response.status_code == 400

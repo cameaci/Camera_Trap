@@ -97,8 +97,8 @@ def test_delete_deployment_not_found(client):
 
 def test_delete_deployment_cascades_artifacts_on_disk(client, db, tmp_path):
     """
-    Deleting a deployment removes the project-scoped .addaxai folder on
-    disk, and rolls up empty parent dirs so the .addaxai marker
+    Deleting a deployment removes the project-scoped .wsp-cameratrap folder on
+    disk, and rolls up empty parent dirs so the .wsp-cameratrap marker
     disappears entirely when the last project is gone.
     """
     p = make_project(db)
@@ -106,7 +106,7 @@ def test_delete_deployment_cascades_artifacts_on_disk(client, db, tmp_path):
 
     deploy_dir = tmp_path / "deployment"
     deploy_dir.mkdir()
-    artifacts = deploy_dir / ".addaxai" / "projects" / p.id
+    artifacts = deploy_dir / ".wsp-cameratrap" / "projects" / p.id
     artifacts.mkdir(parents=True)
     (artifacts / "results.json").write_text('{"images": []}')
     (artifacts / "video_frames").mkdir()
@@ -118,11 +118,11 @@ def test_delete_deployment_cascades_artifacts_on_disk(client, db, tmp_path):
     resp = client.delete(f"/api/deployments/{d.id}")
     assert resp.status_code == 204
 
-    # Project-scoped artifacts dir is gone, and the parent .addaxai is
+    # Project-scoped artifacts dir is gone, and the parent .wsp-cameratrap is
     # gone too because there were no other projects in there.
     assert not artifacts.exists()
-    assert not (deploy_dir / ".addaxai").exists()
-    # The original deployment folder itself is untouched — only AddaxAI
+    assert not (deploy_dir / ".wsp-cameratrap").exists()
+    # The original deployment folder itself is untouched — only WSP CameraTrap
     # state was removed, never the user's images/videos.
     assert deploy_dir.exists()
 
@@ -138,8 +138,8 @@ def test_delete_deployment_keeps_other_projects_artifacts(client, db, tmp_path):
 
     deploy_dir = tmp_path / "shared_deployment"
     deploy_dir.mkdir()
-    p1_artifacts = deploy_dir / ".addaxai" / "projects" / p1.id
-    p2_artifacts = deploy_dir / ".addaxai" / "projects" / p2.id
+    p1_artifacts = deploy_dir / ".wsp-cameratrap" / "projects" / p1.id
+    p2_artifacts = deploy_dir / ".wsp-cameratrap" / "projects" / p2.id
     p1_artifacts.mkdir(parents=True)
     p2_artifacts.mkdir(parents=True)
     (p1_artifacts / "results.json").write_text("p1")
@@ -154,8 +154,8 @@ def test_delete_deployment_keeps_other_projects_artifacts(client, db, tmp_path):
     assert not p1_artifacts.exists()
     assert p2_artifacts.exists()
     assert (p2_artifacts / "results.json").read_text() == "p2"
-    # .addaxai/projects/ still has p2's subdir, so the marker stays.
-    assert (deploy_dir / ".addaxai" / "projects").exists()
+    # .wsp-cameratrap/projects/ still has p2's subdir, so the marker stays.
+    assert (deploy_dir / ".wsp-cameratrap" / "projects").exists()
 
 
 def test_delete_deployment_missing_folder_path_does_not_crash(client, db):

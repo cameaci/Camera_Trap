@@ -52,7 +52,7 @@ async function openedUrls(app: ElectronApplication): Promise<string[]> {
 }
 
 test.beforeEach(() => {
-  userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'addaxai-e2e-links-'));
+  userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsp-cameratrap-e2e-links-'));
 });
 
 test.afterEach(() => {
@@ -77,7 +77,7 @@ test('a plain external link opens in the browser and leaves the app loaded', asy
   // on the very cancellation this test is asserting.
   await win.evaluate(() => {
     const a = document.createElement('a');
-    a.href = 'https://addaxai.com/';
+    a.href = 'https://wsp.com/';
     a.textContent = 'external';
     a.id = 'e2e-external-link';
     document.body.appendChild(a);
@@ -85,11 +85,11 @@ test('a plain external link opens in the browser and leaves the app loaded', asy
   });
 
   await expect.poll(() => openedUrls(app), { timeout: 10_000 }).toContain(
-    'https://addaxai.com/',
+    'https://wsp.com/',
   );
 
   // The important half: the app is still the app. Before the guard this
-  // was addaxai.com and there was no way back to the SPA.
+  // was wsp.com and there was no way back to the SPA.
   expect(win.url()).toBe(before);
 
   await app.close();
@@ -112,7 +112,7 @@ test('a target=_blank link also opens in the browser', async () => {
 
   await win.evaluate(() => {
     const a = document.createElement('a');
-    a.href = 'https://addaxai.com/';
+    a.href = 'https://wsp.com/';
     a.target = '_blank';
     a.rel = 'noreferrer';
     a.id = 'e2e-blank-link';
@@ -121,7 +121,7 @@ test('a target=_blank link also opens in the browser', async () => {
   });
 
   await expect.poll(() => openedUrls(app), { timeout: 10_000 }).toContain(
-    'https://addaxai.com/',
+    'https://wsp.com/',
   );
   // No second window was opened to show it.
   expect(app.windows().filter((w) => !w.url().startsWith('devtools://')))

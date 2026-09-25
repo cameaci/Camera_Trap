@@ -3,7 +3,7 @@ Labels service — subprocess dispatcher for the Labels verify tab.
 
 Delegates sort (greedy nearest-neighbor chain), search (FAISS k-NN), and
 cohort grouping (descendant-promotion review panel) to
-ml/inference/similarity_script.py running in the addaxai-base conda
+ml/inference/similarity_script.py running in the wsp-base conda
 environment. The main backend process never imports numpy or faiss.
 
 The subprocess emits NDJSON events on stdout (progress, result, error).
@@ -55,10 +55,10 @@ _SCRIPT_PATH = Path(__file__).resolve().parent.parent / "ml" / "inference" / "si
 
 
 def _get_env_python() -> Path:
-    """Get Python path from the addaxai-base conda environment."""
+    """Get Python path from the wsp-base conda environment."""
     env_manager = EnvironmentManager()
     try:
-        return env_manager.get_python("env-addaxai-base")
+        return env_manager.get_python("env-wsp-base")
     except FileNotFoundError:
         raise FileNotFoundError(
             "ML environment not found. "
@@ -163,7 +163,7 @@ def stream_labels_subprocess(
             if not line:
                 continue
             # Sanity-check that the line is JSON before relaying. If it
-            # isn't (subprocess crashed mid-write, env-addaxai-base
+            # isn't (subprocess crashed mid-write, env-wsp-base
             # printed a warning), skip it rather than corrupt the
             # NDJSON stream.
             try:

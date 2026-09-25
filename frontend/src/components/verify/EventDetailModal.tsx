@@ -121,7 +121,7 @@ export function EventDetailModal({
   // height (set by dragging the divider) and the S/M/L thumbnail size.
   const countsSettings = useMemo(() => {
     try {
-      return JSON.parse(localStorage.getItem("addaxai:countsSettings") || "{}");
+      return JSON.parse(localStorage.getItem("wsp:countsSettings") || "{}");
     } catch {
       return {};
     }
@@ -129,10 +129,10 @@ export function EventDetailModal({
   const persistCountsSetting = useCallback((key: string, value: unknown) => {
     try {
       const cur = JSON.parse(
-        localStorage.getItem("addaxai:countsSettings") || "{}",
+        localStorage.getItem("wsp:countsSettings") || "{}",
       );
       cur[key] = value;
-      localStorage.setItem("addaxai:countsSettings", JSON.stringify(cur));
+      localStorage.setItem("wsp:countsSettings", JSON.stringify(cur));
     } catch {
       /* ignore */
     }

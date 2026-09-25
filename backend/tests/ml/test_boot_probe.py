@@ -33,7 +33,7 @@ def env_manager(tmp_path: Path) -> EnvironmentManager:
 @pytest.fixture
 def env_path(env_manager: EnvironmentManager) -> Path:
     """A fake env directory whose python binary exists on disk."""
-    path = env_manager.envs_dir / "env-addaxai-base"
+    path = env_manager.envs_dir / "env-wsp-base"
     python_path = env_manager._get_python_path(path)
     python_path.parent.mkdir(parents=True, exist_ok=True)
     python_path.write_bytes(b"")
@@ -61,7 +61,7 @@ def test_probe_imports_stdlib_extension_modules() -> None:
 def test_missing_python_binary_is_invalid(
     env_manager: EnvironmentManager,
 ) -> None:
-    path = env_manager.envs_dir / "env-addaxai-base"
+    path = env_manager.envs_dir / "env-wsp-base"
     path.mkdir(parents=True)
     assert env_manager._validate_env(path) is False
 

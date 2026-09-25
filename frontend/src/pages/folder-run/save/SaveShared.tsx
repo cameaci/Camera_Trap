@@ -126,7 +126,7 @@ export function OutputFolderField({
         <div>
           <span className="block text-sm font-semibold">Output folder</span>
           {/* "images and videos", not "originals": saving again DOES
-              overwrite the addaxai-* data files from a previous save. The
+              overwrite the wsp-cameratrap-* data files from a previous save. The
               promise only holds for the user's own media, which is copied,
               never modified in place (the worker pins separate_folders to
               copy mode, and EXIF tags are written to the copy). */}
@@ -548,7 +548,7 @@ export function CompletionDialog({
             <NextStepRow
               icon={FolderOpen}
               title="Open output folder"
-              description="Show the files AddaxAI wrote."
+              description="Show the files WSP CameraTrap wrote."
               onClick={handleOpenResults}
             />
             <NextStepRow

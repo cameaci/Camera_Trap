@@ -299,12 +299,12 @@ def get_scoped_detection_rows(
     ``apply_threshold=False`` escape hatch that the folder-run table
     writers passed, on the argument that their data exports are the
     complete record of the run. It produced a spreadsheet whose sheets
-    disagreed with each other and with the app: ``addaxai-files.csv``
-    was thresholded while ``addaxai-detections.csv`` beside it was not,
+    disagreed with each other and with the app: ``wsp-cameratrap-files.csv``
+    was thresholded while ``wsp-cameratrap-detections.csv`` beside it was not,
     and both sat next to a Labels step that shows neither the
     sub-threshold boxes nor the off-best-frame ones. Users read that as
     the export inventing species they could not find or fix. The
-    complete record is ``addaxai-recognitions.json``, which still
+    complete record is ``wsp-cameratrap-recognitions.json``, which still
     carries every stored detection on every frame.
     """
     threshold_clause = threshold_or_verified(project.counting_threshold)
@@ -615,7 +615,7 @@ def build_detection_rows(
     be seen in the Labels grid, filtered to, or relabelled. Emitting them
     here handed users a species list they could not act on, which is what
     ``visible_detections`` exists to prevent everywhere else. The per-frame
-    boxes are not lost: ``addaxai-recognitions.json`` carries all of them,
+    boxes are not lost: ``wsp-cameratrap-recognitions.json`` carries all of them,
     with their frame numbers, which is the file built to be the complete
     record. Verified boxes pass on any frame, per the usual exception.
     """
@@ -1946,14 +1946,14 @@ def _build_datapackage(
 
     return {
         "profile": CAMTRAP_DP_PROFILE,
-        "name": f"addaxai-{slugify(project.name)}",
+        "name": f"wsp-cameratrap-{slugify(project.name)}",
         "id": str(uuid.uuid4()),
         "created": datetime.now(UTC).isoformat(),
         "title": project.name,
         "description": project.description or "",
         "version": "1.0.0",
         "contributors": [
-            {"title": "AddaxAI WebUI", "role": "publisher"},
+            {"title": "WSP CameraTrap WebUI", "role": "publisher"},
         ],
         "licenses": [
             {"name": "CC-BY-4.0", "scope": "data"},

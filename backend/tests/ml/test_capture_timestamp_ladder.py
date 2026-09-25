@@ -70,10 +70,10 @@ def test_file_reread_recovers_base_ifd_datetime(tmp_path):
     assert source == "exif_reread"
 
 
-def test_file_exif_outranks_addaxai_filename_marker(tmp_path):
+def test_file_exif_outranks_wsp_filename_marker(tmp_path):
     """Real EXIF beats the filename convention: a separated copy that
     kept its EXIF must use it, not the name it was given."""
-    p = tmp_path / "clip_addaxai-20250222-072314.jpg"
+    p = tmp_path / "clip_wsp-cameratrap-20250222-072314.jpg"
     _write_jpeg(p, datetime_original="2024:03:15 08:00:00")
     ts, source = _resolve(p, exif_metadata=None)
     assert ts == datetime(2024, 3, 15, 8, 0, 0)
@@ -81,7 +81,7 @@ def test_file_exif_outranks_addaxai_filename_marker(tmp_path):
 
 
 def test_filename_marker_used_when_file_has_no_exif(tmp_path):
-    p = tmp_path / "clip_addaxai-20250222-072314.jpg"
+    p = tmp_path / "clip_wsp-cameratrap-20250222-072314.jpg"
     _write_jpeg(p)
     ts, source = _resolve(p, exif_metadata=None)
     assert ts == datetime(2025, 2, 22, 7, 23, 14)

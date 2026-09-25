@@ -72,7 +72,7 @@ electron/playwright-report/
 logs/
 
 # User data directory (for local development)
-~/AddaxAI/
+~/WSP-CameraTrap/
 
 # Secrets (never commit)
 *.pem

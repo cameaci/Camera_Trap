@@ -323,7 +323,7 @@ def test_a_folder_that_cannot_be_cleaned_does_not_fail_the_delete(
 ):
     """A disconnected drive must not turn a finished delete into a 500.
 
-    The rows are already committed by the time the on-disk `.addaxai`
+    The rows are already committed by the time the on-disk `.wsp-cameratrap`
     cleanup runs, so an OS error there used to report "Internal Server
     Error" for a project that was in fact gone, and skip the cleanup for
     every remaining deployment too. Camera trap folders live on external
@@ -335,7 +335,7 @@ def test_a_folder_that_cannot_be_cleaned_does_not_fail_the_delete(
     db.commit()
     project_id = project.id
 
-    artifacts = folder / ".addaxai" / "projects" / project_id
+    artifacts = folder / ".wsp-cameratrap" / "projects" / project_id
     artifacts.mkdir(parents=True)
     (artifacts / "results.json").write_text("{}")
     make_unreadable(artifacts)

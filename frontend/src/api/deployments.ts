@@ -143,7 +143,7 @@ export const deploymentsApi = {
 
   /**
    * Split a deployment at the given folder depth. Creates one child per
-   * non-empty subfolder, reassigns files and events, slices .addaxai
+   * non-empty subfolder, reassigns files and events, slices .wsp-cameratrap
    * artifacts, and removes the original deployment.
    */
   split: (id: string, depth: number) =>

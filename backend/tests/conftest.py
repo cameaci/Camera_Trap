@@ -17,23 +17,21 @@ from datetime import date, datetime
 from pathlib import Path
 
 # --- Environment isolation (must happen before any app imports) ---
-# ADDAXAI_DATABASE_URL and ADDAXAI_MODELS_DIR are not set here on
-# purpose: Settings derives both from ADDAXAI_USER_DATA_DIR, and the
+# WSP_DATABASE_URL and WSP_MODELS_DIR are not set here on
+# purpose: Settings derives both from WSP_USER_DATA_DIR, and the
 # whole suite running on the derived values is what keeps that
 # derivation covered.
-_TEST_DIR = Path(tempfile.mkdtemp(prefix="addaxai_test_"))
+_TEST_DIR = Path(tempfile.mkdtemp(prefix="wsp_test_"))
 (_TEST_DIR / "models" / "det").mkdir(parents=True)
 (_TEST_DIR / "models" / "cls").mkdir(parents=True)
 (_TEST_DIR / "models" / "emb").mkdir(parents=True)
 (_TEST_DIR / "logs").mkdir(parents=True)
-os.environ.setdefault("ADDAXAI_USER_DATA_DIR", str(_TEST_DIR))
-os.environ.setdefault("ADDAXAI_ENVIRONMENT", "test")
-os.environ.setdefault("ADDAXAI_DISABLE_MODEL_UPDATES", "true")
-# WSP: the upstream suite covers the HuggingFace model source; the WSP
-# library source is covered by tests/ml/test_wsp_model_library.py, which
-# switches it on per test. Never scan this machine's OneDrive for a library.
-os.environ.setdefault("ADDAXAI_MODEL_SOURCE", "huggingface")
-os.environ.setdefault("ADDAXAI_MODEL_LIBRARY_AUTODETECT", "false")
+os.environ.setdefault("WSP_USER_DATA_DIR", str(_TEST_DIR))
+os.environ.setdefault("WSP_ENVIRONMENT", "test")
+os.environ.setdefault("WSP_DISABLE_MODEL_UPDATES", "true")
+# Never scan this machine's OneDrive for a model library or download one.
+os.environ.setdefault("WSP_MODEL_LIBRARY_AUTODETECT", "false")
+os.environ.setdefault("WSP_MODEL_LIBRARY_URL", "")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -52,7 +50,7 @@ from app.models.project import Project
 from app.models.site import Site
 
 # Crash early if an ambient env var (a developer's shell export of
-# ADDAXAI_USER_DATA_DIR, ADDAXAI_DATABASE_URL, or ADDAXAI_MODELS_DIR)
+# WSP_USER_DATA_DIR, WSP_DATABASE_URL, or WSP_MODELS_DIR)
 # beat the setdefault calls above. Without this the suite would quietly
 # read and write the real data directory, and nothing else would notice.
 _settings = get_settings()
@@ -94,7 +92,7 @@ Base.metadata.create_all(bind=_engine)
 # pending ORM changes first, so a test reads values production never sees.
 # Code that queries after setting an attribute is then correct in the
 # suite and stale in the app. That is how the `File.verified` rollup bug
-# reached exported data (`addaxai-files.csv` said `is_verified = FALSE`
+# reached exported data (`wsp-cameratrap-files.csv` said `is_verified = FALSE`
 # for files the user had judged). Pinned by
 # `tests/api/test_verified_rollup_flush.py`.
 _TestSessionLocal = sessionmaker(bind=_engine, autoflush=False)

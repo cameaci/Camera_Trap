@@ -41,7 +41,7 @@ from app.utils.media_dates import (
     extract_image_date,
     extract_video_dates,
     file_mtime_datetime,
-    parse_addaxai_filename_datetime,
+    parse_wsp_filename_datetime,
 )
 
 logger = get_logger(__name__)
@@ -61,7 +61,7 @@ def _resolve_capture_timestamp(
     Videos go through exiftool (`video_dates` pre-populated), images
     through MegaDetector's embedded EXIF `DateTimeOriginal`. Then two
     opt-in last resorts, for files whose metadata carries no readable
-    date: an `…addaxai-YYYYMMDD-HHMMSS.<ext>` filename, and finally the
+    date: an `…wsp-cameratrap-YYYYMMDD-HHMMSS.<ext>` filename, and finally the
     file's modification time when the user asked for it.
 
     The mtime branch is last because it succeeds for every readable file:
@@ -94,10 +94,10 @@ def _resolve_capture_timestamp(
         ts = extract_image_date(absolute_path)
         if ts is not None:
             return ts, "exif_reread"
-    ts = parse_addaxai_filename_datetime(absolute_path.name)
+    ts = parse_wsp_filename_datetime(absolute_path.name)
     if ts is not None:
         logger.debug(
-            "Capture time from addaxai filename: %s -> %s", absolute_path.name, ts
+            "Capture time from wsp filename: %s -> %s", absolute_path.name, ts
         )
         return ts, "filename"
     if use_file_mtime_fallback:
@@ -281,7 +281,7 @@ def load_json_to_database(
         # `best_frame_path` on each video File row points into the same
         # tree; legacy data uses the same layout, so the path math works
         # for new and old runs alike.
-        _af = artifacts_folder or (deployment_folder / ".addaxai")
+        _af = artifacts_folder or (deployment_folder / ".wsp-cameratrap")
 
         # Pass 2: stream images again and insert. Counting here (before the
         # failure skip) matches the old total_files = len(images).
@@ -728,7 +728,7 @@ async def run_classification_on_json(
         best_frame_output_base: Directory under which the worker drops
             one best-frame JPEG per video, mirroring the relative video
             path. If None, falls back to
-            `deployment_folder/.addaxai/video_frames` (the legacy layout
+            `deployment_folder/.wsp-cameratrap/video_frames` (the legacy layout
             so `best_frame_path` math in `_load_to_database` keeps
             working unchanged).
 
@@ -748,7 +748,7 @@ async def run_classification_on_json(
     # in the JSON gets a destination directory, including blank videos
     # so we still produce a thumbnail for them.
     _bf_base = best_frame_output_base or (
-        deployment_folder / ".addaxai" / "video_frames"
+        deployment_folder / ".wsp-cameratrap" / "video_frames"
     )
     best_frame_outputs: dict[str, str] = {}
     video_path_by_abs: dict[str, Path] = {}
@@ -981,7 +981,7 @@ def merge_json_files(
     Args:
         json_files: List of JSON file paths to merge
         output_file: Output merged JSON file path
-        deployment_id: Deployment ID for the info.addaxai metadata block
+        deployment_id: Deployment ID for the info.wsp-cameratrap metadata block
         detection_model_id: Detection model ID (for info section)
         classification_model_id: Classification model ID (for info section)
 
@@ -1069,7 +1069,7 @@ def merge_json_files(
             f"across {len(json_files)} JSON files"
         )
 
-        addaxai_info: dict = {
+        wsp_info: dict = {
             "version": "todo-not-implemented-yet",
             "deployment_id": deployment_id,
             "classification_completion_time": (
@@ -1077,10 +1077,10 @@ def merge_json_files(
             ),
         }
         if detection_model_id:
-            addaxai_info["detection_model"] = detection_model_id
+            wsp_info["detection_model"] = detection_model_id
         if classification_model_id:
-            addaxai_info["classification_model"] = classification_model_id
-        merged_data["info"]["addaxai"] = addaxai_info
+            wsp_info["classification_model"] = classification_model_id
+        merged_data["info"]["wsp"] = wsp_info
 
         # Write metadata (categories, info) before the big images array so a
         # streaming reader can grab classification_categories without scanning

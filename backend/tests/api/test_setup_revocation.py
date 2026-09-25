@@ -25,8 +25,8 @@ def clean_install_state():
 
 @pytest.fixture
 def own_data_dir(tmp_path, monkeypatch):
-    """Point the marker at a throwaway dir, never the real ~/AddaxAI."""
-    monkeypatch.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    """Point the marker at a throwaway dir, never the real ~/WSP-CameraTrap."""
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     return tmp_path
 
 

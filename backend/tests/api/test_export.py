@@ -717,7 +717,7 @@ def test_video_exports_describe_only_the_visible_frame(client, db):
     holds a person. The row reports the person, and the deer is absent
     from the detections table too, because a box on a frame nobody can
     open cannot be seen, filtered to or relabelled. It survives in
-    addaxai-recognitions.json, which is the complete record."""
+    wsp-cameratrap-recognitions.json, which is the complete record."""
     project, _site, deployment = _build_simple_project(db)
     f = make_file(
         db,
@@ -1652,7 +1652,7 @@ def test_export_camtrap_dp_happy_path(client, db):
         obs_rows = list(csv.reader(io.StringIO(zf.read("observations.csv").decode())))
 
     assert dp["title"] == project.name
-    assert dp["name"].startswith("addaxai-")
+    assert dp["name"].startswith("wsp-cameratrap-")
     assert dp["temporal"]["start"] == "2024-06-15"
     assert any(
         entry["scientificName"] == "Vulpes vulpes" for entry in dp["taxonomic"]

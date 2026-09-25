@@ -1,6 +1,6 @@
 """Clean environment for spawned Python subprocesses.
 
-AddaxAI's ML envs are micromamba envs, not venvs, so their pythons keep
+WSP CameraTrap's ML envs are micromamba envs, not venvs, so their pythons keep
 user-site enabled: anything the user ever ``pip install --user``-ed for a
 matching Python minor version lands on ``sys.path`` BEFORE the env's own
 site-packages and shadows the pinned packages (the classic "conda env

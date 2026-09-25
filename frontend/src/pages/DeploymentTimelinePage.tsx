@@ -3,7 +3,7 @@
  *
  * Row-per-site Gantt with folder-aware trap-night intervals, plus a
  * concurrent-cameras area chart above the Gantt and a reactive
- * metrics strip above it. See `/Users/peter/.claude/plans/in-depth-plot-concurrent-waterfall.md`
+ * metrics strip above it.
  * for the design rationale.
  */
 

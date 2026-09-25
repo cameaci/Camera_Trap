@@ -3,7 +3,7 @@ Database-backup endpoints.
 
 Four operations exposed under `/api/backup`:
 
-- `GET  /dir`       — return the absolute path of `~/AddaxAI/backups/`.
+- `GET  /dir`       — return the absolute path of `~/WSP-CameraTrap/backups/`.
 - `GET  /list`      — list daily + pre-upgrade snapshots, newest first.
 - `POST /snapshot`  — write a snapshot. With `target_dir` the file lands
                       in that folder; without, it lands in the ring
@@ -76,7 +76,7 @@ def take_snapshot(req: SnapshotRequest) -> SnapshotResponse:
     folder (always produces one; ignores the daily throttle).
 
     With `target_dir`: writes to the chosen folder using the same
-    `addaxai-manual-<utc-iso>[-<note>].db` filename. The folder must
+    `wsp-cameratrap-manual-<utc-iso>[-<note>].db` filename. The folder must
     exist. These are the user's to manage and are not listed by
     GET /list.
 
@@ -96,7 +96,7 @@ def take_snapshot(req: SnapshotRequest) -> SnapshotResponse:
             detail=f"Target folder does not exist: {target}",
         )
 
-    src = settings.user_data_dir / "addaxai.db"
+    src = settings.user_data_dir / "wsp-cameratrap.db"
     dst = target / manual_backup_filename(req.note)
     snapshot_db(src, dst)
     logger.info(f"Wrote backup to user-chosen folder: {dst}")

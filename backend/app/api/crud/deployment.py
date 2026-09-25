@@ -366,7 +366,7 @@ def delete_deployment(db: Session, deployment_id: str) -> bool:
     Cascades to:
     - related files, events, detections (DB, via SQLAlchemy ondelete=CASCADE,
       with `purge_deployment_data` emptying the leaves first for speed)
-    - on-disk ML artifacts in `<folder_path>/.addaxai/projects/<project_id>/`
+    - on-disk ML artifacts in `<folder_path>/.wsp-cameratrap/projects/<project_id>/`
       (via _delete_deployment_artifacts; best-effort, never blocks DB delete)
     """
     db_deployment = get_deployment(db, deployment_id)
@@ -401,21 +401,21 @@ def _delete_deployment_artifacts(
     keep_names: frozenset[str] = frozenset(),
 ) -> None:
     """
-    Remove the project-scoped .addaxai folder for a deleted deployment.
+    Remove the project-scoped .wsp-cameratrap folder for a deleted deployment.
 
     Best-effort: missing paths and OS errors are logged and swallowed so
     that DB deletes never roll back because of a stale filesystem state
     (e.g. an unmounted external drive). Cleans up empty parent dirs
-    (`.addaxai/projects/`, `.addaxai/`) so the folder is left as the
+    (`.wsp-cameratrap/projects/`, `.wsp-cameratrap/`) so the folder is left as the
     user originally placed it on disk.
 
     `keep_names` spares the named files directly under the project
     folder when any of them exists: the re-run path uses it to keep an
     interrupted run's detection checkpoint while everything else goes.
     """
-    project_dir = Path(folder_path) / ".addaxai" / "projects" / project_id
+    project_dir = Path(folder_path) / ".wsp-cameratrap" / "projects" / project_id
     projects_dir = project_dir.parent
-    addaxai_dir = projects_dir.parent
+    wsp_dir = projects_dir.parent
 
     if project_dir.exists():
         try:
@@ -449,9 +449,9 @@ def _delete_deployment_artifacts(
             )
             return
 
-    # Roll up empty parents so the .addaxai marker disappears entirely
+    # Roll up empty parents so the .wsp-cameratrap marker disappears entirely
     # when the last project is gone. Only remove if empty; never recurse.
-    for empty_candidate in (projects_dir, addaxai_dir):
+    for empty_candidate in (projects_dir, wsp_dir):
         try:
             if empty_candidate.exists() and not any(empty_candidate.iterdir()):
                 empty_candidate.rmdir()

@@ -22,7 +22,7 @@ from app.ml.environment_manager import (
 
 ENVS_DIR = Path(__file__).resolve().parents[2] / "app" / "ml" / "envs"
 
-_URL_PREFIX = "https://huggingface.co/Addax-Data-Science/pip-wheels/resolve/main/"
+_URL_PREFIX = "https://github.com/cameaci/Camera_Trap/raw/main/backend/app/ml/pip-wheels/"
 
 _WHEEL_NAME = "ultralytics_yolov5-0.1.1-py3-none-any.whl"
 

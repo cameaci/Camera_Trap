@@ -52,7 +52,7 @@ ChartJS.register(
 
 // Species colors pinned to slots A and B so the picker swatches, the
 // chart curves, and the legend badges always agree. Picked to match
-// the AddaxAI palette (teal + accent orange).
+// the WSP CameraTrap palette (teal + accent orange).
 export const SPECIES_A_COLOR = "#0f6064";
 export const SPECIES_B_COLOR = "#ff8945";
 const OVERLAP_FILL = "rgba(120, 120, 120, 0.28)";

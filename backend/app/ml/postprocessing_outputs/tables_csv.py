@@ -13,8 +13,8 @@ there shows up in projects-mode exports and here automatically. The
 columns that say nothing in a folder run are then trimmed by
 ``_table_columns.folder_run_table``; see that module for which and why.
 
-Writes ``addaxai-summary.csv``, ``addaxai-files.csv`` and
-``addaxai-detections.csv`` under ``target_dir`` (the user's output dir,
+Writes ``wsp-cameratrap-summary.csv``, ``wsp-cameratrap-files.csv`` and
+``wsp-cameratrap-detections.csv`` under ``target_dir`` (the user's output dir,
 which defaults to the source folder — the prefix keeps the run's files
 grouped between the user's own).
 """
@@ -34,9 +34,9 @@ from app.models import Project
 
 logger = get_logger(__name__)
 
-SUMMARY_FILENAME = "addaxai-summary.csv"
-FILES_FILENAME = "addaxai-files.csv"
-DETECTIONS_FILENAME = "addaxai-detections.csv"
+SUMMARY_FILENAME = "wsp-cameratrap-summary.csv"
+FILES_FILENAME = "wsp-cameratrap-files.csv"
+DETECTIONS_FILENAME = "wsp-cameratrap-detections.csv"
 
 
 @dataclass
@@ -60,8 +60,8 @@ def write_tables_csv(
     project_id: str,
     target_dir: Path,
 ) -> TablesCsvResult:
-    """Write ``addaxai-summary.csv``, ``addaxai-files.csv`` and
-    ``addaxai-detections.csv``.
+    """Write ``wsp-cameratrap-summary.csv``, ``wsp-cameratrap-files.csv`` and
+    ``wsp-cameratrap-detections.csv``.
 
     The data exports are the complete record of the run (no per-call
     species exclusion), so all tables derive from the same project
@@ -76,7 +76,7 @@ def write_tables_csv(
     # One scope for every table and for both modes: the threshold plus
     # the verified override, and only boxes on a video's visible frame.
     # So these tables hold what the Labels step showed, which is what the
-    # user could actually check and correct. ``addaxai-recognitions.json``
+    # user could actually check and correct. ``wsp-cameratrap-recognitions.json``
     # stays the complete record of the run.
     #
     # Fetched and released before the files table below loads its own row
@@ -102,7 +102,7 @@ def write_tables_csv(
         f.write(export_formats.serialize_csv(summary_headers, summary_rows))
 
     # Same scope as the detections table above, so the two agree: a file
-    # whose species columns are empty has no rows in addaxai-detections.csv
+    # whose species columns are empty has no rows in wsp-cameratrap-detections.csv
     # either. Its own fetch, because the detections row set was released
     # above to keep peak memory down.
     files_headers, files_rows = folder_run_table(

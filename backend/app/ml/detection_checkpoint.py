@@ -8,7 +8,7 @@ lookup and the reset path all agree on them. See "Resuming an interrupted
 analysis" in DEVELOPERS.md.
 
 Three files live in the deployment's artifacts folder
-(``<folder>/.addaxai/projects/<project_id>/``):
+(``<folder>/.wsp-cameratrap/projects/<project_id>/``):
 
 - ``md_checkpoint.json``: written by MegaDetector, deleted by it on success.
 - ``md_checkpoint.meta.json``: written by us before detection starts. It
@@ -63,7 +63,7 @@ def checkpoint_frequency(image_count: int, batch_size: int | None) -> int:
 
 def artifacts_dir(deployment_folder: Path, project_id: str) -> Path:
     """The project-scoped artifacts folder of a deployment."""
-    return deployment_folder / ".addaxai" / "projects" / project_id
+    return deployment_folder / ".wsp-cameratrap" / "projects" / project_id
 
 
 @dataclass(frozen=True)

@@ -104,7 +104,7 @@ def test_marker_disables_the_revocation_check(
     The value has to be exactly "true". micromamba parses it as YAML and
     "1" dies with a bad-conversion backtrace (mamba issue #2751), which
     would break every build instead of fixing one."""
-    monkeypatch.setenv("ADDAXAI_USER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("WSP_USER_DATA_DIR", str(tmp_path))
     (tmp_path / environment_manager.REVOCATION_MARKER_FILENAME).write_text("x")
 
     env = capture_env(tmp_path, monkeypatch)

@@ -134,7 +134,7 @@ async def process_postprocessing_job(job_id: str) -> None:
         # it rather than report a clean success over every deployment.
         #
         # Split by cause, because each needs a different fix: a folder that
-        # is gone needs reconnecting, a folder that lost its hidden .addaxai
+        # is gone needs reconnecting, a folder that lost its hidden .wsp-cameratrap
         # artifacts needs analysing again, an unreadable one needs unlocking.
         # One example path per cause is all the message shows, which also
         # keeps this payload flat on a project holding hundreds of folders.
@@ -175,7 +175,7 @@ async def process_postprocessing_job(job_id: str) -> None:
                 continue
 
             folder_path = Path(deployment.folder_path)
-            json_path = folder_path / ".addaxai" / "projects" / project_id / "results.json"
+            json_path = folder_path / ".wsp-cameratrap" / "projects" / project_id / "results.json"
 
             # Path.exists() re-raises EACCES (only ENOENT and its family are
             # swallowed), so one unreadable folder — a locked share, a disk

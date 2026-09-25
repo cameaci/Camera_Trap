@@ -14,7 +14,7 @@ ENVS_DIR = Path(__file__).resolve().parents[2] / "app" / "ml" / "envs"
 
 ALL_YAMLS = sorted(ENVS_DIR.glob("*/*/environment.yml"))
 
-ADDAXAI_BASE_PLATFORMS = ("darwin", "linux", "windows")
+WSP_BASE_PLATFORMS = ("darwin", "linux", "windows")
 
 
 def _pip_deps(yaml_path: Path) -> list[str]:
@@ -35,8 +35,8 @@ def test_all_environment_yamls_parse() -> None:
         assert data["dependencies"], yaml_path
 
 
-@pytest.mark.parametrize("platform_dir", ADDAXAI_BASE_PLATFORMS)
-def test_addaxai_base_pins_ultralytics_yolov5_wheel(platform_dir: str) -> None:
+@pytest.mark.parametrize("platform_dir", WSP_BASE_PLATFORMS)
+def test_wsp_base_pins_ultralytics_yolov5_wheel(platform_dir: str) -> None:
     """
     ultralytics-yolov5 must be installed from our prebuilt wheel, not
     the PyPI sdist. The sdist's setup.py downloads a README from GitHub
@@ -45,7 +45,7 @@ def test_addaxai_base_pins_ultralytics_yolov5_wheel(platform_dir: str) -> None:
     wheel URL skips setup.py; the #sha256= fragment makes pip verify
     the artifact.
     """
-    yaml_path = ENVS_DIR / "addaxai-base" / platform_dir / "environment.yml"
+    yaml_path = ENVS_DIR / "wsp-base" / platform_dir / "environment.yml"
     pip_deps = _pip_deps(yaml_path)
 
     wheel_refs = [

@@ -68,7 +68,7 @@ const RECENT_LABELS_MAX = 5;
 function getRecentLabelKeys(projectId?: string): string[] {
   if (!projectId) return [];
   try {
-    const raw = localStorage.getItem(`addaxai-recent-labels-${projectId}`);
+    const raw = localStorage.getItem(`wsp-cameratrap-recent-labels-${projectId}`);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -77,7 +77,7 @@ function getRecentLabelKeys(projectId?: string): string[] {
 
 function pushRecentLabel(value: string, projectId?: string): void {
   if (!projectId) return;
-  const key = `addaxai-recent-labels-${projectId}`;
+  const key = `wsp-cameratrap-recent-labels-${projectId}`;
   const current = getRecentLabelKeys(projectId).filter((v) => v !== value);
   current.unshift(value);
   localStorage.setItem(key, JSON.stringify(current.slice(0, RECENT_LABELS_MAX)));

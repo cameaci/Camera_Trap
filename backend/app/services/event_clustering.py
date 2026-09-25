@@ -1,7 +1,7 @@
 """
 Shared event-clustering primitive.
 
-One source of truth for how AddaxAI groups files into events. Both
+One source of truth for how WSP CameraTrap groups files into events. Both
 `generate_events_for_project` (which writes Event rows for the UI) and
 `build_smoother_input` (which packages the same groupings for the
 MegaDetector smoothing subprocess) call `cluster_files_into_events` here.

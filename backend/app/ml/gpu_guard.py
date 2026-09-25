@@ -102,9 +102,9 @@ def cuda_guard_overrides(env_manager: "EnvironmentManager") -> dict[str, str]:
     # Path.exists() calls, and caching would leave the whole backend
     # session unguarded after setup completes.
     try:
-        python_path = env_manager.get_python("env-addaxai-base")
+        python_path = env_manager.get_python("env-wsp-base")
     except FileNotFoundError:
-        logger.warning("GPU probe skipped: env-addaxai-base not installed yet")
+        logger.warning("GPU probe skipped: env-wsp-base not installed yet")
         return {}
 
     try:

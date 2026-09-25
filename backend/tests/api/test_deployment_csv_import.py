@@ -99,12 +99,12 @@ def test_preview_ignores_non_media_files(client, db, tmp_path):
     assert body["rows"][0]["image_count"] == 2
 
 
-def test_preview_skips_addaxai_output_folders(client, db, tmp_path):
+def test_preview_skips_wsp_output_folders(client, db, tmp_path):
     """A previous run's copies must not be counted as new input media."""
     p = make_project(db)
     folder = _folder(tmp_path, "cam01", images=2)
-    output = _folder(tmp_path, "cam01/addaxai-output", images=7)
-    (tmp_path / "cam01" / "addaxai-output" / OUTPUT_DIR_MARKER).write_text("")
+    output = _folder(tmp_path, "cam01/wsp-cameratrap-output", images=7)
+    (tmp_path / "cam01" / "wsp-cameratrap-output" / OUTPUT_DIR_MARKER).write_text("")
     assert output  # the folder really does hold images
 
     body = _preview(client, p.id, f"{HEADER}\n{folder},,\n").json()
@@ -114,7 +114,7 @@ def test_preview_skips_addaxai_output_folders(client, db, tmp_path):
 def test_preview_skips_dot_folders(client, db, tmp_path):
     p = make_project(db)
     folder = _folder(tmp_path, "cam01", images=2)
-    _folder(tmp_path, "cam01/.addaxai", images=5)
+    _folder(tmp_path, "cam01/.wsp-cameratrap", images=5)
 
     body = _preview(client, p.id, f"{HEADER}\n{folder},,\n").json()
     assert body["rows"][0]["image_count"] == 2

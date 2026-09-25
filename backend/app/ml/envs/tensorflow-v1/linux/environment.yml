@@ -1,6 +1,6 @@
 # Linux env-tensorflow-v1.
 #
-# Verbatim copy of the legacy AddaxAI source yml at
+# Verbatim copy of the earlier source yml at
 # classification_utils/envs/tensorflow-linux-windows.yml. The Linux
 # installer feeds this same yml to `conda env create` for env-tensorflow.
 # Package versions are intentionally pinned for compatibility with TF

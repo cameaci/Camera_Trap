@@ -4,7 +4,7 @@
 # WebUI baseline). Windows gets cu128 wheels for torch + torchvision
 # so pytorch-based classifiers run on GPU, including RTX 50-series
 # (Blackwell, sm_120) with native kernels. Needs NVIDIA driver >= 555.
-# pip-system-certs is added at the end to match the legacy AddaxAI
+# pip-system-certs is added at the end to match the the earlier desktop app
 # Windows build workflow's corporate-SSL handling on every env.
 name: env-pytorch
 channels:
@@ -26,7 +26,7 @@ dependencies:
       - timm
       - dill
       - omegaconf
-      # Required for SpeciesNet-fine-tuned classifiers (addax-sppnet
+      # Required for SpeciesNet-fine-tuned classifiers (sppnet
       # type, e.g. HWI-ADS-v1, VIC-ADS-v1, SBUSA-ADS-v1, AHDRIFT-v1).
       # Their backbone is a torch.fx GraphModule that pickled
       # onnx2torch operator classes; loading the .pt fails with
@@ -40,7 +40,7 @@ dependencies:
       - transformers==4.49.0
       - pytorch-lightning==2.4.0
       - albumentations==1.4.24
-      # Same stringzilla 5.1.2 wheel gap as addaxai-base/windows, here
+      # Same stringzilla 5.1.2 wheel gap as wsp-base/windows, here
       # via albumentations -> albucore. See that file for the detail.
       - stringzilla==5.1.1
       # OpenCV (headless variant: no GUI deps, only the cv2 module).

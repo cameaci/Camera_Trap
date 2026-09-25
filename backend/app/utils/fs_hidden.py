@@ -1,8 +1,8 @@
 """
-Cross-platform hidden-folder helpers for the `.addaxai` artifact root.
+Cross-platform hidden-folder helpers for the `.wsp-cameratrap` artifact root.
 
 macOS and Linux file managers respect the leading-dot convention and
-hide `.addaxai` automatically. Windows ignores leading dots and uses a
+hide `.wsp-cameratrap` automatically. Windows ignores leading dots and uses a
 separate HIDDEN file attribute, so we set it explicitly here to keep
 the artifact folder out of Explorer's default view. The user can still
 surface it via "Show hidden items" when they need to inspect it.
@@ -37,21 +37,21 @@ def set_windows_hidden(path: Path) -> None:
         pass
 
 
-def mkdir_hidden_addaxai(
+def mkdir_hidden_wsp(
     path: Path, *, parents: bool = True, exist_ok: bool = True
 ) -> Path:
-    """`path.mkdir(...)` plus, on Windows, set HIDDEN on the `.addaxai`
+    """`path.mkdir(...)` plus, on Windows, set HIDDEN on the `.wsp-cameratrap`
     segment within the new path.
 
     Hiding the artifact root is enough: subfolders inside it inherit
-    visibility (the user has to enter `.addaxai` to see them). Setting
+    visibility (the user has to enter `.wsp-cameratrap` to see them). Setting
     HIDDEN on a folder that already has it is harmless.
     """
     path.mkdir(parents=parents, exist_ok=exist_ok)
     if sys.platform != "win32":
         return path
     for candidate in [path, *path.parents]:
-        if candidate.name == ".addaxai":
+        if candidate.name == ".wsp-cameratrap":
             set_windows_hidden(candidate)
             break
     return path

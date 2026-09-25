@@ -1,5 +1,5 @@
 """
-JSON utilities for MegaDetector and AddaxAI format handling.
+JSON utilities for MegaDetector and WSP CameraTrap format handling.
 
 Following DEVELOPERS.md principles:
 - Type hints everywhere
@@ -13,7 +13,7 @@ import csv
 import uuid
 from pathlib import Path
 
-from app.utils.fs_hidden import mkdir_hidden_addaxai
+from app.utils.fs_hidden import mkdir_hidden_wsp
 
 
 def collect_md_failures(md_results: dict) -> list[dict]:
@@ -75,19 +75,19 @@ def extract_animal_detections(
 
 def create_artifacts_folder(deployment_folder: Path) -> Path:
     """
-    Create .addaxai artifacts folder in deployment directory.
+    Create .wsp-cameratrap artifacts folder in deployment directory.
 
     Args:
         deployment_folder: Path to deployment folder
 
     Returns:
-        Path to .addaxai artifacts folder
+        Path to .wsp-cameratrap artifacts folder
 
     Raises:
         OSError: If folder creation fails
     """
-    artifacts = deployment_folder / ".addaxai"
-    mkdir_hidden_addaxai(artifacts)
+    artifacts = deployment_folder / ".wsp-cameratrap"
+    mkdir_hidden_wsp(artifacts)
     return artifacts
 
 
@@ -205,7 +205,7 @@ def trim_classification_results(
     to only include class IDs still referenced by at least one detection.
 
     Args:
-        md_results: MegaDetector/AddaxAI JSON results dict (modified in-place)
+        md_results: MegaDetector/WSP CameraTrap JSON results dict (modified in-place)
         max_classifications: Maximum classification entries to keep per
             detection. Defaults to 5 (matches SpeciesNet API and the
             rollup algorithm in taxonomic_rollup.py).

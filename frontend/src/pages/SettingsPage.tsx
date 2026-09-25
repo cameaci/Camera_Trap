@@ -1419,7 +1419,7 @@ export default function SettingsPage() {
           <DialogContent className="max-w-xl">
             <DialogTitle className="sr-only">Preparing model</DialogTitle>
             <DialogDescription className="sr-only">
-              AddaxAI is downloading and preparing the selected model.
+              WSP CameraTrap is downloading and preparing the selected model.
             </DialogDescription>
             {preparingModelType === "detection" && detectionModels.find((m) => m.model_id === detectionModelId) && (
               <ModelPreparationView

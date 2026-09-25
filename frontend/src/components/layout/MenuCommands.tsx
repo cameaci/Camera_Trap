@@ -11,8 +11,6 @@
  * inside the router and query provider so navigation and queries work.
  *
  * Menu commands only arrive in Electron, where window.electronAPI is defined.
- * The one exception is the legacy-install prompt, which opens by itself when
- * an old AddaxAI is found, and so also fires in the browser dev server.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -29,24 +27,18 @@ import { ResetAppDialog } from "../diagnostics/ResetAppDialog";
 import { BackupNowDialog } from "../diagnostics/BackupNowDialog";
 import { RestoreBackupDialog } from "../diagnostics/RestoreBackupDialog";
 import { CheckForUpdatesDialog } from "../diagnostics/CheckForUpdatesDialog";
-import { RemoveLegacyDialog } from "../diagnostics/RemoveLegacyDialog";
 import { ModelLibraryDialog } from "../diagnostics/ModelLibraryDialog";
 
-type DialogId = "reset" | "updates" | "backup" | "restore" | "legacy" | "model-library" | null;
+type DialogId = "reset" | "updates" | "backup" | "restore" | "model-library" | null;
 
 const FALLBACK_VERSION = "(dev)";
-
-// Set when the user ticks "don't ask me again" in the legacy-install
-// prompt. A UI preference, so it lives with the other one in
-// localStorage rather than becoming another marker file in ~/AddaxAI.
-const LEGACY_PROMPT_DISMISSED = "addaxai.legacy-prompt-dismissed";
 
 // The release version whose update toast the user has already closed.
 // Stores the version rather than a boolean so dismissing 7.0.5 says
 // nothing about 7.0.6: someone who cannot install updates on a managed
 // machine is not nagged every launch, and everybody still hears about
 // the next release.
-const UPDATE_TOAST_DISMISSED_VERSION = "addaxai.update-toast-dismissed-version";
+const UPDATE_TOAST_DISMISSED_VERSION = "wsp.update-toast-dismissed-version";
 
 const UPDATE_TOAST_ID = "update-available";
 
@@ -54,9 +46,6 @@ export function MenuCommands() {
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<DialogId>(null);
   const [version, setVersion] = useState<string>(FALLBACK_VERSION);
-  const [legacyDismissed, setLegacyDismissed] = useState(
-    () => localStorage.getItem(LEGACY_PROMPT_DISMISSED) === "true",
-  );
 
   // Cached once; "Open user data folder" needs an absolute path that
   // varies per OS.
@@ -77,7 +66,7 @@ export function MenuCommands() {
   // Dev-only: these dialogs are normally opened from the Electron native
   // menu, which doesn't exist in the browser dev server. Open one straight
   // from the URL hash so it can be previewed on localhost, e.g.
-  // http://localhost:5173/#restore (also #backup, #reset, #updates, #legacy).
+  // http://localhost:5173/#restore (also #backup, #reset, #updates, #model-library).
   // Tree-shaken out of production builds (import.meta.env.DEV is false).
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -88,7 +77,7 @@ export function MenuCommands() {
         h === "backup" ||
         h === "reset" ||
         h === "updates" ||
-        h === "legacy"
+        h === "model-library"
       ) {
         setDialog(h as DialogId);
       }
@@ -98,34 +87,13 @@ export function MenuCommands() {
     return () => window.removeEventListener("hashchange", openFromHash);
   }, []);
 
-  // Legacy AddaxAI 6 still on the machine? Ask once per launch, unless
-  // the user ticked "don't ask me again". Gated on setup being ready so
-  // it never lands on top of the first-run wizard. The scan is a couple
-  // of exists() calls, so running it every launch costs nothing.
-  const { data: legacy } = useQuery({
-    queryKey: ["legacy-install"],
-    queryFn: setupApi.getLegacyInstall,
-    enabled: Boolean(setupStatus?.ready) && !legacyDismissed,
-    staleTime: Infinity,
-  });
-
-  // A ref rather than dependency identity, so a background refetch can
-  // never pop the dialog back up after the user closed it.
-  const legacyPromptShown = useRef(false);
-
-  useEffect(() => {
-    if (legacyPromptShown.current || legacyDismissed || !legacy?.found) return;
-    legacyPromptShown.current = true;
-    setDialog("legacy");
-  }, [legacy?.found, legacyDismissed]);
-
   // Check for a newer release once per launch. Until this existed the
   // only way to find out was the Help menu item, so nobody ever did:
   // installs sat two releases behind while a fixed bug was still biting
   // them. One request per launch is not polling, so GitHub's
   // unauthenticated rate limit is not a concern.
   //
-  // Gated on setup being ready for the same reason as the legacy prompt
+  // Gated on setup being ready so it never lands on the first-run wizard
   // (never on top of the first-run wizard), and on the version parsing,
   // which skips the browser dev server where it is "(dev)" and any
   // build whose getVersion() failed. Failure and being up to date are
@@ -136,7 +104,7 @@ export function MenuCommands() {
     Boolean(setupStatus?.ready) && versionIsReal,
   );
 
-  // A ref for the same reason as legacyPromptShown: a background
+  // A ref rather than dependency identity: a background
   // refetch must not resurrect a toast the user just closed.
   const updateToastShown = useRef(false);
 
@@ -152,7 +120,7 @@ export function MenuCommands() {
     const remember = () =>
       localStorage.setItem(UPDATE_TOAST_DISMISSED_VERSION, latest);
 
-    toast.info(`AddaxAI ${formatVersion(latest)} is available`, {
+    toast.info(`WSP CameraTrap ${formatVersion(latest)} is available`, {
       id: UPDATE_TOAST_ID,
       description: `You are running ${formatVersion(version)}.`,
       duration: Infinity,
@@ -233,9 +201,6 @@ export function MenuCommands() {
         case "reset":
           setDialog("reset");
           break;
-        case "remove-legacy":
-          setDialog("legacy");
-          break;
         case "model-library": // WSP
           setDialog("model-library");
           break;
@@ -280,15 +245,6 @@ export function MenuCommands() {
       <ModelLibraryDialog
         open={dialog === "model-library"}
         onOpenChange={(o) => setDialog(o ? "model-library" : null)}
-      />
-      <RemoveLegacyDialog
-        open={dialog === "legacy"}
-        onOpenChange={(o) => setDialog(o ? "legacy" : null)}
-        dontAskAgain={legacyDismissed}
-        onDontAskAgainChange={(value) => {
-          localStorage.setItem(LEGACY_PROMPT_DISMISSED, String(value));
-          setLegacyDismissed(value);
-        }}
       />
     </>
   );

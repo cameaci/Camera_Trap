@@ -591,7 +591,7 @@ def _reference_date_for_sun(
     """Pick a single reference date for the sun-position calculation.
 
     Midpoint of the user's filter range when both ends are set,
-    otherwise the set end, otherwise today. Matches AddaxAI-Connect.
+    otherwise the set end, otherwise today. Matches the web companion app.
     """
     start = date.fromisoformat(date_from) if date_from else None
     end = date.fromisoformat(date_to) if date_to else None

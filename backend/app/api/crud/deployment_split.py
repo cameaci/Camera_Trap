@@ -8,13 +8,13 @@ the map, camtrap-dp export, and site filtering.
 
 This module implements the split operation:
 1. Compute target subfolders at a chosen descent depth (clamped per-branch).
-2. Copy the parent's `.addaxai/projects/{project_id}/` artifacts (results.json
+2. Copy the parent's `.wsp-cameratrap/projects/{project_id}/` artifacts (results.json
    slice, video_frames subtree) into each child subfolder.
 3. Validate the copies on disk.
 4. In a single DB transaction: create child `Deployment` rows, reassign files,
    reassign events (duplicating events that straddle multiple children), and
    delete the parent row.
-5. Delete the parent's old `.addaxai` artifacts.
+5. Delete the parent's old `.wsp-cameratrap` artifacts.
 
 See DEVELOPERS.md for the related datetime / non-label / verified conventions
 that this pipeline preserves unchanged.
@@ -50,7 +50,7 @@ from app.models import (
     Job,
 )
 from app.models.event import event_files
-from app.utils.fs_hidden import mkdir_hidden_addaxai
+from app.utils.fs_hidden import mkdir_hidden_wsp
 
 logger = get_logger(__name__)
 
@@ -81,7 +81,7 @@ def _iter_child_dirs(folder: Path) -> list[Path]:
     """
     Subfolders of `folder` ignoring hidden entries (names starting with `.`).
 
-    Also skips AddaxAI artifact folders (`.addaxai`) and OS metadata
+    Also skips WSP CameraTrap artifact folders (`.wsp-cameratrap`) and OS metadata
     (`.DS_Store`, `__MACOSX`). Returns an empty list on permission errors.
     """
     try:
@@ -139,7 +139,7 @@ def _descend(
 
     `files` is the set of non-frame File rows known to live under `folder`.
     Frame rows are not passed here because their file_path lives inside
-    `.addaxai/` and wouldn't match any visible subfolder. The caller
+    `.wsp-cameratrap/` and wouldn't match any visible subfolder. The caller
     reattaches frames to their source video's bucket afterwards.
 
     Empty subfolders contribute nothing (skipped silently). The returned
@@ -215,7 +215,7 @@ def _find_blocking_activity(
 
     Blocks on:
     - folder_status != "valid" (we need working filesystem access to slice
-      .addaxai artifacts safely).
+      .wsp-cameratrap artifacts safely).
     - Any DeploymentQueue entry with pending/processing status whose
       folder_path matches the deployment's folder (covers the
       queued-but-not-yet-started case where queue.deployment_id is still
@@ -349,7 +349,7 @@ def build_split_preview(
 
 
 # ---------------------------------------------------------------------------
-# .addaxai slicing
+# .wsp-cameratrap slicing
 # ---------------------------------------------------------------------------
 
 
@@ -394,38 +394,38 @@ def _slice_results_json(
     return child_json
 
 
-def _copy_addaxai_slice(
+def _copy_wsp_slice(
     parent_folder: Path,
     child: _TargetBucket,
     project_id: str,
     parent_results: dict,
 ) -> None:
     """
-    Write the child's slice of `.addaxai/projects/{project_id}/` into the
+    Write the child's slice of `.wsp-cameratrap/projects/{project_id}/` into the
     child subfolder. Creates the destination directory, writes `results.json`,
     and copies `video_frames/` subtrees for each video File in the bucket.
 
     Raises on any I/O error. Caller is responsible for cleaning up partial
     state when this happens.
     """
-    child_addaxai = child.folder_path / ".addaxai" / "projects" / project_id
-    mkdir_hidden_addaxai(child_addaxai)
+    child_wsp = child.folder_path / ".wsp-cameratrap" / "projects" / project_id
+    mkdir_hidden_wsp(child_wsp)
 
     child_file_paths = {f.file_path for f in child.files}
     child_json = _slice_results_json(
         parent_results, parent_folder, child.folder_path, child_file_paths
     )
 
-    with (child_addaxai / "results.json").open("w") as fh:
+    with (child_wsp / "results.json").open("w") as fh:
         json.dump(child_json, fh)
 
     parent_frames_root = (
-        parent_folder / ".addaxai" / "projects" / project_id / "video_frames"
+        parent_folder / ".wsp-cameratrap" / "projects" / project_id / "video_frames"
     )
     if not parent_frames_root.exists():
         return
 
-    child_frames_root = child_addaxai / "video_frames"
+    child_frames_root = child_wsp / "video_frames"
     for f in child.files:
         # Copy the frame subtree for every video in the bucket, regardless
         # of whether a best-frame was selected — frame rows attached to
@@ -466,8 +466,8 @@ def _validate_child_artifacts(
     Also verifies each video File's expected best_frame_path exists on
     disk after the frame-tree copy.
     """
-    child_addaxai = child.folder_path / ".addaxai" / "projects" / project_id
-    json_path = child_addaxai / "results.json"
+    child_wsp = child.folder_path / ".wsp-cameratrap" / "projects" / project_id
+    json_path = child_wsp / "results.json"
     if not json_path.exists():
         raise SplitError(
             f"Child {child.name}: results.json missing after copy"
@@ -504,7 +504,7 @@ def _validate_child_artifacts(
             "entries (preserved verbatim from parent)"
         )
 
-    frames_root = child_addaxai / "video_frames"
+    frames_root = child_wsp / "video_frames"
     for f in child.files:
         if f.best_frame_number is None:
             continue
@@ -523,9 +523,9 @@ def _validate_child_artifacts(
 
 
 def _remove_child_artifacts(children: list[_TargetBucket]) -> None:
-    """Best-effort cleanup of partially written child `.addaxai` dirs."""
+    """Best-effort cleanup of partially written child `.wsp-cameratrap` dirs."""
     for child in children:
-        target = child.folder_path / ".addaxai"
+        target = child.folder_path / ".wsp-cameratrap"
         try:
             if target.exists():
                 shutil.rmtree(target)
@@ -570,12 +570,12 @@ def _rewrite_frame_path(
     project_id: str,
 ) -> str | None:
     """
-    Translate a path inside the parent's `.addaxai/video_frames/` tree to the
+    Translate a path inside the parent's `.wsp-cameratrap/video_frames/` tree to the
     child's. Handles both `File.best_frame_path` on video rows and
     `File.file_path` on frame rows. Old path:
-      {parent}/.addaxai/projects/{pid}/video_frames/<rel_from_parent>/frame*.jpg
+      {parent}/.wsp-cameratrap/projects/{pid}/video_frames/<rel_from_parent>/frame*.jpg
     New path:
-      {child}/.addaxai/projects/{pid}/video_frames/<rel_from_child>/frame*.jpg
+      {child}/.wsp-cameratrap/projects/{pid}/video_frames/<rel_from_child>/frame*.jpg
 
     Returns None if `old` doesn't look like the expected layout.
     """
@@ -583,7 +583,7 @@ def _rewrite_frame_path(
         return None
     old_path = Path(old)
     parent_frames_root = (
-        parent_folder / ".addaxai" / "projects" / project_id / "video_frames"
+        parent_folder / ".wsp-cameratrap" / "projects" / project_id / "video_frames"
     )
     try:
         rel_under_frames = old_path.relative_to(parent_frames_root)
@@ -599,7 +599,7 @@ def _rewrite_frame_path(
         return None
     return str(
         child_folder
-        / ".addaxai"
+        / ".wsp-cameratrap"
         / "projects"
         / project_id
         / "video_frames"
@@ -748,7 +748,7 @@ def split_deployment(
 
     Raises SplitError on any precondition failure or I/O problem. The DB
     transaction is either fully committed or fully rolled back; on rollback,
-    any partial child `.addaxai` directories are also removed from disk.
+    any partial child `.wsp-cameratrap` directories are also removed from disk.
     """
     if depth < 1:
         raise SplitError("Split depth must be >= 1")
@@ -784,7 +784,7 @@ def split_deployment(
 
     # --- Parent results.json (read once; used by copy step) ------------------
     parent_json_path = (
-        parent_folder / ".addaxai" / "projects" / project_id / "results.json"
+        parent_folder / ".wsp-cameratrap" / "projects" / project_id / "results.json"
     )
     if parent_json_path.exists():
         try:
@@ -796,14 +796,14 @@ def split_deployment(
             ) from exc
     else:
         # No results yet — the deployment existed but was never analysed.
-        # Still allow the split; children will have no .addaxai artifacts.
+        # Still allow the split; children will have no .wsp-cameratrap artifacts.
         parent_results = None
 
     # --- Copy artifacts ------------------------------------------------------
     if parent_results is not None:
         try:
             for bucket in buckets:
-                _copy_addaxai_slice(
+                _copy_wsp_slice(
                     parent_folder, bucket, project_id, parent_results
                 )
             for bucket in buckets:
@@ -900,7 +900,7 @@ def split_deployment(
             _remove_child_artifacts(buckets)
         raise
 
-    # --- Post-commit: delete parent's old .addaxai ---------------------------
+    # --- Post-commit: delete parent's old .wsp-cameratrap ---------------------------
     # Same best-effort pattern used by delete_deployment: log but don't roll
     # back, because the DB swap has already landed and the worst case is a
     # stale folder sitting on disk.

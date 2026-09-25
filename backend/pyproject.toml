@@ -1,5 +1,5 @@
 [project]
-name = "addaxai-backend"
+name = "wsp-cameratrap-backend"
 version = "0.1.0"
 description = "Camera trap wildlife analysis platform - Backend API"
 requires-python = ">=3.11"

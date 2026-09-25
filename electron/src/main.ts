@@ -22,30 +22,30 @@ let backendSpawnError: Error | null = null;
 let lastBackendExit: { code: number | null; signal: string | null } | null = null;
 // Overridable so the app can be launched against a throwaway user data
 // dir without fighting a dev instance for the port. `spawnBackend`
-// passes the same value to the backend as ADDAXAI_API_PORT, so the two agree in
+// passes the same value to the backend as WSP_API_PORT, so the two agree in
 // both dev and packaged builds from this one setting.
-// WSP: not AddaxAI's 8000, so both apps can run side by side without one
-// treating the other's backend as its own stale process.
-const BACKEND_PORT = Number(process.env.ADDAXAI_BACKEND_PORT) || 8765;
+// A dedicated port, so another local web app on the usual 8000 is never
+// mistaken for this app's backend.
+const BACKEND_PORT = Number(process.env.WSP_BACKEND_PORT) || 8765;
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
 // WSP: the repository WSP CameraTrap is built and released from.
 const PROJECT_URL = 'https://github.com/cameaci/Camera_Trap';
 
 /**
  * The user data directory, resolved the same way the backend resolves
- * it (`ADDAXAI_USER_DATA_DIR`, falling back to `~/AddaxAI`). Every path below
+ * it (`WSP_USER_DATA_DIR`, falling back to `~/WSP-CameraTrap`). Every path below
  * derives from this.
  *
  * The two processes have to agree: they communicate through files in
  * here (the crash sentinels, the startup error, the restore and wipe
- * markers). Hardcoding `~/AddaxAI` on this side meant an override sent
+ * markers). Hardcoding `~/WSP-CameraTrap` on this side meant an override sent
  * the backend somewhere else and the markers landed where nothing read
  * them, which is also what made the app impossible to run end to end
  * against a throwaway database.
  */
 function resolveUserDataDir(): string {
   const fallback = path.join(os.homedir(), 'WSP-CameraTrap'); // WSP
-  const raw = (process.env.ADDAXAI_USER_DATA_DIR ?? '').trim();
+  const raw = (process.env.WSP_USER_DATA_DIR ?? '').trim();
   if (!raw) return fallback;
   if (!path.isAbsolute(raw)) {
     // A relative path would resolve against each process's own working
@@ -53,7 +53,7 @@ function resolveUserDataDir(): string {
     // where the marker files live. The backend refuses such values too;
     // since spawnBackend passes our resolved value, it never sees one.
     console.error(
-      `[Electron] Ignoring ADDAXAI_USER_DATA_DIR "${raw}": not an absolute path`,
+      `[Electron] Ignoring WSP_USER_DATA_DIR "${raw}": not an absolute path`,
     );
     return fallback;
   }
@@ -65,10 +65,10 @@ const LOGS_DIR = path.join(USER_DATA_DIR, 'logs');
 /**
  * Parse `--timelapse <folder>` out of process.argv.
  *
- * Used by Saul Greenberg's Timelapse Analyser to spawn AddaxAI on a
+ * Used by Saul Greenberg's Timelapse Analyser to spawn WSP CameraTrap on a
  * given folder. The shim installer drops an open.bat that translates the
  * legacy `open.bat timelapse <dir>` command into
- * `AddaxAI.exe --timelapse "<dir>"`, so this flag is the single
+ * `WSP CameraTrap.exe --timelapse "<dir>"`, so this flag is the single
  * integration point for both the new and legacy invocation paths.
  *
  * The flag now opens a folder analysis with the folder pre-filled (see
@@ -115,7 +115,7 @@ try {
   console.error('[Electron] Failed to start crashReporter:', e);
 }
 
-// Single-instance lock. If another AddaxAI is already running, we
+// Single-instance lock. If another WSP CameraTrap is already running, we
 // MUST bail out before `snapshotPreviousShutdown()` runs below, or
 // we'd poison `.last-launch-status.json` (the running instance has
 // already consumed the sentinel on its own startup, so the second
@@ -125,7 +125,7 @@ try {
 //
 // The `second-instance` handler forwards a `--timelapse <folder>`
 // invocation (Saul's Timelapse Analyser shim, or the user double-
-// clicking AddaxAI.exe while it is already open) to the already-
+// clicking WSP CameraTrap.exe while it is already open) to the already-
 // running instance: it navigates the existing window to a new folder
 // run with the folder pre-filled. Without an argument we just surface
 // the existing main window.
@@ -264,7 +264,7 @@ type HealthBody = { status?: string; version?: string };
 // /health, which in practice means a migration on a large database.
 // Overridable so the notice can be exercised end to end.
 const BACKEND_SLOW_NOTICE_MS =
-  Number(process.env.ADDAXAI_SLOW_NOTICE_MS) || 60000;
+  Number(process.env.WSP_SLOW_NOTICE_MS) || 60000;
 
 /**
  * One IPv4 GET to a backend path, parsed as JSON. Resolves the parsed
@@ -312,18 +312,18 @@ function httpGetJson(path: string, timeoutMs: number): Promise<unknown> {
 
 /**
  * One GET to /health. Resolves the parsed JSON body on a 200, or null,
- * which `isAddaxaiHealth` rejects either way.
+ * which `isWspHealth` rejects either way.
  */
 async function probeHealth(timeoutMs = 2000): Promise<HealthBody | null> {
   return (await httpGetJson('/health', timeoutMs)) as HealthBody | null;
 }
 
 /**
- * Is this /health body from an AddaxAI backend (vs some unrelated server
+ * Is this /health body from a WSP CameraTrap backend (vs some unrelated server
  * that happens to hold the port)? Our backend always returns
  * `{status: "healthy", version: "..."}`.
  */
-function isAddaxaiHealth(body: HealthBody | null): boolean {
+function isWspHealth(body: HealthBody | null): boolean {
   return !!body && body.status === 'healthy' && typeof body.version === 'string';
 }
 
@@ -359,7 +359,7 @@ function isPortOccupied(port: number, timeoutMs = 1000): Promise<boolean> {
  * Kill whatever process is *listening* on `port`. Best-effort and
  * guarded: a missing tool or no-match just logs and returns. Only ever
  * called once we have already confirmed (via /health) that the listener
- * is a stale AddaxAI backend, never a foreign process.
+ * is a stale WSP CameraTrap backend, never a foreign process.
  *
  * Critically, this must match only the LISTEN socket, not clients
  * connected to the port. Our own probeHealth opens a client connection
@@ -490,11 +490,11 @@ function spawnBackend(): void {
       // The packaged backend binds the port itself from this setting;
       // the dev command gets it as a --port arg. Passing it either way
       // keeps one source of truth for which port we are talking to.
-      ADDAXAI_API_PORT: String(BACKEND_PORT),
+      WSP_API_PORT: String(BACKEND_PORT),
       // Both processes must agree on the data directory (they talk
       // through marker files in it). Pass the resolved value explicitly
       // instead of relying on the process.env spread above.
-      ADDAXAI_USER_DATA_DIR: USER_DATA_DIR,
+      WSP_USER_DATA_DIR: USER_DATA_DIR,
       ...(isDev ? { PYTHONPATH: cwd } : {}),
     },
   });
@@ -521,7 +521,7 @@ function spawnBackend(): void {
  * Bring up a backend we own on BACKEND_PORT.
  *
  * Pre-flight: if something already answers /health, either it is a
- * stale AddaxAI backend (orphan from a previous run, or an old version
+ * stale WSP CameraTrap backend (orphan from a previous run, or an old version
  * left after an update) — kill it and claim the port — or it is a
  * foreign process, in which case we refuse with a clear error. Then
  * spawn our own and wait for it, and finally re-check the version so we
@@ -529,7 +529,7 @@ function spawnBackend(): void {
  */
 async function ensureBackend(): Promise<void> {
   const existing = await probeHealth(1500);
-  if (existing && isAddaxaiHealth(existing)) {
+  if (existing && isWspHealth(existing)) {
     console.warn(
       `[Electron] A backend is already on port ${BACKEND_PORT} ` +
         `(version ${existing.version}); reclaiming the port.`,
@@ -552,7 +552,7 @@ async function ensureBackend(): Promise<void> {
     throw new Error(
       `Port ${BACKEND_PORT} is in use by another application. Quit ` +
         `whatever is using it and relaunch WSP CameraTrap, or set ` +
-        `ADDAXAI_BACKEND_PORT to a free port.`,
+        `WSP_BACKEND_PORT to a free port.`,
     );
   }
 
@@ -611,7 +611,7 @@ async function waitForBackend(): Promise<void> {
       );
     }
     const health = await probeHealth(2000);
-    if (isAddaxaiHealth(health)) return;
+    if (isWspHealth(health)) return;
     if (!noticeShown && Date.now() - start > BACKEND_SLOW_NOTICE_MS) {
       noticeShown = true;
       await loadHtml(stillWorkingHtml());
@@ -903,7 +903,7 @@ async function createWindow(): Promise<void> {
   });
 
   // The HTML <title> would otherwise override our window title with
-  // "AddaxAI" (no version) once the page loads. Block that so the
+  // "WSP CameraTrap" (no version) once the page loads. Block that so the
   // version stays visible in the title bar at all times.
   mainWindow.on('page-title-updated', (event) => {
     event.preventDefault();
@@ -1034,7 +1034,7 @@ function preflightUserDataDir(): string | null {
     return (
       `WSP CameraTrap cannot write to its data folder at ${USER_DATA_DIR}. ` +
       `The folder must exist (or be creatable) and be writable by your user account. ` +
-      `If the ADDAXAI_USER_DATA_DIR environment variable is set, check that it points to a ` +
+      `If the WSP_USER_DATA_DIR environment variable is set, check that it points to a ` +
       `folder you have permission to write to, then click Retry.\n\n(${detail})`
     );
   }
@@ -1214,7 +1214,7 @@ function buildMenuTemplate(): Electron.MenuItemConstructorOptions[] {
     role: 'help',
     label: 'Help',
     submenu: [
-      // WSP: help lives in this app's own repository, not on addaxai.com.
+      // WSP: help lives in this app's own repository, not on wsp.com.
       {
         label: 'User guide',
         click: () => shell.openExternal(`${PROJECT_URL}/blob/main/wsp/docs/USER_GUIDE.md`),
@@ -1226,8 +1226,6 @@ function buildMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       { type: 'separator' },
       { label: 'Export diagnostic report', click: () => sendMenuCommand('export-diagnostic') },
       { type: 'separator' },
-      // WSP: no "Remove old AddaxAI…" item. A legacy AddaxAI on the machine
-      // is another app, not an old version of this one.
       { label: 'Reset application…', click: () => sendMenuCommand('reset') },
       // About lives in the app menu on macOS; fold it into Help elsewhere.
       ...(isMac ? [] : ([{ type: 'separator' }, aboutItem] as Electron.MenuItemConstructorOptions[])),
@@ -1529,7 +1527,7 @@ app.on('ready', async () => {
     startKeepAwakePolling();
     // Show the window (splash) immediately, then bring the backend up.
     await createWindow();
-    // When launched via `AddaxAI.exe --timelapse <folder>` (Saul's
+    // When launched via `WSP CameraTrap.exe --timelapse <folder>` (Saul's
     // Timelapse integration / shim), land straight on a new folder run
     // with the folder pre-filled. Timelapse Analyser is Windows-only, so
     // the flag is only meaningful on Windows; elsewhere we ignore it.

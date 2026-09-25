@@ -3,7 +3,7 @@
 Generate taxonomy.csv from a SpeciesNet labels file.
 
 Converts the 7-token labels file (UUID;class;order;family;genus;species;common_name)
-into AddaxAI's taxonomy.csv format (model_class,class,order,family,genus,species).
+into WSP CameraTrap's taxonomy.csv format (model_class,class,order,family,genus,species).
 
 Usage:
     cd backend

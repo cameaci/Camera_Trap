@@ -1,7 +1,7 @@
 /**
  * Home screen.
  *
- * Task-based chooser: pick what you want AddaxAI to do, not which mode
+ * Task-based chooser: pick what you want WSP CameraTrap to do, not which mode
  * you are in. Two equal-weight paths:
  *
  * 1. Analyse a folder: a quick one-off run, results out, no setup.
@@ -13,16 +13,16 @@
  * was, and uses that location to turn the results into insight (maps,
  * rates, trends).
  *
- * Visual: a full-bleed forest photo (shared with AddaxAI-Connect's
+ * Visual: a full-bleed forest photo (shared with the web companion app's
  * login, so the two apps feel related) behind two frosted-glass cards.
  * A scrim under the centered heading and behind the cards keeps text
  * WCAG-legible over the image. Both cards share the same chrome so the
  * user is not nudged toward one by layout alone.
  *
  * Timelapse Analyser is no longer a separate mode: its launcher
- * (`AddaxAI.exe --timelapse <folder>`) now opens "Analyse a folder"
+ * (`WSP CameraTrap.exe --timelapse <folder>`) now opens "Analyse a folder"
  * with the folder pre-filled, and the folder run's
- * addaxai-recognitions.json is what Timelapse imports.
+ * wsp-cameratrap-recognitions.json is what Timelapse imports.
  */
 
 import { useNavigate } from "react-router-dom";
@@ -92,7 +92,7 @@ export function HomePage() {
               icon={<LayoutDashboard className="h-6 w-6" />}
               title="Build a project"
               lead="A workspace you come back to and keep adding to."
-              body="Add where each camera was, and AddaxAI turns the results into insight: species counts, dashboards and maps, activity, and trap-night rates. Keep a verification history and export to Camtrap DP. Everything stays in the app to revisit and add to."
+              body="Add where each camera was, and WSP CameraTrap turns the results into insight: species counts, dashboards and maps, activity, and trap-night rates. Keep a verification history and export to Camtrap DP. Everything stays in the app to revisit and add to."
               cta="Open projects"
               onClick={() => navigate("/projects")}
             />

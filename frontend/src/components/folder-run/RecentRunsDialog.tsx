@@ -15,7 +15,7 @@
  * which is exactly when you'd want to.
  *
  * Delete is irreversible: it takes the run's DB rows and its on-disk
- * `.addaxai` cache, so it sits behind a confirm naming the folder.
+ * `.wsp-cameratrap` cache, so it sits behind a confirm naming the folder.
  *
  * The API returns every run, so the list starts at INITIAL_ROWS and the rest
  * are one click away. Nothing is hidden silently: a truncated list reads as

@@ -288,7 +288,7 @@ def delete_folder_run(db: Session, project_id: str) -> bool:
 
     Cascade-deletes the Project + its DeploymentQueue + Deployment(s) +
     Files + Detections + Events + EventObservations via SQLAlchemy
-    relationships, then removes the per-project ``.addaxai/projects/
+    relationships, then removes the per-project ``.wsp-cameratrap/projects/
     <project_id>/`` cache folder from every source folder the project
     pointed at.
 
@@ -307,7 +307,7 @@ def delete_folder_run(db: Session, project_id: str) -> bool:
     if db_project is None:
         return False
 
-    # Capture every folder_path that might host a ``.addaxai`` cache
+    # Capture every folder_path that might host a ``.wsp-cameratrap`` cache
     # before the cascade fires. Deployments hold the path when analysis
     # has run; the queue entry holds it when the user picked the folder
     # but never ran analysis. Either way we'd rather try and find
@@ -336,7 +336,7 @@ def reset_folder_run_data(
     Reset a folder-run for re-analysis.
 
     Wipes the analysis output (deployments, files, detections, events,
-    embeddings) and the on-disk ``.addaxai/projects/<project_id>/``
+    embeddings) and the on-disk ``.wsp-cameratrap/projects/<project_id>/``
     cache, but keeps the project row and the queue entry so the run id
     survives across the re-run. The queue entry is moved back to
     ``status='pending'`` with cleared error / warning / processed-at /

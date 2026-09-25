@@ -126,7 +126,7 @@ def deployment_scaffold(db, tmp_path):
     - 3 tiny JPEGs in subdir/
     - 1 dummy .mp4 in videos/
     - Project → Site → Deployment → Job DB records
-    - Artifacts folder at deployment/.addaxai/projects/{project_id}/
+    - Artifacts folder at deployment/.wsp-cameratrap/projects/{project_id}/
 
     Returns a dict with all references.
     """
@@ -157,7 +157,7 @@ def deployment_scaffold(db, tmp_path):
     job = make_job(db)
 
     # Artifacts folder ----------------------------------------------------
-    artifacts = deploy_dir / ".addaxai" / "projects" / project.id
+    artifacts = deploy_dir / ".wsp-cameratrap" / "projects" / project.id
     artifacts.mkdir(parents=True)
 
     return {

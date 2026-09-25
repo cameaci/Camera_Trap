@@ -30,7 +30,7 @@ import {
 } from "../ui/dialog";
 
 /** Marker + version so a loaded file is recognisably ours. */
-const FILE_MARKER = "addaxai_species_selection";
+const FILE_MARKER = "wsp_species_selection";
 
 interface SpeciesSelectionFile {
   [FILE_MARKER]: number;
@@ -89,7 +89,7 @@ export function SpeciesSelectionModal({
     };
     const safeModel = modelId.replace(/[^A-Za-z0-9._-]+/g, "_") || "model";
     downloadTextFile(
-      `addaxai-species-${safeModel}.json`,
+      `wsp-cameratrap-species-${safeModel}.json`,
       JSON.stringify(payload, null, 2),
     );
   }, [workingExcluded, allClasses, modelId]);

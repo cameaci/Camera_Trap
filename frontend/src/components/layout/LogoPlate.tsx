@@ -1,5 +1,5 @@
 /**
- * The AddaxAI wordmark on a frosted plate.
+ * The WSP CameraTrap wordmark on a frosted plate.
  *
  * The wordmark is teal on a transparent background, so over a photo it
  * sinks into the picture. The plate is what keeps it readable. Shared by
@@ -37,7 +37,7 @@ export function LogoPlate({ className, logoClassName }: LogoPlateProps) {
     >
       <img
         src="/branding/logo-wordmark.png"
-        alt="AddaxAI"
+        alt="WSP CameraTrap"
         className={cn("w-auto", logoClassName)}
       />
     </div>

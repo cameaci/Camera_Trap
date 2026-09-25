@@ -185,14 +185,14 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                   ? "/branding/logo-mark.png"
                   : "/branding/logo-wordmark.png"
               }
-              alt="AddaxAI"
+              alt="WSP CameraTrap"
               className={collapsed ? "h-9 w-9" : "h-14 w-auto"}
             />
           </NavLink>
         </div>
 
         {/* Current project + back-link. Sits between the logo and the nav
-            (mirrors AddaxAI-Connect) so the workspace context lives at the
+            (mirrors the web companion app) so the workspace context lives at the
             top, where users expect it. In the rail the name has no room,
             so it collapses to just the back arrow with a tooltip. */}
         {/* Both variants are pinned to the same height so the nav below
@@ -365,7 +365,7 @@ function CollapsibleNavGroup({ item, collapsed }: { item: NavItem; collapsed: bo
   const location = useLocation();
   const isActiveParent = location.pathname.startsWith(item.to);
 
-  const storageKey = `addaxai:sidebar-expand:${item.to}`;
+  const storageKey = `wsp:sidebar-expand:${item.to}`;
   const [expanded, setExpanded] = useState<boolean>(() => {
     const saved = localStorage.getItem(storageKey);
     return saved === null ? true : saved === "true";

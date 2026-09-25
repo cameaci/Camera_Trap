@@ -118,7 +118,7 @@ def _seed_every_table(db_path: str) -> None:
 @pytest.mark.parametrize("step", _steps(), ids=lambda s: s[1])
 def test_migration_keeps_every_row(engine, isolated_db_settings, step):
     before_rev, rev = step
-    db_path = str(isolated_db_settings.user_data_dir / "addaxai.db")
+    db_path = str(isolated_db_settings.user_data_dir / "wsp-cameratrap.db")
 
     upgrade_to(before_rev)
     _seed_every_table(db_path)

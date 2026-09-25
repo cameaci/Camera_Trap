@@ -5,7 +5,7 @@ image: a viewer like Lightroom or digiKam reads the XMP:Subject tag
 as the file's "tags", standard EXIF viewers read ImageDescription as
 the caption. The JSON blob in UserComment carries the full detection
 breakdown for downstream scripts that want machine-readable input
-without re-running AddaxAI.
+without re-running WSP CameraTrap.
 
 Uses the same `exiftool` binary that's already on the deploy via the
 `PyExifTool` runtime dep (see backend/app/utils/media_dates.py for
@@ -156,7 +156,7 @@ def build_tag_set(
     model_label = project.detection_model_id
     if project.classification_model_id:
         model_label = f"{model_label} + {project.classification_model_id}"
-    software = f"AddaxAI {app_version} ({model_label})"
+    software = f"WSP CameraTrap {app_version} ({model_label})"
 
     # Full structured payload in UserComment for downstream scripts
     # that don't want to parse the summary back.
@@ -177,7 +177,7 @@ def build_tag_set(
         for det in rows
     ]
     user_comment = {
-        "app": f"AddaxAI {app_version}",
+        "app": f"WSP CameraTrap {app_version}",
         "detection_model": project.detection_model_id,
         "classification_model": project.classification_model_id,
         # The media-output confidence the user picked on the Save step:

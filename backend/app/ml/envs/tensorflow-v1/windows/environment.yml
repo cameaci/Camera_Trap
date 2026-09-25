@@ -1,10 +1,10 @@
 # Windows env-tensorflow-v1.
 #
 # Same as linux/tensorflow-v1, which is a verbatim copy of the legacy
-# AddaxAI source yml at classification_utils/envs/tensorflow-linux-windows.yml.
+# WSP CameraTrap source yml at classification_utils/envs/tensorflow-linux-windows.yml.
 # The Windows installer feeds this exact yml to `conda env create` for
 # env-tensorflow. pip-system-certs is added at the end to match the
-# legacy AddaxAI Windows build workflow's corporate-SSL handling.
+# earlier Windows build workflow's corporate-SSL handling.
 name: env-tensorflow-v1
 channels:
   - conda-forge

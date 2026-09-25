@@ -120,10 +120,10 @@ const SKIP_TEXT: Record<string, (c: SkippedCause) => string> = {
   // Deployments page already has that flow.
   folder_missing: ({ count, path }) =>
     count === 1
-      ? `AddaxAI cannot find this folder:\n${path}\nIt may have been ` +
+      ? `WSP CameraTrap cannot find this folder:\n${path}\nIt may have been ` +
         `moved, renamed or unplugged. Reconnect it on the Deployments ` +
         `page, then apply your settings again.`
-      : `AddaxAI cannot find ${count} folders, for example:\n${path}\n` +
+      : `WSP CameraTrap cannot find ${count} folders, for example:\n${path}\n` +
         `They may have been moved, renamed or unplugged. Reconnect them ` +
         `on the Deployments page, then apply your settings again.`,
   // The folder is there but its AI results are not. Only a new analysis
@@ -131,11 +131,11 @@ const SKIP_TEXT: Record<string, (c: SkippedCause) => string> = {
   no_results: ({ count, path }) =>
     count === 1
       ? `The raw AI results are missing for this folder:\n${path}\n` +
-        `AddaxAI keeps them in a hidden .addaxai subfolder inside it. ` +
+        `WSP CameraTrap keeps them in a hidden .wsp-cameratrap subfolder inside it. ` +
         `Copying or cleaning up a folder often leaves hidden files ` +
         `behind. Analyse this folder again to apply the new settings.`
       : `The raw AI results are missing for ${count} folders, for ` +
-        `example:\n${path}\nAddaxAI keeps them in a hidden .addaxai ` +
+        `example:\n${path}\nWSP CameraTrap keeps them in a hidden .wsp-cameratrap ` +
         `subfolder inside each one. Copying or cleaning up a folder often ` +
         `leaves hidden files behind. Analyse these folders again to apply ` +
         `the new settings.`,
@@ -143,10 +143,10 @@ const SKIP_TEXT: Record<string, (c: SkippedCause) => string> = {
   // folder, a half-written file, a disk owned by someone else.
   unreadable: ({ count, path }) =>
     count === 1
-      ? `AddaxAI could not read the AI results for this folder:\n${path}\n` +
+      ? `WSP CameraTrap could not read the AI results for this folder:\n${path}\n` +
         `The file may be damaged, or the folder may be locked. Analyse ` +
         `this folder again to rebuild it.`
-      : `AddaxAI could not read the AI results for ${count} folders, for ` +
+      : `WSP CameraTrap could not read the AI results for ${count} folders, for ` +
         `example:\n${path}\nThe files may be damaged, or the folders may ` +
         `be locked. Analyse these folders again to rebuild them.`,
   // No folder on the deployment row at all. Cannot happen in a folder

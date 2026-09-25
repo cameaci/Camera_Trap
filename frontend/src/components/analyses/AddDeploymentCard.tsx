@@ -320,7 +320,7 @@ export function AddDeploymentCard({ projectId }: AddDeploymentCardProps) {
             datetimeOffsetSeconds={datetimeOffsetSeconds}
             cameraOffsets={cameraOffsets}
             onAdjustDates={() => setOffsetModalOpen(true)}
-            missingDateNote="AddaxAI will still detect and classify these files, but with no date they are left out of time-based stats, charts, and trap-night effort."
+            missingDateNote="WSP CameraTrap will still detect and classify these files, but with no date they are left out of time-based stats, charts, and trap-night effort."
             useFileMtimeFallback={useFileMtimeFallback}
             onUseFileMtimeFallbackChange={setFileMtimeChecked}
             caption="The folder with the images or videos you want to analyse. Subfolders are included."

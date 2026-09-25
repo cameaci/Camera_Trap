@@ -43,7 +43,7 @@ def _recalculate_max_n(db: Session, detection_ids: list[str]) -> None:
     While the commit sat behind an early `return` for "no events", drawing a
     box on a file that belongs to no event saved the detection and dropped the
     rollup beside it: `File.verified` stayed FALSE for a photo the person had
-    just judged, and `addaxai-files.csv` exported it that way. A file has no
+    just judged, and `wsp-cameratrap-files.csv` exported it that way. A file has no
     event only when event generation never reached it, e.g. an analysis run
     that failed part way.
 

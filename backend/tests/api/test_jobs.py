@@ -204,7 +204,7 @@ def test_reconcile_deletes_the_ghost_placeholder_of_a_stuck_entry(db, tmp_path):
 
     folder = tmp_path / "cam1"
     folder.mkdir()
-    artifacts = folder / ".addaxai" / "projects"
+    artifacts = folder / ".wsp-cameratrap" / "projects"
     artifacts.mkdir(parents=True)
     marker = artifacts / "md_checkpoint.json"
     marker.write_text("{}")
