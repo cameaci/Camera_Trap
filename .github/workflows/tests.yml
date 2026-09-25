@@ -127,3 +127,27 @@ jobs:
       - name: Run backend test suite
         working-directory: backend
         run: python -m pytest -q
+
+  wsp-tools-tests:
+    name: WSP tools and training tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # CPU wheels are enough: the tests use tiny models.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install onnx2torch pillow numpy pytest
+
+      - name: Run WSP tool tests
+        run: python -m pytest -q wsp/tests
+
+      - name: Run training tests
+        working-directory: training
+        run: python -m pytest -q tests
