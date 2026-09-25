@@ -127,8 +127,9 @@ işleme, farklı ağırlık ve etiket dosyası.
 ## 4. Uygulamanın yeni sürümünü çıkarmak
 
 1. Değişiklikler `main` dalında olsun ve CI yeşil olsun.
-2. Bir tag it: `git tag v1.0.0 && git push origin v1.0.0`
-   (ya da GitHub'da **Releases › Draft a new release**).
+2. Repo kökündeki `VERSION` dosyasını yeni sürüme değiştir (`1.0.0`) ve
+   commit'le. Alternatif: `git tag v1.0.0 && git push origin v1.0.0`, ya da
+   GitHub'da **Releases › Draft a new release**.
 3. `Build Windows installer` workflow'u installer'ı üretir ve release'e
    `WSP-CameraTrap-Setup-1.0.0.exe` olarak ekler (yaklaşık 20 dakika). Tag'de
    `-` varsa (`v1.0.0-beta.1`) pre-release olarak çıkar.
