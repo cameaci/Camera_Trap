@@ -1,0 +1,38 @@
+{
+  "models": {
+    "det": [
+      {
+        "model_id": "MD5A-0-0",
+        "friendly_name": "MegaDetector v5a",
+        "env": "wsp-base",
+        "model_fname": "md_v5a.0.0.pt",
+        "description": "MegaDetector is an object detection model that identifies animals, people, and vehicles in camera trap images (which also makes it useful for eliminating blank images). This model is trained on several hundred thousand bounding boxes from a variety of ecosystems. The animals located by this model with be further identified by the species recognition models.",
+        "description_short": "Industry standard • Battle tested",
+        "developer": "Dan Morris",
+        "citation": "https://arxiv.org/abs/1907.06772",
+        "license": "https://github.com/agentmorris/MegaDetector?tab=MIT-1-ov-file#readme",
+        "info_url": "https://github.com/agentmorris/MegaDetector",
+        "min_app_version": "0.1.0",
+        "download_url": "https://github.com/cameaci/Camera_Trap/releases/download/runtime/md_v5a.0.0.pt"
+      }
+    ],
+    "cls": [
+      {
+        "model_id": "SPECIESNET-v4-0-2-A",
+        "friendly_name": "SpeciesNet 4.0.2a",
+        "emoji": "🌏",
+        "env": "wsp-base",
+        "model_fname": "always_crop_99710272_22x8_v12_epoch_00148.pt",
+        "description": "SpeciesNet is an image classifier designed to accelerate the review of images from motion-triggered wildlife cameras ('camera traps'). This classifier was trained at Google using a large dataset of camera trap images and an EfficientNet V2 M architecture (https://arxiv.org/abs/2104.00574). It is designed to classify images into one of more than 2000 labels, covering diverse animal species, higher-level taxa (like 'mammalia' or 'felidae'), and non-animal classes ('blank', 'vehicle'). WSP CameraTrap combines SpeciesNet with MegaDetector (https://github.com/agentmorris/MegaDetector) using a set of heuristics, geofencing rules and taxonomic aggregation that take into account the geographical origin of the image to improve the reliability of its species classification.",
+        "description_short": "Global • 2,000+ classes • Google Research",
+        "developer": "Google",
+        "citation": "https://doi.org/10.1049/cvi2.12318",
+        "license": "https://github.com/google/cameratrapai/blob/main/LICENSE",
+        "info_url": "https://github.com/google/cameratrapai/?tab=readme-ov-file#speciesnet",
+        "min_app_version": "0.1.0",
+        "region": "global"
+      }
+    ],
+    "emb": []
+  }
+}

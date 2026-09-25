@@ -1,0 +1,404 @@
+"""Tests for the /api/ml endpoints."""
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def mock_managers():
+    """Patch _get_managers to return controllable mocks."""
+    mock_manifest = MagicMock()
+    mock_env = MagicMock()
+    mock_storage = MagicMock()
+
+    # Default: no models
+    mock_manifest.get_detection_models.return_value = {}
+    mock_manifest.get_classification_models.return_value = {}
+    mock_manifest.get_embedding_models.return_value = {}
+
+    with patch(
+        "app.api.routers.ml_models._get_managers",
+        return_value=(mock_manifest, mock_env, mock_storage),
+    ):
+        # Also patch module-level globals used by prepare endpoints
+        with patch("app.api.routers.ml_models.manifest_manager", mock_manifest):
+            with patch("app.api.routers.ml_models.model_storage", mock_storage):
+                with patch("app.api.routers.ml_models.env_manager", mock_env):
+                    yield mock_manifest, mock_env, mock_storage
+
+
+def test_list_detection_models(client, mock_managers):
+    mock_manifest, _, _ = mock_managers
+    mock_manifest.get_detection_models.return_value = {}
+    resp = client.get("/api/ml/models/detection")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_list_classification_models(client, mock_managers):
+    mock_manifest, _, _ = mock_managers
+    mock_manifest.get_classification_models.return_value = {}
+    resp = client.get("/api/ml/models/classification")
+    assert resp.status_code == 200
+    # Always includes the "none" option
+    data = resp.json()
+    assert len(data) >= 1
+    assert data[0]["model_id"] == "none"
+
+
+def test_full_image_classifier_flag_reaches_the_list(client, mock_managers):
+    """The UI greys out the detector and its settings on this flag, and
+    shows the example picture; both ride on the classification list."""
+    from types import SimpleNamespace
+
+    mock_manifest, _, _ = mock_managers
+    manifest = SimpleNamespace(
+        model_id="FULL-1",
+        friendly_name="Bucket cameras",
+        emoji=None,
+        description="Classifies the whole frame.",
+        description_short=None,
+        developer=None,
+        owner=None,
+        info_url=None,
+        citation=None,
+        license=None,
+        min_app_version="7.0.1",
+        region="americas",
+        full_image_cls=True,
+        example_image_url="https://example.org/bucket.jpg",
+    )
+    mock_manifest.get_classification_models.return_value = {"FULL-1": manifest}
+    resp = client.get("/api/ml/models/classification")
+    assert resp.status_code == 200
+    model = next(m for m in resp.json() if m["model_id"] == "FULL-1")
+    assert model["full_image_cls"] is True
+    assert model["example_image_url"] == "https://example.org/bucket.jpg"
+
+
+def test_list_embedding_models(client, mock_managers):
+    mock_manifest, _, _ = mock_managers
+    mock_manifest.get_embedding_models.return_value = {}
+    resp = client.get("/api/ml/models/embedding")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) >= 1
+    assert data[0]["model_id"] == "none"
+
+
+def test_get_model_status_ready(client, mock_managers):
+    mock_manifest, mock_env, mock_storage = mock_managers
+    manifest = MagicMock()
+    manifest.model_id = "test-model"
+    manifest.friendly_name = "Test Model"
+    manifest.env = "test-env"
+    mock_manifest.get_model.return_value = manifest
+    mock_storage.check_weights_ready.return_value = True
+    mock_storage.get_weights_size.return_value = 100.0
+    mock_env.envs_dir = MagicMock()
+    env_path = MagicMock()
+    env_path.exists.return_value = True
+    mock_env.envs_dir.__truediv__ = MagicMock(return_value=env_path)
+    mock_env._validate_env.return_value = True
+
+    resp = client.get("/api/ml/models/test-model/status")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ready"
+
+
+def test_get_model_status_needs_weights(client, mock_managers):
+    mock_manifest, mock_env, mock_storage = mock_managers
+    manifest = MagicMock()
+    manifest.model_id = "test-model"
+    manifest.friendly_name = "Test Model"
+    manifest.env = "test-env"
+    mock_manifest.get_model.return_value = manifest
+    mock_storage.check_weights_ready.return_value = False
+    mock_storage.get_weights_size.return_value = None
+    mock_env.envs_dir = MagicMock()
+    env_path = MagicMock()
+    env_path.exists.return_value = True
+    mock_env.envs_dir.__truediv__ = MagicMock(return_value=env_path)
+    mock_env._validate_env.return_value = True
+
+    resp = client.get("/api/ml/models/test-model/status")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "needs_weights"
+
+
+def test_get_model_status_not_found(client, mock_managers):
+    mock_manifest, _, _ = mock_managers
+    mock_manifest.get_model.side_effect = ValueError("Model not found")
+    resp = client.get("/api/ml/models/nonexistent/status")
+    assert resp.status_code == 404
+
+
+def test_prepare_model(client, mock_managers):
+    mock_manifest, _, _ = mock_managers
+    manifest = MagicMock()
+    manifest.model_id = "test-model"
+    mock_manifest.get_model.return_value = manifest
+    with patch("app.api.routers.ml_models.ws_manager"):
+        resp = client.post("/api/ml/models/test-model/prepare")
+    assert resp.status_code == 200
+    assert resp.json()["task_id"] == "test-model"
+
+
+def test_prepare_model_not_found(client, mock_managers):
+    mock_manifest, _, _ = mock_managers
+    mock_manifest.get_model.side_effect = ValueError("Model not found")
+    resp = client.post("/api/ml/models/nonexistent/prepare")
+    assert resp.status_code == 404
+
+
+# --- POST /api/ml/models/{id}/update ---------------------------------------
+
+
+def test_update_model_returns_the_files_it_refreshed(client, mock_managers):
+    _, _, mock_storage = mock_managers
+    mock_storage.update_stale_files.return_value = ["inference.py", "taxonomy.csv"]
+
+    resp = client.post("/api/ml/models/test-model/update")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["updated_files"] == ["inference.py", "taxonomy.csv"]
+    assert body["model_id"] == "test-model"
+
+
+def test_update_model_when_already_in_sync(client, mock_managers):
+    """Nothing to do is a success, not an error."""
+    _, _, mock_storage = mock_managers
+    mock_storage.update_stale_files.return_value = []
+
+    resp = client.post("/api/ml/models/test-model/update")
+
+    assert resp.status_code == 200
+    assert resp.json()["updated_files"] == []
+
+
+def test_update_model_unknown_model(client, mock_managers):
+    mock_manifest, _, _ = mock_managers
+    mock_manifest.get_model.side_effect = ValueError("Model not found")
+    resp = client.post("/api/ml/models/nonexistent/update")
+    assert resp.status_code == 404
+
+
+def test_update_model_not_installed(client, mock_managers):
+    _, _, mock_storage = mock_managers
+    mock_storage.update_stale_files.side_effect = FileNotFoundError("no weights")
+    resp = client.post("/api/ml/models/test-model/update")
+    assert resp.status_code == 409
+
+
+def test_update_model_offline(client, mock_managers):
+    _, _, mock_storage = mock_managers
+    mock_storage.update_stale_files.side_effect = ConnectionError("offline")
+    resp = client.post("/api/ml/models/test-model/update")
+    assert resp.status_code == 503
+
+
+def test_update_model_file_in_use(client, mock_managers):
+    """Windows refusing to replace a file a running analysis holds open."""
+    _, _, mock_storage = mock_managers
+    mock_storage.update_stale_files.side_effect = PermissionError("in use")
+    resp = client.post("/api/ml/models/test-model/update")
+    assert resp.status_code == 409
+    assert "running analysis" in resp.json()["detail"]
+
+
+def test_update_model_download_failure(client, mock_managers):
+    _, _, mock_storage = mock_managers
+    mock_storage.update_stale_files.side_effect = RuntimeError("download failed")
+    resp = client.post("/api/ml/models/test-model/update")
+    assert resp.status_code == 500
+
+
+def test_update_model_refuses_while_a_download_runs(client, mock_managers):
+    """Two writers in the same model directory is never worth allowing."""
+    from app.api.routers import ml_models
+
+    _, _, mock_storage = mock_managers
+    ml_models._active_prepares.add("test-model-weights")
+    try:
+        resp = client.post("/api/ml/models/test-model/update")
+    finally:
+        ml_models._active_prepares.discard("test-model-weights")
+
+    assert resp.status_code == 409
+    mock_storage.update_stale_files.assert_not_called()
+
+
+def test_update_model_clears_the_startup_snapshot(client, mock_managers):
+    """
+    /api/ml/updates serves a snapshot taken at startup, so without this a
+    window reload would offer an update that already happened.
+    """
+    _, _, mock_storage = mock_managers
+    mock_storage.update_stale_files.return_value = ["inference.py"]
+    client.app.state.model_updates = {
+        "drifted_models": [
+            {"model_id": "test-model", "friendly_name": "T", "emoji": "x"},
+            {"model_id": "other-model", "friendly_name": "O", "emoji": "y"},
+        ]
+    }
+
+    client.post("/api/ml/models/test-model/update")
+
+    remaining = client.app.state.model_updates["drifted_models"]
+    assert [m["model_id"] for m in remaining] == ["other-model"]
+
+
+def test_redownload_endpoint_is_gone(client, mock_managers):
+    """
+    The old fire-and-forget contract is retired, not aliased, so a stale
+    client fails loudly rather than silently doing nothing.
+
+    Which 4xx it is depends on the environment, so this asserts the route
+    is absent rather than pinning a status code. `main.create_app` only
+    mounts the SPA catch-all (`GET /{full_path:path}`) when
+    `frontend/dist` exists: with a built frontend the path matches that
+    GET route and POST gives 405, without one there is no match at all
+    and it is 404. This used to assert 405, which passed for anyone who
+    had run a frontend build and failed in CI, where the backend job
+    never builds it.
+    """
+    routes = {
+        getattr(r, "path", None) for r in client.app.routes
+    }
+    assert "/api/ml/models/{model_id}/redownload" not in routes
+
+    resp = client.post("/api/ml/models/test-model/redownload")
+    assert resp.status_code in (404, 405)
+
+
+def test_updates_recomputes_env_drift(client):
+    """
+    A rebuilt environment must stop being reported straight away.
+
+    The startup snapshot said "drifted". Rebuilding the env rewrites the
+    YAML-hash sentinel, but the snapshot kept saying "drifted" until the
+    next launch, so reloading the window told the user to rebuild what
+    they had just rebuilt.
+    """
+    client.app.state.model_updates = {
+        "new_models": [],
+        "drifted_models": [],
+        "drifted_envs": [{"env_name": "wsp-base"}],
+        "checked_at": "2026-08-18T12:00:00+00:00",
+    }
+
+    with patch(
+        "app.api.routers.ml_models.find_drifted_envs", return_value=[]
+    ):
+        body = client.get("/api/ml/updates").json()
+
+    assert body["drifted_envs"] == []
+    assert body["checked_at"] == "2026-08-18T12:00:00+00:00"
+
+
+def test_updates_reports_an_env_that_drifted_after_startup(client):
+    """The other direction: the snapshot is not a ceiling either."""
+    client.app.state.model_updates = {
+        "new_models": [],
+        "drifted_models": [],
+        "drifted_envs": [],
+        "checked_at": "2026-08-18T12:00:00+00:00",
+    }
+
+    with patch(
+        "app.api.routers.ml_models.find_drifted_envs",
+        return_value=[{"env_name": "pytorch"}],
+    ):
+        body = client.get("/api/ml/updates").json()
+
+    assert body["drifted_envs"] == [{"env_name": "pytorch"}]
+
+
+def test_updates_honours_the_disable_switch(client):
+    """
+    WSP_DISABLE_MODEL_UPDATES turns off the whole notice, so env
+    drift must not sneak past it on its own.
+    """
+    client.app.state.model_updates = {
+        "new_models": [],
+        "drifted_envs": [],
+        "checked_at": None,
+        "disabled": True,
+    }
+
+    with patch(
+        "app.api.routers.ml_models.find_drifted_envs",
+        return_value=[{"env_name": "pytorch"}],
+    ) as spy:
+        body = client.get("/api/ml/updates").json()
+
+    spy.assert_not_called()
+    assert body["drifted_envs"] == []
+
+
+def test_updates_does_not_mutate_the_startup_snapshot(client):
+    """
+    The recomputed list is returned, not written back: the snapshot is
+    what the startup log line described, and the model half of it must
+    keep meaning "as of launch".
+    """
+    state = {
+        "new_models": [],
+        "drifted_models": [],
+        "drifted_envs": [{"env_name": "wsp-base"}],
+        "checked_at": None,
+    }
+    client.app.state.model_updates = state
+
+    with patch(
+        "app.api.routers.ml_models.find_drifted_envs", return_value=[]
+    ):
+        client.get("/api/ml/updates")
+
+    assert state["drifted_envs"] == [{"env_name": "wsp-base"}]
+
+
+# --- the /api/ml/updates snapshot -------------------------------------------
+
+
+def test_forget_model_update_drops_only_that_model():
+    """The startup snapshot lives until the next launch, so both the update
+    route (drifted_models) and a finished prepare (new_models) take their
+    model out of it, or a window reload announces it again."""
+    from types import SimpleNamespace
+
+    from app.api.routers.ml_models import _forget_model_update
+
+    state = SimpleNamespace(
+        model_updates={
+            "new_models": [{"model_id": "A"}, {"model_id": "B"}],
+            "drifted_models": [{"model_id": "A"}],
+        }
+    )
+    _forget_model_update(state, "new_models", "A")
+    assert state.model_updates["new_models"] == [{"model_id": "B"}]
+    assert state.model_updates["drifted_models"] == [{"model_id": "A"}]
+
+    # Nothing to forget: no snapshot yet, or no state at all.
+    _forget_model_update(SimpleNamespace(), "new_models", "A")
+    _forget_model_update(None, "new_models", "A")
+
+
+def test_prepare_model_hands_the_app_state_to_the_task(client, mock_managers):
+    mock_manifest, _, _ = mock_managers
+    manifest = MagicMock()
+    manifest.model_id = "test-model"
+    mock_manifest.get_model.return_value = manifest
+    with patch("app.api.routers.ml_models.ws_manager") as ws, patch(
+        "app.api.routers.ml_models._prepare_model_task"
+    ) as task:
+        task.return_value = MagicMock()
+        resp = client.post("/api/ml/models/test-model/prepare")
+        assert resp.status_code == 200
+        start = ws.register_start.call_args.args[1]
+        start()
+    # (model_id, manifest, task_id, app_state): the snapshot lives on app.state.
+    assert task.call_args.args[0] == "test-model"
+    assert hasattr(task.call_args.args[3], "model_updates") or task.call_args.args[3] is not None
