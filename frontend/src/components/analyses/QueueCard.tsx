@@ -6,7 +6,7 @@
  * Simple vertical list layout (not kanban).
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Play, Loader2, ListTodo, Eye, EyeOff } from "lucide-react";
@@ -66,7 +66,26 @@ export function QueueCard({ projectId }: QueueCardProps) {
     await deleteMutation.mutateAsync(id);
   };
 
+  // One start at a time. The readiness check below can take a few
+  // seconds on a slow laptop, and a second click in that window used to
+  // send a second start request, whose empty answer ("nothing pending")
+  // left the progress dialog without a job to follow.
+  const startingRef = useRef(false);
+  const [starting, setStarting] = useState(false);
+
   const handleRunQueue = async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
+    try {
+      await startQueue();
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
+    }
+  };
+
+  const startQueue = async () => {
     const pendingCount = entries?.filter((e) => e.status === "pending").length || 0;
     // The button is disabled without pending entries; this only guards a
     // stale click between a refetch and the re-render.
@@ -98,6 +117,10 @@ export function QueueCard({ projectId }: QueueCardProps) {
     try {
       setProcessingCount(pendingCount);
       const result = await processQueueMutation.mutateAsync();
+      if (result.job_ids.length === 0) {
+        toast.error("Nothing to start: the queue has no pending deployments.");
+        return;
+      }
       setJobIds(result.job_ids);
       setRunQueueEntryIds(result.queue_entry_ids);
       setShowRunModal(true);
@@ -193,12 +216,16 @@ export function QueueCard({ projectId }: QueueCardProps) {
         <CardFooter>
           <Button
             onClick={handleRunQueue}
-            disabled={!hasPending}
+            disabled={!hasPending || starting}
             className="w-full"
             size="lg"
           >
-            <Play className="h-4 w-4 mr-2" />
-            Run queue ({pendingCount})
+            {starting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            {starting ? "Starting..." : `Run queue (${pendingCount})`}
           </Button>
         </CardFooter>
       </Card>

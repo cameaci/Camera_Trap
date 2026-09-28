@@ -106,6 +106,10 @@ class ConnectionManager:
         # Schedule cleanup in case frontend never connects
         self._schedule_cleanup(self._cleanup_pending_start(task_id))
 
+    def has_pending_start(self, task_id: str) -> bool:
+        """True while a registered worker still waits for its "ready"."""
+        return task_id in self._pending_starts
+
     async def handle_ready(self, task_id: str) -> None:
         """
         Handle "ready" signal from frontend. Pops and starts the registered worker.

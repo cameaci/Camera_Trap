@@ -110,6 +110,25 @@ def test_process_queue_with_pending(client, db):
     assert len(resp.json()["job_ids"]) == 1
 
 
+def test_a_second_start_request_gets_the_job_the_first_started(client, db):
+    """A double click must not leave the progress dialog without a job."""
+    from app.core.websocket_manager import ws_manager
+
+    p = make_project(db)
+    _create_entry(client, p.id)
+    first = client.post("/api/deployment-queue/process", json={"project_id": p.id}).json()
+    try:
+        second = client.post("/api/deployment-queue/process", json={"project_id": p.id}).json()
+        assert first["job_ids"] and second["job_ids"] == first["job_ids"]
+        assert second["queue_entry_ids"] == first["queue_entry_ids"]
+    finally:
+        ws_manager._pending_starts.pop(first["job_ids"][0], None)
+
+    # Once the worker has started, a new request finds nothing to start.
+    third = client.post("/api/deployment-queue/process", json={"project_id": p.id}).json()
+    assert third["job_ids"] == []
+
+
 def test_paired_cameras_defaults_off(client, db):
     """Omitting the field must never silently pair the subfolders."""
     p = make_project(db)

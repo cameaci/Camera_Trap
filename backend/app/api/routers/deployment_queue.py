@@ -259,6 +259,21 @@ async def process_queue(
     pending_entries = crud_queue.get_queue_entries(db, request.project_id, status="pending")
 
     if not pending_entries:
+        # A second request for the same click (a double click, or a click
+        # while the first was still checking the models) finds the entries
+        # already taken. Hand back the job the first one started and that
+        # is still waiting for its progress dialog; answering "no job"
+        # left the dialog without a job to follow, spinning forever.
+        for job in crud_job.get_jobs_by_project(db, request.project_id, "deployment_analysis"):
+            if job.status == "pending" and ws_manager.has_pending_start(job.id):
+                entry_ids = list((job.payload or {}).get("queue_entry_ids", []))
+                logger.info(f"Queue for {request.project_id} already started as job {job.id}")
+                return {
+                    "message": "Queue processing already started.",
+                    "jobs_started": 1,
+                    "job_ids": [job.id],
+                    "queue_entry_ids": entry_ids,
+                }
         logger.info(f"No pending queue entries for project: {request.project_id}")
         return {
             "message": "No pending queue entries to process",
