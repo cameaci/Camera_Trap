@@ -108,6 +108,8 @@ jobs:
           for i in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:8799/health; then
               echo; curl -fsS http://127.0.0.1:8799/api/ml/models/detection | head -c 600; echo
+              # The analysis queue reaches its worker over the WebSocket.
+              python backend/scripts/smoke_queue_ws.py http://127.0.0.1:8799 || { cat backend-smoke.log; kill $PID; exit 1; }
               kill $PID || true
               exit 0
             fi
