@@ -22,7 +22,7 @@ export interface SetupStatus {
    * "tls_revocation": the environment build died because Windows could
    * not check certificate revocation and the user has not already
    * accepted skipping it. "model_library": a model could not be
-   * installed because the WSP model library is not connected. Null for
+   * installed because no WSP model library is installed. Null for
    * every ordinary failure.
    */
   error_kind: string | null;

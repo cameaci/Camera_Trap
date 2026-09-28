@@ -1,16 +1,16 @@
 """
 The WSP model library setting.
 
-The library is where WSP CameraTrap installs models from (see
-app/ml/model_library.py): a OneDrive/SharePoint share link to the library
-.zip, or a folder (a synced OneDrive folder or a network share). The user
-connects it once from File > WSP model library; the choice is saved in
-<user data>/wsp-config.json. A new link is downloaded in the background,
-and the catalog is re-read afterwards so its models appear at once.
+Models are installed from the local models folder or the WSP model
+library (see app/ml/model_library.py). From File > WSP model library the
+user either installs a model library .zip (unpacked straight into the
+local models folder) or points the app at a library folder (a synced
+OneDrive folder or a network share); the folder is saved in
+<user data>/wsp-config.json. Either way the catalog is re-read afterwards
+so the models appear at once.
 """
 
 import asyncio
-import threading
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -26,71 +26,35 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/wsp", tags=["WSP"])
 
 
-class _DownloadState:
-    def __init__(self) -> None:
-        self.in_progress = False
-        self.progress = 0.0
-        self.message = ""
-        self.error: str | None = None
-        # Set when a download is asked for while one is running (a new
-        # link was saved mid-download), so the running task goes again.
-        self._again = False
-        self._lock = threading.Lock()
-
-    def start(self) -> bool:
-        """True when the caller should start the task; else it reruns."""
-        with self._lock:
-            if self.in_progress:
-                self._again = True
-                return False
-            self.in_progress, self.progress, self.message, self.error = True, 0.0, "", None
-            self._again = False
-            return True
-
-    def update(self, message: str, progress: float) -> None:
-        self.message, self.progress = message, progress
-
-    def finish(self, error: str | None = None) -> bool:
-        """End the download, or return True when another pass was asked for."""
-        with self._lock:
-            if self._again:
-                self._again = False
-                self.progress, self.message = 0.0, ""
-                return True
-            self.in_progress, self.error = False, error
-            return False
-
-
-_download = _DownloadState()
-
-
 class LibraryStatus(BaseModel):
-    # The library folder in use, or None when no library is reachable.
+    # The library folder in use, or None when no library folder is reachable.
     library_dir: str | None
-    # Where it came from: "env", "settings", "link", "autodetect" or None.
+    # Where it came from: "env", "settings", "autodetect" or None.
     source: str | None
     # The folder saved in the app, even when it cannot be reached right now.
     configured_dir: str | None
-    # The share link in use (saved in the app or shipped with it), or None.
-    library_url: str | None
     models_dir: str
-    download_in_progress: bool
-    download_progress: float
-    download_message: str
-    download_error: str | None
 
 
 class LibraryUpdate(BaseModel):
-    # A folder, or None/"" to stop using a folder.
+    # A folder, or None/"" to stop using a saved folder.
     library_dir: str | None = None
-    # A share link, or None/"" to stop using a link saved in the app.
-    library_url: str | None = None
+
+
+class ZipImport(BaseModel):
+    # The model library .zip on this computer.
+    zip_path: str
+
+
+class ZipImportResult(BaseModel):
+    # The installed model folders, as "<type>/<id>".
+    imported: list[str]
+    status: LibraryStatus
 
 
 def _status() -> LibraryStatus:
     settings = get_settings()
     configured = model_library.read_config().get("model_library_dir")
-    url = model_library.get_library_url()
     library = model_library.get_library_dir()
     if library is None:
         source = None
@@ -98,83 +62,38 @@ def _status() -> LibraryStatus:
         source = "env"
     elif configured:
         source = "settings"
-    elif url and library == model_library.library_cache_dir():
-        source = "link"
     else:
         source = "autodetect"
     return LibraryStatus(
         library_dir=str(library) if library else None,
         source=source,
         configured_dir=configured,
-        library_url=url,
         models_dir=str(settings.models_dir),
-        download_in_progress=_download.in_progress,
-        download_progress=_download.progress,
-        download_message=_download.message,
-        download_error=_download.error,
     )
 
 
 async def _resync(request: Request) -> None:
-    # Never checks the link itself: callers either just downloaded it or
-    # use a folder, so a second check would only repeat the request.
     try:
-        request.app.state.model_updates = await ModelCatalogUpdater().sync(
-            refresh_library=False
-        )
+        request.app.state.model_updates = await ModelCatalogUpdater().sync()
         if ml_models.manifest_manager is not None:
             ml_models.manifest_manager.load_manifests(force_refresh=True)
     except Exception as e:
         logger.error(f"Catalog sync after a library change failed: {e}", exc_info=True)
 
 
-# Strong references to the running download tasks: the event loop keeps
-# only a weak one, so an unreferenced task can be collected mid-run.
-_tasks: set[asyncio.Task] = set()
-
-
-def _start_download(request: Request) -> None:
-    """
-    Download the linked library in the background, then re-read the
-    catalog. The status reports the download as running until the catalog
-    is re-read, so the dialog refreshes the model lists only once the new
-    models are there. A request while one runs makes it go once more.
-    """
-    if not model_library.get_library_url() or not _download.start():
-        return
-
-    async def run() -> None:
-        again = True
-        while again:
-            error = None
-            try:
-                await asyncio.to_thread(model_library.sync_library_url, _download.update)
-            except Exception as e:
-                logger.error(f"WSP model library download failed: {e}")
-                error = str(e)
-            try:
-                await _resync(request)
-            finally:
-                again = _download.finish(error)
-
-    task = asyncio.create_task(run())
-    _tasks.add(task)
-    task.add_done_callback(_tasks.discard)
-
-
 @router.get("/library", response_model=LibraryStatus)
-def get_library() -> LibraryStatus:
-    return _status()
+async def get_library() -> LibraryStatus:
+    # A thread: an unreachable network share must not block the server.
+    return await asyncio.to_thread(_status)
 
 
 @router.post("/library", response_model=LibraryStatus)
 async def set_library(update: LibraryUpdate, request: Request) -> LibraryStatus:
+    """Use a library folder, or forget the saved one when none is given."""
     folder = (update.library_dir or "").strip()
-    link = (update.library_url or "").strip()
-
     if folder:
         path = Path(folder).expanduser()
-        if not model_library.is_library_dir(path):
+        if not await asyncio.to_thread(model_library.is_library_dir, path):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -183,35 +102,31 @@ async def set_library(update: LibraryUpdate, request: Request) -> LibraryStatus:
                 ),
             )
         model_library.write_library_dir(path)
-        await _resync(request)
-        return _status()
-
-    if link:
-        # https only: the library carries inference.py files that the app
-        # runs, so it must not be fetched over a connection anyone on the
-        # network could alter.
-        if not link.lower().startswith("https://"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Paste the full share link, starting with https://",
-            )
-        # A link replaces a saved folder, which would otherwise win.
-        model_library.write_library_dir(None)
-        model_library.write_library_url(link)
     else:
-        # Neither: forget both and go back to the shipped link / OneDrive.
         model_library.write_library_dir(None)
-        model_library.write_library_url(None)
-
-    if model_library.get_library_url():
-        _start_download(request)
-    else:
-        await _resync(request)
-    return _status()
+    await _resync(request)
+    return await asyncio.to_thread(_status)
 
 
-@router.post("/library/refresh", response_model=LibraryStatus)
-async def refresh_library(request: Request) -> LibraryStatus:
-    """Check the library link again (downloads only when the file changed)."""
-    _start_download(request)
-    return _status()
+@router.post("/library/import", response_model=ZipImportResult)
+async def import_library_zip(body: ZipImport, request: Request) -> ZipImportResult:
+    """Unpack a model library .zip into the local models folder."""
+    path = Path(body.zip_path.strip()).expanduser()
+    if not path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"{path} is not a file."
+        )
+    try:
+        imported = await asyncio.to_thread(model_library.import_models_zip, path)
+    except model_library.ModelZipError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    except OSError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Could not write the models ({e}). If an analysis is running, "
+                f"let it finish, then try again."
+            ),
+        ) from e
+    await _resync(request)
+    return ZipImportResult(imported=imported, status=await asyncio.to_thread(_status))

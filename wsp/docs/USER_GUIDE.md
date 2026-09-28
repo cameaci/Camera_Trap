@@ -13,13 +13,15 @@ models). Your images and results stay on your computer.
    - If Windows shows "Windows protected your PC", click **More info ›
      Run anyway**.
 3. Start **WSP CameraTrap** from the Start menu. The first start runs a
-   one-time setup (about 10 minutes, needs the internet). It downloads:
-   - the analysis environment, from the app's GitHub releases;
-   - MegaDetector, SpeciesNet and WSP's own models, from the **WSP model
-     library** on OneDrive. The link is built into the app; you do not need
-     to set anything up.
+   one-time setup (about 10 minutes, needs the internet): it downloads the
+   analysis environment and MegaDetector from the app's GitHub releases.
+4. Install the models: download `WSP-CameraTrap-models.zip` from the link
+   you were sent (OneDrive), then in the app choose **File › WSP model
+   library… › Install models from a .zip…** and pick the file. It installs
+   SpeciesNet, WSP's own models and the embedding model used for
+   similarity search. Keep the .zip; you do not need to unpack it.
 
-After the setup the app works offline.
+After that the app works offline.
 
 ## 2. Analyse a folder
 
@@ -45,16 +47,15 @@ export.
 
 ## 4. New WSP models
 
-The app checks the WSP model library each time it starts. New models
-appear in the model list with an **Install** button. To check right away,
-open **File › WSP model library…** and click **Check for new models**.
+When a new WSP model is published you get a new `WSP-CameraTrap-models.zip`.
+Install it the same way (**File › WSP model library… › Install models from
+a .zip…**). Models you already have are kept.
 
 ## Troubleshooting
 
 | Problem | What to do |
 |---|---|
-| "*… is not installed. No WSP model library …*" or "*The model library link …*" | Open **File › WSP model library…** and click **Check for new models**. If it still fails, the link may have expired: ask for the current link, paste it there and click **Connect**. |
-| The library link asks you to sign in | The shared link must be set to *Anyone with the link*. Ask whoever publishes the models, or use **Use a folder…** with a synced copy of the library. |
+| "*… is not installed …*" | Install the model .zip: **File › WSP model library… › Install models from a .zip…**. |
 | Setup stops while preparing the analysis environment | Check your internet connection and click **Retry**. |
 | Anything else | **Help › Export diagnostic report**, and send it with a short description through **Help › Report a problem**. |
 

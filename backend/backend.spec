@@ -36,8 +36,6 @@ datas = [
     # library cannot be reached. Without it a first launch ends with no
     # manifests, and a model with no manifest is invisible to the app.
     ('../wsp/models.json', 'wsp'),
-    # Deployment settings (model library link, environment download URL).
-    ('../wsp/config.json', 'wsp'),
 ]
 
 # Collect data files from packages

@@ -93,10 +93,6 @@ class Settings(BaseSettings):
     model_library_dir: Path | None = None
     model_library_autodetect: bool = True
 
-    # A OneDrive/SharePoint share link (or any https URL) to the WSP model
-    # library bundle (a .zip). Unset means the link in wsp/config.json.
-    model_library_url: str | None = None
-
     # Where prebuilt analysis environments are downloaded from. Unset
     # means RUNTIME_RELEASE_URL (this repository's "runtime" release).
     env_pack_url: str | None = None

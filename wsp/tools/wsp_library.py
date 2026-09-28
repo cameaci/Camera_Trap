@@ -23,8 +23,8 @@ Examples:
         --id WSP-UK-v1 --name "WSP UK mammals v1" --taxonomy uk_taxonomy.csv
     python wsp/tools/wsp_library.py bundle LIB WSP-CameraTrap-models.zip
 
-`bundle` packs the library into the single .zip that the app downloads
-from a OneDrive share link (see wsp/config.json).
+`bundle` packs the library into the single .zip that colleagues install
+with File > WSP model library > Install models from a .zip.
 """
 
 from __future__ import annotations
@@ -270,9 +270,9 @@ def cmd_bundle(args) -> int:
         for path in files:
             z.write(path, "models/" + path.relative_to(lib).as_posix())
     size_mb = out.stat().st_size / 1e6
-    print(f"Wrote {out} ({len(files)} files, {size_mb:.0f} MB). Upload it to OneDrive,")
-    print("share it with 'Anyone with the link can view' and put the link in")
-    print("wsp/config.json (model_library_url) or File > WSP model library.")
+    print(f"Wrote {out} ({len(files)} files, {size_mb:.0f} MB). Share it (e.g. on")
+    print("OneDrive); colleagues install it with File > WSP model library >")
+    print("Install models from a .zip.")
     return 0
 
 

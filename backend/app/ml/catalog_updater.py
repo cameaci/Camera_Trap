@@ -135,30 +135,34 @@ class ModelCatalogUpdater:
 
     def _library_catalog(self) -> dict[str, Any] | None:
         """
-        WSP: the WSP model library's models.json, falling back to the
-        catalog shipped with the app. Entries in the library override
-        shipped entries with the same model_id, and the library can add
-        models the app has never heard of (a new WSP model), which is how
-        a model is published without a new app release.
+        WSP: the catalog shipped with the app, overlaid by the models.json
+        in the local models folder (left there by an imported library
+        .zip) and then by the WSP model library folder's. Later sources
+        override entries with the same model_id and can add models the app
+        has never heard of (a new WSP model), which is how a model is
+        published without a new app release.
         """
-        bundled = self._bundled_catalog()
-        library = _validate_catalog(model_library.read_library_catalog())
-        if library is None:
-            return bundled
-        if bundled is None:
-            return library
-        merged: dict[str, Any] = {"models": {}}
-        for model_type in ("det", "cls", "emb"):
-            entries = {
-                m["model_id"]: m for m in bundled["models"].get(model_type, [])
-            }
-            for m in library["models"].get(model_type, []):
-                entries[m["model_id"]] = m
-            merged["models"][model_type] = list(entries.values())
-        logger.info(
-            "Using the WSP model library catalog: "
-            + ", ".join(f"{len(v)} {k}" for k, v in merged["models"].items())
-        )
+        merged = self._bundled_catalog()
+        for name, source in (
+            ("local models folder", model_library.read_local_catalog()),
+            ("WSP model library", model_library.read_library_catalog()),
+        ):
+            if source is None:
+                continue
+            catalog = _validate_catalog(source)
+            if catalog is None:
+                continue
+            if merged is None:
+                merged = catalog
+                continue
+            combined: dict[str, Any] = {"models": {}}
+            for model_type in ("det", "cls", "emb"):
+                entries = {m["model_id"]: m for m in merged["models"].get(model_type, [])}
+                for m in catalog["models"].get(model_type, []):
+                    entries[m["model_id"]] = m
+                combined["models"][model_type] = list(entries.values())
+            merged = combined
+            logger.info(f"Model catalog includes the {name}'s models.json")
         return merged
 
     def _bundled_catalog(self) -> dict[str, Any] | None:
@@ -312,15 +316,12 @@ class ModelCatalogUpdater:
         # unreachable network share must not stall the server.
         return await asyncio.to_thread(compare)
 
-    async def sync(self, refresh_library: bool = True) -> dict[str, Any]:
+    async def sync(self) -> dict[str, Any]:
         """
         Fetch the central catalog, then for every entry write the local
         manifest.json: create on first appearance, refresh in place when
         the catalog moved (citation, URL, license, friendly_name, etc.),
         no-op when identical. Idempotent: safe to run on every startup.
-
-        `refresh_library=False` skips checking the library link, for a
-        caller that has just downloaded it.
 
         Everything that reads the library runs in a worker thread: it may
         be a network share, and an unreachable one must not block the
@@ -352,18 +353,6 @@ class ModelCatalogUpdater:
         }
 
         try:
-            # A linked library (OneDrive share link) is refreshed first, so a
-            # model published since the last launch is in the catalog below.
-            try:
-                if refresh_library:
-                    await asyncio.to_thread(model_library.sync_library_url)
-            except model_library.LibraryDownloadError as e:
-                logger.warning(f"WSP model library link not refreshed: {e}")
-                result["library_error"] = str(e)
-            except Exception as e:
-                logger.error(f"WSP model library link sync failed: {e}", exc_info=True)
-                result["library_error"] = str(e)
-
             catalog = await asyncio.to_thread(self.fetch_catalog)
             if catalog is None:
                 result["error"] = "Failed to fetch catalog"

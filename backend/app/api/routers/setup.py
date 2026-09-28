@@ -313,18 +313,6 @@ def run_setup(
             )
         steps.append((f"Environment ({env_name})", _force_env_step))
 
-    # The linked WSP model library (a OneDrive share link) is downloaded
-    # before the models, so they install from it. A failure is not fatal:
-    # MegaDetector has its own download, and the Models page can retry.
-    if model_library.get_library_url():
-        def _library_step(cb: Callable[[str, float], None]) -> None:
-            try:
-                model_library.sync_library_url(cb)
-            except Exception as e:
-                logger.warning(f"WSP model library link not available: {e}")
-
-        steps.append(("WSP model library", _library_step))
-
     for spec in _DEFAULT_MODELS:
         weight = (
             models_dir / spec["type_dir"] / spec["model_id"] / spec["model_fname"]
@@ -347,25 +335,13 @@ def run_setup(
         )
         if weight.is_file():
             continue
-        # A linked library is only downloaded by the step above, so it
-        # cannot be checked yet; the step re-checks once it runs.
-        if (
-            not model_library.get_library_url()
-            and model_library.library_model_dir(spec["type_dir"], spec["model_id"])
-            is None
-        ):
+        if model_library.library_model_dir(spec["type_dir"], spec["model_id"]) is None:
             continue
         manifest = _build_default_model_manifest(spec)
 
         def _optional_model_step(
-            cb: Callable[[str, float], None],
-            _m: ModelManifest = manifest,
-            _type_dir: str = spec["type_dir"],
+            cb: Callable[[str, float], None], _m: ModelManifest = manifest
         ) -> None:
-            if model_library.library_model_dir(_type_dir, _m.model_id) is None:
-                logger.info(f"Optional model {_m.model_id} is not in the library; skipped")
-                cb("Not in the WSP model library; skipped", 1.0)
-                return
             try:
                 storage.download_weights(_m, cb)
             except JobCancelledError:
@@ -416,8 +392,7 @@ def _refresh_catalog() -> None:
         from app.api.routers import ml_models
         from app.ml.catalog_updater import ModelCatalogUpdater
 
-        # The library step above already checked the link.
-        asyncio.run(ModelCatalogUpdater().sync(refresh_library=False))
+        asyncio.run(ModelCatalogUpdater().sync())
         if ml_models.manifest_manager is not None:
             ml_models.manifest_manager.load_manifests(force_refresh=True)
     except Exception as e:

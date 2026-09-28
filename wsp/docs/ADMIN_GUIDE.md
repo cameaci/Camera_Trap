@@ -6,70 +6,48 @@ Ekolog arkadaşların için olan kılavuz `USER_GUIDE.md`.
 ## Genel yapı
 
 ```
-GitHub: cameaci/Camera_Trap                OneDrive (senin hesabın)
-  ├─ kaynak kod                               └─ WSP-CameraTrap-models.zip
-  ├─ Release "v1.0.0" ...                          (paylaşım linki → wsp/config.json)
-  │    └─ WSP-CameraTrap-Setup-1.0.0.exe             ├─ models.json
-  └─ Release "runtime"  (uygulama ilk açılışta indirir) ├─ det/MD5A-0-0/…
-       ├─ env-wsp-base-win-64-<hash>.json/.zip.001     ├─ cls/SPECIESNET-v4-0-2-A/…
-       └─ md_v5a.0.0.pt                                └─ cls/WSP-UK-v1/…
+GitHub: cameaci/Camera_Trap                     OneDrive (senin hesabın)
+  ├─ kaynak kod                                    └─ WSP-CameraTrap-models.zip
+  ├─ Release "v0.1.x"                                  (arkadaşların indirir ve
+  │    └─ WSP-CameraTrap-Setup-0.1.x.exe                uygulamada kurar)
+  ├─ Release "models"  → başlangıç zip'i (MegaDetector, SpeciesNet, DINOv2)
+  └─ Release "runtime" → analiz ortamı + MegaDetector (ilk açılışta iner)
 ```
 
-Uygulama internetten yalnızca iki yere gider:
+Uygulama internetten yalnızca bu repo'nun GitHub Releases'ına gider
+(analiz ortamı ve yedek MegaDetector). HuggingFace, Kaggle, conda-forge
+veya PyPI'ye bağlanmaz.
 
-1. **Bu repo'nun GitHub Releases'ı**: installer, analiz ortamı
-   (Python + CPU torch, `runtime` release'inde, CI üretir) ve yedek
-   MegaDetector.
-2. **Senin OneDrive linkin**: model kütüphanesi (`.zip`).
+Modeller **zip dosyasıyla** dağıtılır: kullanıcı zip'i OneDrive'dan (ya da
+herhangi bir yerden) indirir ve uygulamada **File › WSP model library… ›
+Install models from a .zip…** ile seçer. Uygulama zip'i
+`%USERPROFILE%\WSP-CameraTrap\models` klasörüne açar. Zip'in içindeki
+`models.json` o klasörde tutulur ve katalogla birleştirilir; bu sayede zip'e
+eklediğin yeni bir model, yeni uygulama sürümü gerekmeden görünür.
 
-HuggingFace, Kaggle, conda-forge veya PyPI'ye bağlanmaz (analiz ortamı
-paketi bulunamazsa son çare olarak micromamba ile kurmayı dener).
+İsteğe bağlı: kütüphaneyi zip yerine senkronize bir klasör (OneDrive ya da
+ağ klasörü) olarak da kullanabilirsin: aynı ekranda **Use a folder…**.
 
-Model kütüphanesi şu sırayla aranır:
+## 1. Model kütüphanesi
 
-1. `WSP_MODEL_LIBRARY_DIR` ortam değişkeni (test için)
-2. Kullanıcının *File › WSP model library…* ekranında seçtiği klasör
-3. **Link**: kullanıcının girdiği link, yoksa installer'a gömülü
-   `wsp/config.json › model_library_url`
-4. OneDrive'da senkronize edilmiş bir `WSP CameraTrap/models` klasörü
+Başlangıç kütüphanesi hazır: GitHub'daki `models` release'inde
+`WSP-CameraTrap-models.zip` (MegaDetector v5a, SpeciesNet 4.0.2a, DINOv2
+ViT-S/14). `Build model library` workflow'u onu bu repo'daki araçla üretir
+ve modelleri uygulamanın kendi koduyla yükleyip dener. SpeciesNet ve DINOv2
+Apache-2.0, MegaDetector MIT lisanslıdır; şirket içinde dağıtılabilir.
 
-## 1. Model kütüphanesini hazırlamak (bir kez)
-
-Kendi bilgisayarında, repo klonunda:
+Kendi modellerini eklemek için bu zip'i kendi bilgisayarında bir klasöre aç.
+İçindeki `models` klasörü kütüphanenin kendisidir:
 
 ```bash
-LIB=~/wsp-library/models
-python wsp/tools/wsp_library.py init "$LIB"
+LIB=~/wsp-library/models      # zip'ten çıkan models klasörü
 ```
 
-**MegaDetector v5a**: `md_v5a.0.0.pt` dosyasını bu repo'nun `runtime`
-release'inden indir
-(https://github.com/cameaci/Camera_Trap/releases/download/runtime/md_v5a.0.0.pt)
-ve ekle:
+Sıfırdan başlamak istersen: `python wsp/tools/wsp_library.py init "$LIB"`,
+sonra `add-md`, `add-speciesnet` ve `add-dinov2` komutları (bkz.
+`python wsp/tools/wsp_library.py --help`).
 
-```bash
-python wsp/tools/wsp_library.py add-md "$LIB" md_v5a.0.0.pt
-```
-
-(Kütüphanede MegaDetector olmasa da uygulama onu `runtime` release'inden
-indirir. Yine de kütüphaneye koymak en güvenlisi.)
-
-**SpeciesNet v4.0.2a**: Kaggle ve HuggingFace şirket ağında engelli olduğu
-için bu dosyaları **bir kez şirket ağı dışında** indir: Kaggle'da
-`google/speciesnet`, *PyTorch*, sürüm **v4.0.2a**. Klasörde
-`always_crop_99710272_22x8_v12_epoch_00148.pt`, `…labels.txt`,
-`geofence_release…json`, `info.json` ve `taxonomy_release.txt` bulunur.
-Sonra:
-
-```bash
-python wsp/tools/wsp_library.py add-speciesnet "$LIB" path/to/speciesnet-v4.0.2a
-```
-
-Bu komut dosyaları kopyalar, `inference.py` dosyasını ekler, `taxonomy.csv`
-dosyasını üretir ve katalog girdisini yazar. SpeciesNet Apache-2.0,
-MegaDetector MIT lisanslıdır; ikisi de şirket içinde dağıtılabilir.
-
-## 2. Kütüphaneyi OneDrive'a koymak ve linki uygulamaya vermek
+## 2. Zip'i dağıtmak
 
 1. Kütüphaneyi tek bir zip yap:
 
@@ -77,22 +55,10 @@ MegaDetector MIT lisanslıdır; ikisi de şirket içinde dağıtılabilir.
    python wsp/tools/wsp_library.py bundle "$LIB" WSP-CameraTrap-models.zip
    ```
 
-2. Zip'i OneDrive'a yükle. **Share › Anyone with the link can view** ile
-   link oluştur. (Şirket politikası "Anyone" linkine izin vermiyorsa
-   "People in WSP" linki tarayıcıda çalışır ama uygulama oturum açamaz; o
-   durumda arkadaşların klasörü senkronize edip *Use a folder…* seçmeli.)
-3. Linki `wsp/config.json` dosyasına yaz:
-
-   ```json
-   { "model_library_url": "https://wsponline-my.sharepoint.com/:u:/g/personal/…" }
-   ```
-
-   Uygulama linke `download=1` ekler ve dosyayı doğrudan indirir.
-4. Değişikliği commit'le ve yeni bir installer çıkar (bölüm 4). Bu installer'ı
-   kuran herkes modelleri ilk açılışta otomatik indirir.
-
-Link'i installer çıkarmadan denemek istersen: uygulamada *File › WSP model
-library…* ekranına yapıştır ve **Connect**'e bas.
+2. Zip'i OneDrive'daki bir klasöre koy ve arkadaşlarınla paylaş (şirket içi
+   paylaşım yeterli; linke uygulama değil, kişi tıklar).
+3. Arkadaşların zip'i indirip uygulamada **File › WSP model library… ›
+   Install models from a .zip…** ile kurar.
 
 ## 3. Yeni model yayınlamak (aşamalı dağıtım)
 
@@ -110,14 +76,13 @@ library…* ekranına yapıştır ve **Connect**'e bas.
        --taxonomy uk_taxonomy.csv        # isteğe bağlı: model_class,class,order,family,genus,species
    ```
 
-3. `bundle` ile zip'i yeniden üret ve OneDrive'daki dosyanın **üzerine
-   yükle** (aynı dosya, aynı link). Yeni installer gerekmez: uygulamalar bir
-   sonraki açılışta (ya da *Check for new models* ile) değişikliği görür,
-   zip'i indirir ve yeni modeli **Install** butonuyla sunar.
+3. `bundle` ile zip'i yeniden üret ve OneDrive'daki dosyanın üzerine yükle.
+   Arkadaşların yeni zip'i aynı menüden kurar; eski modelleri silinmez, yeni
+   model listede görünür. Yeni installer gerekmez.
 
-`inference.py`'yi veya `taxonomy.csv`'yi aynı id altında düzeltirsen
-uygulama bunu "update available" olarak gösterir. Ağırlık dosyasını aynı id
-altında değiştirme; yeni bir id yayınla.
+`inference.py`'yi veya `taxonomy.csv`'yi aynı id altında düzeltirsen yeni
+zip onları günceller. Ağırlık dosyasını aynı id altında değiştirme; yeni bir
+id yayınla.
 
 Paketleme aracı eğitim scriptinin `mobilenet_v3_small` mimarisini
 destekliyor. SpeciesNet üzerine fine-tune edeceğin modeller için

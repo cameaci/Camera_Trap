@@ -24,7 +24,7 @@ export function LockedDownHelp({ errorKind }: LockedDownHelpProps) {
   const blocked = errorKind === "model_library";
   const href = LOCKED_DOWN_HELP_URL;
   const lead = blocked
-    ? "Models come from the WSP model library on OneDrive. Connect it under File › WSP model library."
+    ? "Models come from the WSP model library .zip. Install it under File › WSP model library."
     : "Setup stuck on a WSP laptop?";
   const label = blocked
     ? "Read how"

@@ -1149,7 +1149,7 @@ function buildMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       { type: 'separator' },
       { label: 'Open user data folder', click: () => sendMenuCommand('open-user-data') },
       { id: 'open-backups', label: 'Open backups folder', click: () => sendMenuCommand('open-backups') },
-      // WSP: where models are installed from (the OneDrive model library).
+      // WSP: install models from the model library .zip or a library folder.
       { label: 'WSP model library…', click: () => sendMenuCommand('model-library') },
       { type: 'separator' },
       { id: 'backup', label: 'Back up database…', click: () => sendMenuCommand('backup') },

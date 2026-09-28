@@ -857,18 +857,19 @@ story; `ModelStorage.download_weights` and `ModelCatalogUpdater` call into it.
 
 **Where the library is.** `get_library_dir()` answers, in order:
 `WSP_MODEL_LIBRARY_DIR`; the folder saved from *File › WSP model library*
-(`<user data>/wsp-config.json`); the downloaded copy of the linked library
-(`<user data>/library-cache/models`); a `WSP CameraTrap/models` folder found
+(`<user data>/wsp-config.json`); a `WSP CameraTrap/models` folder found
 under the usual OneDrive roots. A configured folder that is missing is
 reported as missing rather than replaced by a guess.
 
-**The linked library.** `model_library_url` (env `WSP_MODEL_LIBRARY_URL`,
-else the app setting, else `wsp/config.json`) is a OneDrive/SharePoint share
-link to a `.zip` of the library. `sync_library_url()` adds `download=1` to
-share links, refuses an HTML answer (a sign-in page) with a message the user
-can act on, skips the download when the link, ETag, Last-Modified and size
-match the last one, and only swaps the new copy in once it is complete. It
-runs at the start of every catalog sync and as a setup step.
+**The library .zip.** `wsp/tools/wsp_library.py bundle` packs a library into
+one `.zip` (the `Build model library` workflow publishes the starter one on
+the `models` release). *File › WSP model library › Install models from a
+.zip* sends its path to `POST /api/wsp/library/import`, and
+`import_models_zip()` unpacks it straight into the local models folder:
+files via `.tmp` and a rename, paths outside the folder refused,
+`__pycache__` and `manifest.json` skipped, and the `.zip`'s `models.json`
+merged into `<models>/models.json` by `model_id`. There is no share-link
+download: OneDrive links to WSP files ask for a sign-in the app cannot give.
 
 **Installing.** A model folder is copied from the library with the old
 downloader's rules: every file via a `.tmp` sibling and an atomic rename, a
@@ -878,9 +879,10 @@ install but never `manifest.json` (written from the catalog and nowhere
 else). A single-file public model can instead name a `download_url`;
 MegaDetector's points at this repository's `runtime` release.
 
-**The catalog.** `wsp/models.json` ships with the app; the library's own
-`models.json` is merged over it by `model_id`, so a model is published by
-adding it to the library, without an app release.
+**The catalog.** `wsp/models.json` ships with the app; `<models>/models.json`
+(from an installed `.zip`) and then the library folder's `models.json` are
+merged over it by `model_id`, so a model is published by adding it to the
+library, without an app release.
 
 **Updates.** `find_stale_files()` compares every library file with the
 installed copy: by content up to 20 MB, by size above (the weights).
