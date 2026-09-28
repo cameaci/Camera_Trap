@@ -1,0 +1,98 @@
+name: Build model library
+
+# Builds the starter WSP model library (MegaDetector v5a + SpeciesNet 4.0.2a)
+# with wsp/tools/wsp_library.py and publishes it as WSP-CameraTrap-models.zip
+# on this repository's "models" release. WSP laptops cannot reach Kaggle or
+# HuggingFace, but they can reach GitHub: download the zip from the release,
+# put it on OneDrive and share its link (see wsp/docs/ADMIN_GUIDE.md).
+#
+# SpeciesNet comes from Google's Kaggle release (Apache-2.0), MegaDetector
+# from its GitHub release (MIT). Both may be redistributed.
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - ".github/workflows/build-model-library.yml"
+      - "wsp/tools/wsp_library.py"
+      - "wsp/models/**"
+      - "wsp/models.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-model-library
+  cancel-in-progress: false
+
+jobs:
+  library:
+    name: Model library zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download MegaDetector v5a
+        run: |
+          mkdir -p src
+          curl -fL --retry 3 -o src/md_v5a.0.0.pt \
+            https://github.com/agentmorris/MegaDetector/releases/download/v5.0/md_v5a.0.0.pt
+
+      - name: Download SpeciesNet 4.0.2a (PyTorch) from Kaggle
+        run: |
+          pip install kagglehub
+          python - <<'EOF'
+          import shutil, kagglehub
+          path = kagglehub.model_download("google/speciesnet/pyTorch/v4.0.2a")
+          shutil.copytree(path, "src/speciesnet")
+          EOF
+          ls -la src/speciesnet
+
+      - name: Build the library with wsp_library.py
+        run: |
+          python wsp/tools/wsp_library.py init lib
+          python wsp/tools/wsp_library.py add-md lib src/md_v5a.0.0.pt
+          python wsp/tools/wsp_library.py add-speciesnet lib src/speciesnet
+          find lib -type f | sort
+          cat lib/models.json
+
+      # The same packages and pins as the app's analysis environment.
+      - name: Load SpeciesNet with the shipped inference.py
+        run: |
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu \
+            torch==2.8.0+cpu torchvision==0.23.0+cpu onnx2torch onnx==1.17.0 protobuf==3.20.3 pillow numpy
+          python - <<'EOF'
+          import importlib.util, sys
+          from pathlib import Path
+          from PIL import Image
+          d = Path("lib/cls/SPECIESNET-v4-0-2-A")
+          spec = importlib.util.spec_from_file_location("sn_inference", d / "inference.py")
+          mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+          m = mod.ModelInference(d, d / "always_crop_99710272_22x8_v12_epoch_00148.pt")
+          m.load_model()
+          img = Image.new("RGB", (640, 480), (90, 110, 70))
+          scores = m.get_classification(m.get_crop(img, (0.2, 0.2, 0.5, 0.5)))
+          assert len(scores) == len(m.names) > 2000, (len(scores), len(m.names))
+          top = sorted(scores, key=lambda s: -s[1])[:3]
+          print(f"{len(m.names)} classes; top-3 on a flat test image: {top}")
+          EOF
+
+      - name: Bundle
+        run: |
+          python wsp/tools/wsp_library.py bundle lib WSP-CameraTrap-models.zip
+          ls -la WSP-CameraTrap-models.zip
+
+      - name: Publish to the models release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view models >/dev/null 2>&1; then
+            gh release create models --target "${{ github.sha }}" --prerelease \
+              --title "WSP model library" \
+              --notes "WSP-CameraTrap-models.zip: MegaDetector v5a and SpeciesNet 4.0.2a, ready for the WSP model library. Upload it to OneDrive, share it with 'Anyone with the link can view', and paste the link in File > WSP model library. SpeciesNet: Apache-2.0 (Google). MegaDetector: MIT."
+          fi
+          gh release upload models WSP-CameraTrap-models.zip --clobber
