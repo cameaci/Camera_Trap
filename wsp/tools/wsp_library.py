@@ -259,7 +259,12 @@ def cmd_bundle(args) -> int:
         print(f"{lib} has no models.json; run init first", file=sys.stderr)
         return 1
     out.parent.mkdir(parents=True, exist_ok=True)
-    files = sorted(p for p in lib.rglob("*") if p.is_file() and not p.name.endswith(".tmp"))
+    files = sorted(
+        p for p in lib.rglob("*")
+        if p.is_file()
+        and not p.name.endswith((".tmp", ".pyc"))
+        and "__pycache__" not in p.relative_to(lib).parts
+    )
     # Weights do not compress; storing them keeps building and unpacking fast.
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as z:
         for path in files:

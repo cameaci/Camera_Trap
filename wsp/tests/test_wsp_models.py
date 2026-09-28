@@ -191,3 +191,18 @@ def test_add_dinov2_copies_weights_and_source(tmp_path):
     catalog = json.loads((lib / "models.json").read_text())
     [entry] = catalog["models"]["emb"]
     assert entry["model_id"] == "DINOV2-VITS14" and entry["torch_hub_model"] == "dinov2_vits14"
+
+
+def test_bundle_leaves_out_python_caches(tmp_path):
+    import zipfile
+
+    lib = tmp_path / "lib"
+    assert wsp_library.main(["init", str(lib)]) == 0
+    (lib / "cls" / "M" / "__pycache__").mkdir(parents=True)
+    (lib / "cls" / "M" / "inference.py").write_text("")
+    (lib / "cls" / "M" / "__pycache__" / "inference.cpython-311.pyc").write_bytes(b"c")
+    out = tmp_path / "lib.zip"
+    assert wsp_library.main(["bundle", str(lib), str(out)]) == 0
+    names = zipfile.ZipFile(out).namelist()
+    assert "models/cls/M/inference.py" in names
+    assert not [n for n in names if "__pycache__" in n or n.endswith(".pyc")]
