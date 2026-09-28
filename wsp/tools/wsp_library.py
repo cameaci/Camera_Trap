@@ -10,6 +10,7 @@ Library layout (point the app at the "models" folder):
     WSP CameraTrap/models/models.json
     WSP CameraTrap/models/det/MD5A-0-0/md_v5a.0.0.pt
     WSP CameraTrap/models/cls/SPECIESNET-v4-0-2-A/...
+    WSP CameraTrap/models/emb/DINOV2-VITS14/{dinov2_vits14_pretrain.pth, hubconf.py, dinov2/}
     WSP CameraTrap/models/cls/WSP-UK-v1/{model.pt, inference.py, taxonomy.csv}
 
 Examples:
@@ -17,6 +18,7 @@ Examples:
     python wsp/tools/wsp_library.py init "C:/Users/me/OneDrive - WSP/WSP CameraTrap/models"
     python wsp/tools/wsp_library.py add-md LIB path/to/md_v5a.0.0.pt
     python wsp/tools/wsp_library.py add-speciesnet LIB path/to/speciesnet-pytorch-v4.0.2a
+    python wsp/tools/wsp_library.py add-dinov2 LIB path/to/dinov2_vits14_pretrain.pth path/to/dinov2-repo
     python wsp/tools/wsp_library.py add-model LIB --checkpoint training/wsp_uk_v1.pth \\
         --id WSP-UK-v1 --name "WSP UK mammals v1" --taxonomy uk_taxonomy.csv
     python wsp/tools/wsp_library.py bundle LIB WSP-CameraTrap-models.zip
@@ -44,6 +46,7 @@ PROJECT_URL = "https://github.com/cameaci/Camera_Trap"
 
 SPECIESNET_ID = "SPECIESNET-v4-0-2-A"
 MD_ID = "MD5A-0-0"
+DINOV2_ID = "DINOV2-VITS14"
 TAXONOMY_FIELDS = ["model_class", "class", "order", "family", "genus", "species"]
 
 
@@ -166,6 +169,34 @@ def cmd_add_speciesnet(args) -> int:
     return 0
 
 
+def cmd_add_dinov2(args) -> int:
+    """
+    The embedding model: Meta's DINOv2 ViT-S/14 weights plus the dinov2
+    source (hubconf.py and the dinov2/ package from the facebookresearch/
+    dinov2 repository), which the app loads with torch.hub from the model
+    folder itself, so nothing is fetched from GitHub at run time.
+    """
+    lib, weights, repo = Path(args.library), Path(args.weights), Path(args.dinov2_repo)
+    entry = _shipped_entry("emb", DINOV2_ID)
+    if weights.name != entry["model_fname"]:
+        print(f"Expected {entry['model_fname']}", file=sys.stderr)
+        return 1
+    if not (repo / "hubconf.py").is_file() or not (repo / "dinov2").is_dir():
+        print(f"{repo} is not a dinov2 checkout: no hubconf.py and dinov2/", file=sys.stderr)
+        return 1
+    dst = lib / "emb" / DINOV2_ID
+    _copy(weights, dst / weights.name)
+    _copy(repo / "hubconf.py", dst / "hubconf.py")
+    if (repo / "LICENSE").is_file():
+        _copy(repo / "LICENSE", dst / "LICENSE")  # Apache-2.0, travels with the code
+    for f in sorted((repo / "dinov2").rglob("*.py")):
+        _copy(f, dst / f.relative_to(repo))
+    catalog = _load_catalog(lib)
+    _upsert(catalog, "emb", entry)
+    _save_catalog(lib, catalog)
+    return 0
+
+
 def _class_names(args) -> list[str]:
     if args.classes:
         return [c.strip() for c in args.classes.split(",") if c.strip()]
@@ -257,6 +288,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("library")
     p.add_argument("speciesnet_dir")
     p.set_defaults(func=cmd_add_speciesnet)
+
+    p = sub.add_parser("add-dinov2", help="add the DINOv2 ViT-S/14 embedding model")
+    p.add_argument("library")
+    p.add_argument("weights", help="dinov2_vits14_pretrain.pth")
+    p.add_argument("dinov2_repo", help="a checkout of github.com/facebookresearch/dinov2")
+    p.set_defaults(func=cmd_add_dinov2)
 
     p = sub.add_parser("add-model", help="publish a WSP classifier checkpoint")
     p.add_argument("library")

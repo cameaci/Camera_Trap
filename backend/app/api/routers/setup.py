@@ -48,8 +48,8 @@ router = APIRouter(prefix="/api/setup", tags=["Setup"])
 # the catalog so first-run setup works even if the catalog sync is still
 # running or the library is unreachable. MegaDetector is the one model
 # setup must install: from the WSP model library, else from its copy in
-# this repository's releases. The embedding model (similarity search) is
-# optional and installed from the Models page when the library has it.
+# this repository's releases. SpeciesNet and the embedding model
+# (similarity search) are optional: see _OPTIONAL_DEFAULT_MODELS.
 _DEFAULT_MODELS: tuple[dict, ...] = (
     {
         "type_dir": "det",
@@ -73,6 +73,14 @@ _OPTIONAL_DEFAULT_MODELS: tuple[dict, ...] = (
         "friendly_name": "SpeciesNet 4.0.2a",
         "emoji": "🌏",
         "model_fname": "always_crop_99710272_22x8_v12_epoch_00148.pt",
+    },
+    {
+        "type_dir": "emb",
+        "category": "embedding",
+        "model_id": "DINOV2-VITS14",
+        "friendly_name": "DINOv2 ViT-S/14",
+        "emoji": "🔎",
+        "model_fname": "dinov2_vits14_pretrain.pth",
     },
 )
 

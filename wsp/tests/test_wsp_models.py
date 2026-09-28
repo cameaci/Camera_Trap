@@ -166,3 +166,28 @@ def test_published_wsp_model_loads_and_classifies(tmp_path):
     results = model.classify_batch(np.stack(batch))
     assert len(results) == 2
     assert [n for n, _ in results[0]] == names
+
+
+def test_add_dinov2_copies_weights_and_source(tmp_path):
+    lib = tmp_path / "lib"
+    assert wsp_library.main(["init", str(lib)]) == 0
+    weights = tmp_path / "dinov2_vits14_pretrain.pth"
+    weights.write_bytes(b"w")
+    repo = tmp_path / "dinov2-repo"
+    (repo / "dinov2" / "hub").mkdir(parents=True)
+    (repo / "hubconf.py").write_text("from dinov2.hub.backbones import dinov2_vits14\n")
+    (repo / "dinov2" / "__init__.py").write_text("")
+    (repo / "dinov2" / "hub" / "backbones.py").write_text("")
+    (repo / "dinov2" / "notes.md").write_text("not copied")
+
+    assert wsp_library.main(["add-dinov2", str(lib), str(weights), str(tmp_path)]) == 1
+    assert wsp_library.main(["add-dinov2", str(lib), str(weights), str(repo)]) == 0
+
+    dst = lib / "emb" / "DINOV2-VITS14"
+    assert (dst / "dinov2_vits14_pretrain.pth").read_bytes() == b"w"
+    assert (dst / "hubconf.py").is_file()
+    assert (dst / "dinov2" / "hub" / "backbones.py").is_file()
+    assert not (dst / "dinov2" / "notes.md").exists()
+    catalog = json.loads((lib / "models.json").read_text())
+    [entry] = catalog["models"]["emb"]
+    assert entry["model_id"] == "DINOV2-VITS14" and entry["torch_hub_model"] == "dinov2_vits14"

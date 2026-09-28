@@ -33,6 +33,22 @@
         "region": "global"
       }
     ],
-    "emb": []
+    "emb": [
+      {
+        "model_id": "DINOV2-VITS14",
+        "friendly_name": "DINOv2 ViT-S/14",
+        "env": "wsp-base",
+        "model_fname": "dinov2_vits14_pretrain.pth",
+        "description": "DINOv2 small vision transformer (ViT-S/14) trained with self-supervised learning by Meta AI. Produces 384-dimensional feature vectors for detection crops, used for similarity search and clustering. The fastest DINOv2 variant (21M parameters).",
+        "description_short": "Fastest • 384-dim • Similarity search",
+        "developer": "Meta AI (FAIR)",
+        "license": "https://github.com/facebookresearch/dinov2/blob/main/LICENSE",
+        "info_url": "https://github.com/facebookresearch/dinov2",
+        "min_app_version": "0.1.0",
+        "embedding_dim": 384,
+        "input_size": 224,
+        "torch_hub_model": "dinov2_vits14"
+      }
+    ]
   }
 }
