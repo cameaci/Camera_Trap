@@ -1,0 +1,927 @@
+"""
+Integration tests: postprocessing pipeline (smoothing, exclusion, reload).
+
+Tests update_database_from_smoothed_results(), run_postprocessing_for_deployment(),
+reload_raw_classifications_from_json(), and build_smoother_input().
+
+Mocks: popen_group, _get_ml_python_path, _find_classification_model_dir
+(to avoid needing the ML conda env and model files).
+"""
+
+import json
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+from app.ml.json_pipeline import load_json_to_database
+from app.ml.postprocessing import (
+    build_smoother_input,
+    reload_raw_classifications_from_json,
+    run_postprocessing_for_deployment,
+    update_database_from_smoothed_results,
+)
+from app.models import Detection, File
+from tests.conftest import make_file
+
+from .conftest import build_detection_json, create_tiny_jpeg, create_video_frames, write_json
+
+
+def _load_basic_images(
+    s: dict, label_map: dict[str, str] | None = None
+) -> Path:
+    """Load 3 images with animal detections into DB, return json_path."""
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    classification_categories = label_map or {"1": "lion", "2": "zebra", "3": "giraffe"}
+
+    images = []
+    for i, p in enumerate(s["img_paths"]):
+        rel = str(p.relative_to(deploy_dir))
+        images.append({
+            "file": rel,
+            "exif_metadata": {
+                "DateTimeOriginal": (
+                    datetime(2024, 6, 15, 10, 0, 0) + timedelta(minutes=i)
+                ).strftime("%Y:%m:%d %H:%M:%S"),
+            },
+            "detections": [
+                {
+                    "category": "1",
+                    "conf": 0.9,
+                    "bbox": [0.1, 0.2, 0.3, 0.4],
+                    "classifications": [[1, 0.7], [2, 0.2], [3, 0.1]],
+                },
+            ],
+        })
+
+    md_json = build_detection_json(images, classification_categories=classification_categories)
+    json_path = write_json(s["artifacts"] / "results.json", md_json)
+
+    with patch("app.ml.json_pipeline.extract_video_dates", return_value={}):
+        load_json_to_database(
+            json_path=json_path,
+            deployment_id=s["deployment"].id,
+            deployment_folder=deploy_dir,
+            job_id=s["job"].id,
+            db=db,
+            artifacts_folder=s["artifacts"],
+        )
+
+    return json_path
+
+
+def test_update_db_from_smoothed_results(deployment_scaffold):
+    """Label/confidence updated in DB; correct {updated, unchanged, errors} counts."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    _load_basic_images(s)
+
+    # Verify initial state
+    dets = db.query(Detection).all()
+    assert len(dets) == 3
+    assert all(d.label == "lion" for d in dets)
+
+    # Build smoothed results that change label for first 2 images
+    smoothed_images = []
+    files = (
+        db.query(File)
+        .filter(File.deployment_id == s["deployment"].id)
+        .order_by(File.captured_at_local.asc())
+        .all()
+    )
+
+    for i, f in enumerate(files):
+        rel = str(Path(f.file_path).relative_to(deploy_dir))
+
+        if i < 2:
+            # Change to zebra
+            cls = [[2, 0.8], [1, 0.2]]
+        else:
+            # Keep as lion (unchanged)
+            cls = [[1, 0.7], [2, 0.2], [3, 0.1]]
+
+        smoothed_images.append({
+            "file": rel,
+            "detections": [
+                {
+                    "category": "1",
+                    "conf": 0.9,
+                    "bbox": [0.1, 0.2, 0.3, 0.4],
+                    "classifications": cls,
+                },
+            ],
+        })
+
+    smoothed = build_detection_json(
+        smoothed_images,
+        classification_categories={"1": "lion", "2": "zebra", "3": "giraffe"},
+    )
+
+    counts = update_database_from_smoothed_results(
+        deployment_id=s["deployment"].id,
+        smoothed_results=smoothed,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+
+    assert counts["updated"] == 2
+    assert counts["unchanged"] == 1
+    assert counts["errors"] == 0
+
+    # Verify DB was updated
+    updated_dets = db.query(Detection).join(File).order_by(File.captured_at_local.asc()).all()
+    assert updated_dets[0].label == "zebra"
+    assert updated_dets[1].label == "zebra"
+    assert updated_dets[2].label == "lion"
+
+
+def test_original_label_mirrors_machine_final_label(deployment_scaffold):
+    """After postprocessing, a non-verified detection's original_label tracks
+    the machine-final label (what the UI shows), while a verified detection's
+    is frozen. This is what makes ai_classification_label ==
+    classification_label for unverified rows and preserves the AI's call after
+    a human relabel."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    _load_basic_images(s)
+
+    # At load, every detection is raw "lion" for both label and original_label.
+    dets = db.query(Detection).join(File).order_by(File.captured_at_local.asc()).all()
+    assert all(d.label == "lion" and d.original_label == "lion" for d in dets)
+
+    # Freeze the first detection as a human verification of "lion".
+    dets[0].verified = True
+    dets[0].verified_at_utc = datetime.now(UTC)
+    db.commit()
+
+    # Machine reprocessing rolls every detection to "zebra".
+    files = (
+        db.query(File)
+        .filter(File.deployment_id == s["deployment"].id)
+        .order_by(File.captured_at_local.asc())
+        .all()
+    )
+    smoothed_images = [
+        {
+            "file": str(Path(f.file_path).relative_to(deploy_dir)),
+            "detections": [
+                {
+                    "category": "1",
+                    "conf": 0.9,
+                    "bbox": [0.1, 0.2, 0.3, 0.4],
+                    "classifications": [[2, 0.8], [1, 0.2]],
+                },
+            ],
+        }
+        for f in files
+    ]
+    smoothed = build_detection_json(
+        smoothed_images,
+        classification_categories={"1": "lion", "2": "zebra", "3": "giraffe"},
+    )
+
+    update_database_from_smoothed_results(
+        deployment_id=s["deployment"].id,
+        smoothed_results=smoothed,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+
+    result = db.query(Detection).join(File).order_by(File.captured_at_local.asc()).all()
+    # Verified detection: label and original_label both frozen at "lion".
+    assert result[0].verified is True
+    assert result[0].label == "lion"
+    assert result[0].original_label == "lion"
+    # Non-verified detections: original_label mirrors the machine-final "zebra".
+    for d in result[1:]:
+        assert d.label == "zebra"
+        assert d.original_label == "zebra"
+        assert d.original_label_confidence == d.label_confidence
+
+
+def test_smoothing_matches_by_bbox_and_frame(deployment_scaffold):
+    """Matching works for images (path+bbox) and video frames (path+bbox+frame_number)."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+
+    create_video_frames(s["artifacts"], "videos/clip.mp4", [0, 30])
+
+    images = [
+        {
+            "file": "videos/clip.mp4",
+            "frame_rate": 30.0,
+            "detections": [
+                {"category": "1", "conf": 0.9, "bbox": [0.1, 0.2, 0.3, 0.4],
+                 "frame_number": 0, "classifications": [[1, 0.8]]},
+                {"category": "1", "conf": 0.85, "bbox": [0.5, 0.5, 0.2, 0.2],
+                 "frame_number": 30, "classifications": [[1, 0.7]]},
+            ],
+        },
+        {
+            "file": "subdir/img_001.jpg",
+            "detections": [
+                {"category": "1", "conf": 0.75, "bbox": [0.2, 0.3, 0.4, 0.5],
+                 "classifications": [[1, 0.6]]},
+            ],
+        },
+    ]
+    md_json = build_detection_json(
+        images, classification_categories={"1": "lion", "2": "zebra"}
+    )
+    json_path = write_json(s["artifacts"] / "results.json", md_json)
+
+    with patch("app.ml.json_pipeline.extract_video_dates", return_value={}):
+        load_json_to_database(
+            json_path=json_path,
+            deployment_id=s["deployment"].id,
+            deployment_folder=deploy_dir,
+            job_id=s["job"].id,
+            db=db,
+            artifacts_folder=s["artifacts"],
+        )
+
+    # Build smoothed results: change all to zebra
+    smoothed_images = [
+        {
+            "file": "videos/clip.mp4",
+            "detections": [
+                {"category": "1", "conf": 0.9, "bbox": [0.1, 0.2, 0.3, 0.4],
+                 "frame_number": 0, "classifications": [[2, 0.9]]},
+                {"category": "1", "conf": 0.85, "bbox": [0.5, 0.5, 0.2, 0.2],
+                 "frame_number": 30, "classifications": [[2, 0.85]]},
+            ],
+        },
+        {
+            "file": "subdir/img_001.jpg",
+            "detections": [
+                {"category": "1", "conf": 0.75, "bbox": [0.2, 0.3, 0.4, 0.5],
+                 "classifications": [[2, 0.8]]},
+            ],
+        },
+    ]
+    smoothed = build_detection_json(
+        smoothed_images, classification_categories={"1": "lion", "2": "zebra"}
+    )
+
+    counts = update_database_from_smoothed_results(
+        deployment_id=s["deployment"].id,
+        smoothed_results=smoothed,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+
+    assert counts["updated"] == 3
+    assert counts["errors"] == 0
+
+    for det in db.query(Detection).all():
+        assert det.label == "zebra"
+
+
+def test_label_exclusion_applied_before_smoothing(deployment_scaffold):
+    """JSON passed to smoothing subprocess has excluded labels filtered out."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    _load_basic_images(s)
+
+    # Set up project with exclusion
+    s["project"].excluded_classes = ["lion"]
+    s["project"].event_smoothing = True
+    s["project"].taxonomic_rollup = False
+    s["project"].independence_interval = 1800
+    s["project"].counting_threshold = 0.5
+    db.flush()
+
+    json_path = s["artifacts"] / "results.json"
+
+    captured_input = {}
+
+    def fake_popen(cmd, **kwargs):
+        """Simulate the smoothing subprocess: read input, write passthrough
+        output, return a completed-process stub. Matches the call shape of
+        app.core.subprocess_group.popen_group which run_postprocessing_for_deployment
+        uses so we can intercept without actually spawning a subprocess.
+        """
+        input_path = cmd[2]  # [python, script, input, opts, output]
+        output_path = cmd[4]
+
+        with open(input_path) as f:
+            captured_input["data"] = json.load(f)
+
+        with open(output_path, "w") as f:
+            json.dump(captured_input["data"], f)
+
+        class FakeProcess:
+            pid = 12345
+            returncode = 0
+
+            def communicate(self, timeout=None):
+                return ("", "")
+
+            def poll(self):
+                return 0
+
+            def kill(self):
+                return None
+
+        return FakeProcess()
+
+    with (
+        patch("app.ml.postprocessing.popen_group", side_effect=fake_popen),
+        patch("app.ml.postprocessing._get_ml_python_path", return_value="/fake/python"),
+        patch("app.ml.postprocessing._find_classification_model_dir", return_value=None),
+    ):
+        run_postprocessing_for_deployment(
+            deployment_id=s["deployment"].id,
+            json_path=json_path,
+            deployment_folder=deploy_dir,
+            project=s["project"],
+            db=db,
+        )
+
+    # Verify lion was excluded from the JSON passed to subprocess
+    data = captured_input["data"]
+    for img in data["images"]:
+        for det in img.get("detections", []):
+            for cls_id, _ in det.get("classifications", []):
+                label_name = data["classification_categories"].get(str(cls_id))
+                assert label_name != "lion", "Excluded label should be filtered out"
+
+
+_TAXONOMY_CSV = (
+    "model_class,class,order,family,genus,species\n"
+    "lion,mammalia,carnivora,felidae,panthera,leo\n"
+    "zebra,mammalia,perissodactyla,equidae,equus,quagga\n"
+    "giraffe,mammalia,artiodactyla,giraffidae,giraffa,camelopardalis\n"
+)
+
+
+def _postprocess_with_lion_excluded(s: dict, *, rollup: bool) -> None:
+    """Phase 7 against a model that ships a taxonomy.csv, with "lion"
+    excluded and smoothing off, written to the database the way the
+    workers do it. Every loaded detection reads lion 0.7, zebra 0.2,
+    giraffe 0.1, so the excluded class is the top-1 everywhere."""
+    db = s["db"]
+    json_path = _load_basic_images(s)
+
+    model_dir = s["tmp_path"] / "cls-model"
+    model_dir.mkdir()
+    (model_dir / "taxonomy.csv").write_text(_TAXONOMY_CSV)
+
+    project = s["project"]
+    project.excluded_classes = ["lion"]
+    project.event_smoothing = False
+    project.taxonomic_rollup = rollup
+    db.flush()
+
+    with patch(
+        "app.ml.postprocessing._find_classification_model_dir",
+        return_value=model_dir,
+    ):
+        results = run_postprocessing_for_deployment(
+            deployment_id=s["deployment"].id,
+            json_path=json_path,
+            deployment_folder=s["deploy_dir"],
+            project=project,
+            db=db,
+        )
+    update_database_from_smoothed_results(
+        s["deployment"].id, results, s["deploy_dir"], db,
+        excluded_classes=["lion"],
+    )
+
+
+def test_an_excluded_top1_becomes_the_next_best_class_when_rollup_is_off(
+    deployment_scaffold,
+):
+    """With rollup off, nothing else can redirect an excluded top-1, so
+    the plain filter must run even though the model ships a taxonomy.
+    Before this, a taxonomy.csv made the filter defer to a rollup that
+    never ran, the excluded label reached the database, and the final
+    sweep erased it: 736 of 799 moose lost their label in one run."""
+    _postprocess_with_lion_excluded(deployment_scaffold, rollup=False)
+
+    dets = deployment_scaffold["db"].query(Detection).all()
+    assert len(dets) == 3
+    for det in dets:
+        assert det.label == "zebra"
+        # Its own score, not renormalised to 1.0 like v6 did.
+        assert det.label_confidence == pytest.approx(0.2)
+
+
+def test_an_excluded_top1_rolls_up_when_rollup_is_on(deployment_scaffold):
+    """With rollup on, the filter stays out of the way and Path A takes
+    the excluded lion to the family its confidence supports."""
+    _postprocess_with_lion_excluded(deployment_scaffold, rollup=True)
+
+    dets = deployment_scaffold["db"].query(Detection).all()
+    assert len(dets) == 3
+    for det in dets:
+        assert det.label == "felidae"
+        assert det.label_confidence == pytest.approx(0.7)
+
+
+def test_the_raw_reload_drops_excluded_classes_the_same_way(
+    deployment_scaffold,
+):
+    """Smoothing and rollup both off take the raw-reload path. It applies
+    the same rule: excluded classes go, the next best included class
+    stays at its own score, and nothing rolls up."""
+    s = deployment_scaffold
+    json_path = _load_basic_images(s)
+
+    reload_raw_classifications_from_json(
+        s["deployment"].id, json_path, s["deploy_dir"], s["db"],
+        excluded_classes=["lion"],
+    )
+
+    dets = s["db"].query(Detection).all()
+    assert len(dets) == 3
+    for det in dets:
+        assert det.label == "zebra"
+        assert det.label_confidence == pytest.approx(0.2)
+
+
+def test_a_box_left_unclassified_keeps_its_animal_row_and_stays_filterable(
+    deployment_scaffold,
+):
+    """Excluding every class the model offered leaves the box with no
+    species, and it must then carry the builtin "Animal" row: the label
+    filter matches on taxonomy id, so a box with none is shown in the
+    grid and counted in the tab but missing from the tree and from
+    "Select all". A user with 733 such boxes read that as "no Animal
+    option" and had no way to find them."""
+    from app.api.crud.label_tree import build_label_filter_tree
+    from app.ml.taxonomy_db import ensure_builtin_labels
+
+    s = deployment_scaffold
+    db = s["db"]
+    json_path = _load_basic_images(s)
+    animal_row = ensure_builtin_labels(db)["animal"]
+
+    reload_raw_classifications_from_json(
+        s["deployment"].id, json_path, s["deploy_dir"], db,
+        excluded_classes=["lion", "zebra", "giraffe"],
+    )
+
+    dets = db.query(Detection).all()
+    assert len(dets) == 3
+    for det in dets:
+        assert det.label is None
+        assert det.label_confidence is None
+        assert det.label_taxonomy_id == animal_row
+        assert det.common_name == "Animal"
+
+    tree = build_label_filter_tree(s["project"].id, db, count_by="detection")
+    assert animal_row in tree["all_leaf_ids"]
+
+
+def test_reload_raw_classifications(deployment_scaffold):
+    """After smoothing, reload_raw_classifications_from_json() reverts to raw values."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    json_path = _load_basic_images(s)
+
+    # First verify initial label
+    dets = db.query(Detection).all()
+    assert all(d.label == "lion" for d in dets)
+
+    # Simulate smoothing: change all to zebra
+    files = db.query(File).filter(File.deployment_id == s["deployment"].id).all()
+    smoothed_images = []
+    for f in files:
+        rel = str(Path(f.file_path).relative_to(deploy_dir))
+        smoothed_images.append({
+            "file": rel,
+            "detections": [
+                {"category": "1", "conf": 0.9, "bbox": [0.1, 0.2, 0.3, 0.4],
+                 "classifications": [[2, 0.9]]},
+            ],
+        })
+
+    smoothed = build_detection_json(
+        smoothed_images,
+        classification_categories={"1": "lion", "2": "zebra", "3": "giraffe"},
+    )
+    update_database_from_smoothed_results(
+        s["deployment"].id, smoothed, deploy_dir, db
+    )
+
+    # Verify smoothing took effect
+    dets = db.query(Detection).all()
+    assert all(d.label == "zebra" for d in dets)
+
+    # Now reload raw → should revert to lion
+    counts = reload_raw_classifications_from_json(
+        deployment_id=s["deployment"].id,
+        json_path=json_path,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+
+    assert counts["updated"] == 3
+    dets = db.query(Detection).all()
+    assert all(d.label == "lion" for d in dets)
+
+
+def test_verified_detections_skipped_during_reprocessing(deployment_scaffold):
+    """Verified detections keep their labels when smoothed results are applied."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    _load_basic_images(s)
+
+    # Verify initial state: all lion
+    dets = db.query(Detection).join(File).order_by(File.captured_at_local.asc()).all()
+    assert len(dets) == 3
+    assert all(d.label == "lion" for d in dets)
+
+    # Mark first detection as verified
+    dets[0].verified = True
+    dets[0].verified_at_utc = datetime.now(UTC)
+    db.flush()
+
+    # Build smoothed results changing all 3 to zebra
+    files = (
+        db.query(File)
+        .filter(File.deployment_id == s["deployment"].id)
+        .order_by(File.captured_at_local.asc())
+        .all()
+    )
+    smoothed_images = []
+    for f in files:
+        rel = str(Path(f.file_path).relative_to(deploy_dir))
+        smoothed_images.append({
+            "file": rel,
+            "detections": [
+                {"category": "1", "conf": 0.9, "bbox": [0.1, 0.2, 0.3, 0.4],
+                 "classifications": [[2, 0.9]]},
+            ],
+        })
+
+    smoothed = build_detection_json(
+        smoothed_images,
+        classification_categories={"1": "lion", "2": "zebra", "3": "giraffe"},
+    )
+
+    counts = update_database_from_smoothed_results(
+        deployment_id=s["deployment"].id,
+        smoothed_results=smoothed,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+
+    assert counts["skipped_verified"] == 1
+    assert counts["updated"] == 2
+
+    # Verified detection keeps original label; others updated
+    updated_dets = db.query(Detection).join(File).order_by(File.captured_at_local.asc()).all()
+    assert updated_dets[0].label == "lion"
+    assert updated_dets[1].label == "zebra"
+    assert updated_dets[2].label == "zebra"
+
+
+def test_verified_detections_skipped_during_raw_reload(deployment_scaffold):
+    """Verified detections survive reload_raw_classifications_from_json()."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    json_path = _load_basic_images(s)
+
+    # Smoothing: change all to zebra
+    files = db.query(File).filter(File.deployment_id == s["deployment"].id).all()
+    smoothed_images = []
+    for f in files:
+        rel = str(Path(f.file_path).relative_to(deploy_dir))
+        smoothed_images.append({
+            "file": rel,
+            "detections": [
+                {"category": "1", "conf": 0.9, "bbox": [0.1, 0.2, 0.3, 0.4],
+                 "classifications": [[2, 0.9]]},
+            ],
+        })
+
+    smoothed = build_detection_json(
+        smoothed_images,
+        classification_categories={"1": "lion", "2": "zebra", "3": "giraffe"},
+    )
+    update_database_from_smoothed_results(
+        s["deployment"].id, smoothed, deploy_dir, db
+    )
+
+    # Verify all are now zebra
+    dets = db.query(Detection).join(File).order_by(File.captured_at_local.asc()).all()
+    assert all(d.label == "zebra" for d in dets)
+
+    # Mark first detection as verified (while labeled "zebra")
+    dets[0].verified = True
+    dets[0].verified_at_utc = datetime.now(UTC)
+    db.flush()
+
+    # Reload raw → would revert to lion, but verified detection should be protected
+    counts = reload_raw_classifications_from_json(
+        deployment_id=s["deployment"].id,
+        json_path=json_path,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+
+    assert counts["skipped_verified"] == 1
+
+    reloaded_dets = db.query(Detection).join(File).order_by(File.captured_at_local.asc()).all()
+    assert reloaded_dets[0].label == "zebra"  # protected
+    assert reloaded_dets[1].label == "lion"   # reverted
+    assert reloaded_dets[2].label == "lion"   # reverted
+
+
+def test_smoother_input_groups_by_interval(deployment_scaffold):
+    """Files within interval → same seq_id; gap > interval → different seq_id."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+
+    base_time = datetime(2024, 6, 15, 10, 0, 0)
+
+    # Create 4 files: 3 close together, then a gap
+    timestamps = [
+        base_time,
+        base_time + timedelta(minutes=5),
+        base_time + timedelta(minutes=10),
+        base_time + timedelta(hours=2),  # big gap
+    ]
+
+    for i, ts in enumerate(timestamps):
+        p = create_tiny_jpeg(deploy_dir / f"seq_img_{i}.jpg")
+        make_file(
+            db,
+            deployment_id=s["deployment"].id,
+            file_path=str(p),
+            file_type="image",
+            captured_at_local=ts,
+        )
+    db.flush()
+
+    rows = build_smoother_input(
+        deployment_id=s["deployment"].id,
+        independence_interval=1800,  # 30 min
+        db=db,
+    )
+
+    assert len(rows) == 4
+    # First 3 share a seq_id, 4th differs.
+    rows_by_name = {r["file_name"]: r for r in rows}
+    sid0 = rows_by_name["seq_img_0.jpg"]["seq_id"]
+    sid1 = rows_by_name["seq_img_1.jpg"]["seq_id"]
+    sid2 = rows_by_name["seq_img_2.jpg"]["seq_id"]
+    sid3 = rows_by_name["seq_img_3.jpg"]["seq_id"]
+    assert sid0 == sid1 == sid2
+    assert sid3 != sid0
+
+
+def test_final_sweep_clears_excluded_labels(deployment_scaffold):
+    """Detections with excluded labels are cleared to None by the sweep."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    json_path = _load_basic_images(s)
+
+    # All detections have label "lion" from the basic load
+    dets = db.query(Detection).all()
+    assert all(d.label == "lion" for d in dets)
+
+    # Run update with lion excluded
+    with open(json_path) as f:
+        smoothed = json.load(f)
+
+    counts = update_database_from_smoothed_results(
+        s["deployment"].id, smoothed, deploy_dir, db,
+        excluded_classes=["lion"],
+    )
+
+    # All labels should be cleared
+    dets = db.query(Detection).all()
+    assert all(d.label is None for d in dets)
+    assert counts["updated"] > 0
+
+
+def test_final_sweep_preserves_verified(deployment_scaffold):
+    """Verified detections keep excluded labels (human override)."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    json_path = _load_basic_images(s)
+
+    # Mark first detection as verified
+    det = db.query(Detection).first()
+    det.verified = True
+    det.verified_at_utc = datetime.now(UTC)
+    db.flush()
+
+    with open(json_path) as f:
+        smoothed = json.load(f)
+
+    update_database_from_smoothed_results(
+        s["deployment"].id, smoothed, deploy_dir, db,
+        excluded_classes=["lion"],
+    )
+
+    # Verified detection keeps its label
+    db.expire_all()
+    verified_det = db.query(Detection).filter(
+        Detection.verified.is_(True)
+    ).one()
+    assert verified_det.label == "lion"
+
+    # Non-verified detections are cleared
+    unverified = db.query(Detection).filter(
+        Detection.verified.is_(False)
+    ).all()
+    assert all(d.label is None for d in unverified)
+
+
+def test_a_discarded_box_is_not_reported_as_a_reprocess_error(deployment_scaffold):
+    """Verifying a file used to DELETE its weak boxes, so on databases
+    checked before 2026-09-02 the JSON still lists boxes with no row to
+    match. That is the state the person asked for, not a mismatch, and
+    those files stay verified, so the exemption keeps covering them.
+    (New sign-offs reject the boxes instead of deleting them, so they
+    keep matching; see the test below this one's neighbour.)
+
+    Without the exemption the very next reprocess of such a project
+    reports one error per removed box: measured at 3.2 per file, so a few
+    hundred failures that are not failures, shown to the user in the
+    reprocess summary.
+    """
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    _load_basic_images(s)
+
+    files = (
+        db.query(File)
+        .filter(File.deployment_id == s["deployment"].id)
+        .order_by(File.captured_at_local.asc())
+        .all()
+    )
+    emptied, kept = files[0], files[1]
+
+    # Stand in for a pre-change file verify: the box is gone and the file
+    # is signed off but not blank, exactly as the old `set_file_verified`
+    # left a file whose weak box sat beside a verified one.
+    db.query(Detection).filter(Detection.file_id == emptied.id).delete(
+        synchronize_session=False
+    )
+    emptied.verified = True
+    emptied.observation_type = "animal"
+    db.commit()
+
+    smoothed = build_detection_json(
+        [
+            {
+                "file": str(Path(f.file_path).relative_to(deploy_dir)),
+                "detections": [
+                    {
+                        "category": "1",
+                        "conf": 0.9,
+                        "bbox": [0.1, 0.2, 0.3, 0.4],
+                        "classifications": [[2, 0.8], [1, 0.2]],
+                    }
+                ],
+            }
+            for f in files
+        ],
+        classification_categories={"1": "lion", "2": "zebra", "3": "giraffe"},
+    )
+
+    counts = update_database_from_smoothed_results(
+        deployment_id=s["deployment"].id,
+        smoothed_results=smoothed,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+
+    assert counts["errors"] == 0
+    # The other files still reprocess normally.
+    assert counts["updated"] == 2
+    db.refresh(kept)
+    assert kept.detections[0].label == "zebra"
+    # And nothing was resurrected on the emptied one.
+    assert (
+        db.query(Detection).filter(Detection.file_id == emptied.id).count() == 0
+    )
+
+
+def test_a_missing_box_on_an_unverified_file_is_still_an_error(deployment_scaffold):
+    """The exemption reaches verified files only. A box the JSON lists
+    that the database lacks on a file nobody signed off is still the one
+    signal that the two disagree for a reason other than a user action."""
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    _load_basic_images(s)
+
+    files = (
+        db.query(File)
+        .filter(File.deployment_id == s["deployment"].id)
+        .order_by(File.captured_at_local.asc())
+        .all()
+    )
+    db.query(Detection).filter(Detection.file_id == files[0].id).delete(
+        synchronize_session=False
+    )
+    db.commit()
+
+    smoothed = build_detection_json(
+        [
+            {
+                "file": str(Path(f.file_path).relative_to(deploy_dir)),
+                "detections": [
+                    {
+                        "category": "1",
+                        "conf": 0.9,
+                        "bbox": [0.1, 0.2, 0.3, 0.4],
+                        "classifications": [[2, 0.8], [1, 0.2]],
+                    }
+                ],
+            }
+            for f in files
+        ],
+        classification_categories={"1": "lion", "2": "zebra", "3": "giraffe"},
+    )
+
+    counts = update_database_from_smoothed_results(
+        deployment_id=s["deployment"].id,
+        smoothed_results=smoothed,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+
+    assert counts["errors"] == 1
+
+
+def test_an_unticked_files_rejected_boxes_reprocess_cleanly(deployment_scaffold):
+    """The payoff of rejecting weak boxes instead of deleting them.
+
+    Verify a file: its weak box is marked "false detection" and stays a
+    row, so the reprocess matcher finds it and skips it as verified —
+    zero errors, the verdict holds. Untick the file: the box is
+    unverified, so the next reprocess hands it back to the machine and
+    restores the AI's label — still zero errors. Under the delete design
+    the same untick produced one phantom error per removed box, forever.
+    """
+    from app.api.crud.file import set_file_verified
+
+    s = deployment_scaffold
+    db, deploy_dir = s["db"], s["deploy_dir"]
+    _load_basic_images(s)
+
+    files = (
+        db.query(File)
+        .filter(File.deployment_id == s["deployment"].id)
+        .order_by(File.captured_at_local.asc())
+        .all()
+    )
+    weak = db.query(Detection).filter(Detection.file_id == files[0].id).one()
+    weak.confidence = 0.05  # below the project threshold: invisible
+    db.commit()
+
+    set_file_verified(db, files[0], True)
+    db.commit()
+    db.refresh(weak)
+    assert weak.label == "false detection"
+    assert weak.verified is True
+
+    smoothed = build_detection_json(
+        [
+            {
+                "file": str(Path(f.file_path).relative_to(deploy_dir)),
+                "detections": [
+                    {
+                        "category": "1",
+                        "conf": 0.9,
+                        "bbox": [0.1, 0.2, 0.3, 0.4],
+                        "classifications": [[2, 0.8], [1, 0.2]],
+                    }
+                ],
+            }
+            for f in files
+        ],
+        classification_categories={"1": "lion", "2": "zebra", "3": "giraffe"},
+    )
+
+    counts = update_database_from_smoothed_results(
+        deployment_id=s["deployment"].id,
+        smoothed_results=smoothed,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+    assert counts["errors"] == 0
+    db.refresh(weak)
+    assert weak.label == "false detection", "the verdict survives a reprocess"
+
+    set_file_verified(db, files[0], False)
+    db.commit()
+
+    counts = update_database_from_smoothed_results(
+        deployment_id=s["deployment"].id,
+        smoothed_results=smoothed,
+        deployment_folder=deploy_dir,
+        db=db,
+    )
+    assert counts["errors"] == 0, "no phantom errors after the untick"
+    db.refresh(weak)
+    assert weak.label == "zebra", "the machine's call is restored"
+    assert weak.verified is False

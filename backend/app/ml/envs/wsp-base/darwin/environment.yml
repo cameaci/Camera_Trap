@@ -1,0 +1,67 @@
+name: env-wsp-base
+# conda-forge only, deliberately. `defaults` (repo.anaconda.com) was
+# carried over from the first env YAMLs and never resolved a single
+# package: python, pip and exiftool and all 17 of their dependencies
+# come from conda-forge. It cost us twice. It is a second host that has
+# to pass TLS, and it broke a corporate Windows install on 2026-08-14
+# whose proxy could not reach the CRL endpoint (`pkgs/main`, `pkgs/r`
+# and `pkgs/msys2` failed to load with CRYPT_E_NO_REVOCATION_CHECK).
+# repo.anaconda.com also carries Anaconda's commercial terms, which
+# organisations above 200 staff need a paid licence for, and our
+# installer must not quietly put users in breach of that.
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  # exiftool binary for EXIF writes and video date extraction. The
+  # installers do not bundle exiftool and fresh machines do not have
+  # it on PATH; the backend resolves it from this env (exiftool_bin.py).
+  - exiftool
+  - pip:
+    # Image processing and metadata
+    # SpeciesNet and the WSP classifiers run in this environment too.
+    - onnx2torch
+    # onnx 1.17 is the newest release whose protobuf floor (>=3.20.2) fits
+    # megadetector's yolov5 cap (the bundled wheel allows <=3.20.3), and it
+    # ships wheels for every platform. Unpinned, pip backtracks to onnx
+    # 1.12, which has no cp311 wheel and needs a C++ toolchain to build.
+    - onnx==1.17.0
+    - protobuf==3.20.3
+    - exifread
+    - piexif
+    - gpsphoto
+    - hachoir
+
+    # Utility packages
+    - appdirs
+    - requests
+    - pillow
+    - tqdm
+    - huggingface_hub
+    - anyio<4.0  # Pin to v3.x for Python 3.11 typing compatibility
+    - openpyxl
+
+    # Similarity search
+    - faiss-cpu>=1.7.4
+
+    # MegaDetector and detection packages
+    - setuptools<82  # yolov5 needs pkg_resources, removed in setuptools 82
+    # Prebuilt wheel for megadetector's ultralytics-yolov5 dependency.
+    # The PyPI release is sdist-only and its setup.py downloads a README
+    # from GitHub at build time; that crashes on machines where Python
+    # cannot load the Windows certificate store (ssl ASN1 error, beta
+    # report 2026-06-10). Installing a wheel skips setup.py entirely.
+    - ultralytics-yolov5 @ https://github.com/cameaci/Camera_Trap/raw/main/backend/app/ml/pip-wheels/ultralytics_yolov5-0.1.1-py3-none-any.whl#sha256=d3a16a7f0b3b027e4ee4ddce4834730711f1c4db9d34129ee4b8c65b89e19a19
+    - megadetector==10.0.24
+    # MDv1000-cedar is the only model in the zoo with a YOLOv9 architecture,
+    # and megadetector loads it through this package. Upstream treats each
+    # YOLO backend as an optional extra and dropped this one as a dependency
+    # in 10.0.20, so we pin it here; without it cedar fails to load at all.
+    # 10.0.23 is also the first release that runs cedar correctly: before it,
+    # cedar's anchor-free output went through the YOLOv5-shaped NMS, which
+    # read anchor positions as class ids and failed every batch. That crashed
+    # process_video with "exit code 1" and made images silently return
+    # nothing (beta report 2026-07-30).
+    - yolov9pip==0.0.4
+    - ultralytics==8.3.177

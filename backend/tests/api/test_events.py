@@ -1,0 +1,1017 @@
+"""Tests for the /api/events endpoints."""
+
+import uuid
+from datetime import datetime
+from unittest.mock import patch
+
+from tests.conftest import (
+    make_deployment,
+    make_detection,
+    make_event_with_files,
+    make_project,
+    make_site,
+)
+
+
+def test_generate_events(client, db):
+    p = make_project(db)
+    with patch(
+        "app.api.routers.events.event_crud.generate_events_for_project",
+        return_value=5,
+    ):
+        resp = client.post("/api/events/generate", json={"project_id": p.id})
+    assert resp.status_code == 200
+    assert resp.json()["event_count"] == 5
+
+
+def test_generate_events_project_not_found(client):
+    with patch(
+        "app.api.routers.events.event_crud.generate_events_for_project",
+        side_effect=ValueError("Project not found"),
+    ):
+        resp = client.post("/api/events/generate", json={"project_id": "nonexistent"})
+    assert resp.status_code == 404
+
+
+def test_list_events_empty(client, db):
+    p = make_project(db)
+    resp = client.get(f"/api/events?project_id={p.id}")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_get_event_count(client, db):
+    p = make_project(db)
+    resp = client.get(f"/api/events/count?project_id={p.id}")
+    assert resp.status_code == 200
+    assert resp.json()["count"] == 0
+
+
+def test_get_verification_stats(client, db):
+    p = make_project(db)
+    resp = client.get(f"/api/events/verification-stats?project_id={p.id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "total_files" in data
+    assert "verified_files" in data
+
+
+def test_get_event_not_found(client):
+    resp = client.get("/api/events/nonexistent")
+    assert resp.status_code == 404
+
+
+def test_get_event_with_files(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev = make_event_with_files(
+        db,
+        deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 1, 12, 0),
+    )
+    resp = client.get(f"/api/events/{ev.id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == ev.id
+    assert len(data["files"]) == 1
+
+
+def test_get_event_files_same_second_sort_alphabetically(client, db):
+    # Burst shots often share one second-resolution EXIF timestamp; the
+    # filmstrip must then fall back to the sequential camera filenames.
+    from app.models.event import event_files as event_files_table
+    from tests.conftest import make_file
+
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev = make_event_with_files(
+        db,
+        deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 1, 12, 0),
+        files_verified=[],
+    )
+    ts = datetime(2024, 1, 1, 12, 0, 7)
+    # Insert out of alphabetical order so relationship order alone fails.
+    for seq, name in enumerate(["IMG_0003.jpg", "IMG_0001.jpg", "IMG_0002.jpg"]):
+        f = make_file(
+            db,
+            deployment_id=d.id,
+            captured_at_local=ts,
+            file_path=f"/cam01/{name}",
+        )
+        db.execute(
+            event_files_table.insert().values(
+                event_id=ev.id, file_id=f.id, sequence_number=seq
+            )
+        )
+    db.commit()
+
+    resp = client.get(f"/api/events/{ev.id}")
+    assert resp.status_code == 200
+    paths = [f["file_path"] for f in resp.json()["files"]]
+    assert paths == [
+        "/cam01/IMG_0001.jpg",
+        "/cam01/IMG_0002.jpg",
+        "/cam01/IMG_0003.jpg",
+    ]
+
+
+def test_get_adjacent_events(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev = make_event_with_files(
+        db,
+        deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 1, 12, 0),
+    )
+    resp = client.get(
+        f"/api/events/{ev.id}/adjacent?project_id={p.id}"
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "previous_id" in data
+    assert "next_id" in data
+
+
+def _event_with_detection(db, deployment_id, start):
+    """Helper: event + one file + one visible detection so the project
+    threshold filter doesn't drop the event."""
+    ev = make_event_with_files(
+        db,
+        deployment_id=deployment_id,
+        event_start_local=start,
+    )
+    make_detection(db, file_id=ev.files[0].id, confidence=0.9)
+    db.commit()
+    return ev
+
+
+def test_events_filter_flagged_exists_on_any_file(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev_with_flag = _event_with_detection(db, d.id, datetime(2024, 1, 1, 12, 0))
+    ev_without = _event_with_detection(db, d.id, datetime(2024, 1, 2, 12, 0))
+    flagged_file = ev_with_flag.files[0]
+    client.patch(f"/api/files/{flagged_file.id}", json={"flagged": True})
+
+    resp = client.get(f"/api/events?project_id={p.id}&flagged=flagged")
+    assert resp.status_code == 200
+    ids = [row["id"] for row in resp.json()]
+    assert ev_with_flag.id in ids
+    assert ev_without.id not in ids
+
+
+def test_events_filter_favorited_exists_on_any_file(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev_fav = _event_with_detection(db, d.id, datetime(2024, 1, 1, 12, 0))
+    ev_none = _event_with_detection(db, d.id, datetime(2024, 1, 2, 12, 0))
+    fav_file = ev_fav.files[0]
+    client.patch(f"/api/files/{fav_file.id}", json={"favorited": True})
+
+    resp = client.get(f"/api/events?project_id={p.id}&favorited=favorited")
+    assert resp.status_code == 200
+    ids = [row["id"] for row in resp.json()]
+    assert ev_fav.id in ids
+    assert ev_none.id not in ids
+
+
+def test_events_filter_label_confidence_range(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev_high = make_event_with_files(
+        db, deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 1, 12, 0),
+    )
+    ev_low = make_event_with_files(
+        db, deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 2, 12, 0),
+    )
+    make_detection(
+        db, file_id=ev_high.files[0].id, confidence=0.9, label_confidence=0.9,
+    )
+    make_detection(
+        db, file_id=ev_low.files[0].id, confidence=0.9, label_confidence=0.3,
+    )
+    db.commit()
+
+    resp = client.get(
+        f"/api/events?project_id={p.id}&min_label_confidence=0.5"
+    )
+    ids = [row["id"] for row in resp.json()]
+    assert ev_high.id in ids
+    assert ev_low.id not in ids
+
+
+def test_events_filter_label_confidence_keeps_unclassified(client, db):
+    """The classification range filters classified boxes only. A box the
+    classifier never scored passes it at both ends: it used to fail the
+    SQL comparison and vanish the moment the slider left its floor."""
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    classified = make_event_with_files(
+        db, deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 1, 12, 0),
+    )
+    unclassified = make_event_with_files(
+        db, deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 2, 12, 0),
+    )
+    make_detection(
+        db, file_id=classified.files[0].id, confidence=0.9, label_confidence=0.3,
+    )
+    make_detection(
+        db, file_id=unclassified.files[0].id, confidence=0.9, label_confidence=None,
+    )
+    db.commit()
+
+    resp = client.get(
+        f"/api/events?project_id={p.id}&min_label_confidence=0.5"
+    )
+    ids = [row["id"] for row in resp.json()]
+    assert classified.id not in ids
+    assert unclassified.id in ids
+
+    resp = client.get(
+        f"/api/events?project_id={p.id}&max_label_confidence=0.2"
+    )
+    ids = [row["id"] for row in resp.json()]
+    assert classified.id not in ids
+    assert unclassified.id in ids
+
+
+def test_events_filter_empty_show_only_and_hide(client, db):
+    """Empty event = every file in it has observation_type='blank'."""
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev_animal = _event_with_detection(db, d.id, datetime(2024, 1, 1, 12, 0))
+    ev_blank = _event_with_detection(db, d.id, datetime(2024, 1, 2, 12, 0))
+    # Mark all files in ev_blank as observation_type='blank'.
+    for f in ev_blank.files:
+        f.observation_type = "blank"
+    db.commit()
+
+    resp = client.get(f"/api/events?project_id={p.id}&empty=show_only")
+    ids = [row["id"] for row in resp.json()]
+    assert ev_blank.id in ids
+    assert ev_animal.id not in ids
+
+    resp = client.get(f"/api/events?project_id={p.id}&empty=hide")
+    ids = [row["id"] for row in resp.json()]
+    assert ev_animal.id in ids
+    assert ev_blank.id not in ids
+
+
+def test_event_summary_aggregates_any_file_flagged_and_favorited(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev = _event_with_detection(db, d.id, datetime(2024, 1, 1, 12, 0))
+    f = ev.files[0]
+    client.patch(f"/api/files/{f.id}", json={"flagged": True, "favorited": True})
+
+    resp = client.get(f"/api/events?project_id={p.id}")
+    assert resp.status_code == 200
+    summary = next(row for row in resp.json() if row["id"] == ev.id)
+    assert summary["any_file_flagged"] is True
+    assert summary["any_file_favorited"] is True
+
+
+def _setup_three_events(db):
+    """Three events with distinct start times for sort tests."""
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    older = _event_with_detection(db, d.id, datetime(2024, 1, 1, 12, 0))
+    middle = _event_with_detection(db, d.id, datetime(2024, 2, 1, 12, 0))
+    newer = _event_with_detection(db, d.id, datetime(2024, 3, 1, 12, 0))
+    return p, older, middle, newer
+
+
+def test_events_sort_oldest(client, db):
+    p, older, middle, newer = _setup_three_events(db)
+
+    resp = client.get(f"/api/events?project_id={p.id}&sort=oldest")
+    ids = [row["id"] for row in resp.json()]
+    assert ids == [older.id, middle.id, newer.id]
+
+
+def test_events_sort_random_stable_with_seed(client, db):
+    p, *_ = _setup_three_events(db)
+
+    a = client.get(f"/api/events?project_id={p.id}&sort=random&seed=42").json()
+    b = client.get(f"/api/events?project_id={p.id}&sort=random&seed=42").json()
+    assert [r["id"] for r in a] == [r["id"] for r in b]
+
+    # Three events have 6 permutations, so any specific seed pair has a
+    # 1/6 chance of producing the same order. Probe seeds until we find
+    # one that genuinely differs from seed 42, rather than asserting a
+    # hard-coded pair and hoping for the best.
+    base_ids = [r["id"] for r in a]
+    for trial in range(43, 100):
+        other = client.get(
+            f"/api/events?project_id={p.id}&sort=random&seed={trial}",
+        ).json()
+        if [r["id"] for r in other] != base_ids:
+            break
+    else:
+        raise AssertionError(
+            "Seeds 43-99 all produced the same order as seed 42; "
+            "seeded_hash UDF is likely broken.",
+        )
+
+
+def test_events_sort_cls_low_pushes_nulls_last(client, db):
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    low = make_event_with_files(
+        db, deployment_id=d.id, event_start_local=datetime(2024, 1, 1, 12, 0),
+    )
+    high = make_event_with_files(
+        db, deployment_id=d.id, event_start_local=datetime(2024, 2, 1, 12, 0),
+    )
+    null = make_event_with_files(
+        db, deployment_id=d.id, event_start_local=datetime(2024, 3, 1, 12, 0),
+    )
+    make_detection(
+        db, file_id=low.files[0].id, confidence=0.9, label_confidence=0.2,
+    )
+    make_detection(
+        db, file_id=high.files[0].id, confidence=0.9, label_confidence=0.7,
+    )
+    make_detection(
+        db, file_id=null.files[0].id, confidence=0.9, label_confidence=None,
+    )
+    db.commit()
+
+    resp = client.get(f"/api/events?project_id={p.id}&sort=cls_low")
+    ids = [row["id"] for row in resp.json()]
+    assert ids == [low.id, high.id, null.id]
+
+
+def test_events_adjacent_respects_sort(client, db):
+    p, older, middle, newer = _setup_three_events(db)
+
+    # Oldest-first: opening "older" → next is "middle".
+    resp = client.get(
+        f"/api/events/{older.id}/adjacent?project_id={p.id}&sort=oldest"
+    ).json()
+    assert resp["next_id"] == middle.id
+    assert resp["previous_id"] is None
+
+    # Newest-first (default): opening "older" → next is None.
+    resp = client.get(
+        f"/api/events/{older.id}/adjacent?project_id={p.id}"
+    ).json()
+    assert resp["next_id"] is None
+    assert resp["previous_id"] == middle.id
+
+
+def test_events_sort_invalid_value_returns_400(client, db):
+    p = make_project(db)
+    db.commit()
+
+    resp = client.get(f"/api/events?project_id={p.id}&sort=bogus")
+    assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Collage file IDs (event card collage layout)
+# ---------------------------------------------------------------------------
+
+from types import SimpleNamespace  # noqa: E402
+
+from app.api.crud.event import _build_collage_file_ids  # noqa: E402
+
+
+def _fake_file(file_id: str, confidences: list[float]) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=file_id,
+        detections=[SimpleNamespace(confidence=c) for c in confidences],
+    )
+
+
+def test_collage_uses_max_n_frames_first_in_order():
+    max_n = [{"file_id": "a"}, {"file_id": "b"}]
+    files = [_fake_file("a", [0.9]), _fake_file("b", [0.8]), _fake_file("c", [0.7])]
+    assert _build_collage_file_ids(max_n, files) == ["a", "b", "c"]
+
+
+def test_collage_caps_at_four_when_max_n_is_long():
+    max_n = [{"file_id": x} for x in ("a", "b", "c", "d", "e")]
+    assert _build_collage_file_ids(max_n, []) == ["a", "b", "c", "d"]
+
+
+def test_collage_pads_by_top_detection_confidence():
+    max_n = [{"file_id": "a"}]
+    files = [
+        _fake_file("a", [0.9]),
+        _fake_file("b", [0.5]),
+        _fake_file("c", [0.95]),
+        _fake_file("d", [0.7]),
+    ]
+    # MaxN file first, then remaining files sorted by max(confidence) desc.
+    assert _build_collage_file_ids(max_n, files) == ["a", "c", "d", "b"]
+
+
+def test_collage_skips_files_already_in_max_n():
+    max_n = [{"file_id": "a"}]
+    files = [_fake_file("a", [0.9]), _fake_file("b", [0.8])]
+    assert _build_collage_file_ids(max_n, files) == ["a", "b"]
+
+
+def test_collage_no_max_n_uses_top_confidence_files():
+    files = [
+        _fake_file("a", [0.5]),
+        _fake_file("b", [0.95]),
+        _fake_file("c", [0.7]),
+        _fake_file("d", [0.3]),
+        _fake_file("e", [0.85]),
+    ]
+    assert _build_collage_file_ids([], files) == ["b", "e", "c", "a"]
+
+
+def test_collage_empty_inputs_returns_empty_list():
+    assert _build_collage_file_ids([], []) == []
+
+
+def test_collage_handles_files_with_no_detections():
+    files = [_fake_file("a", []), _fake_file("b", [0.9])]
+    assert _build_collage_file_ids([], files) == ["b", "a"]
+
+
+def test_event_summary_includes_collage_file_ids(client, db):
+    """The events list endpoint exposes collage_file_ids on every summary."""
+    p = make_project(db)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev = _event_with_detection(db, d.id, datetime(2024, 1, 1, 12, 0))
+
+    resp = client.get(f"/api/events?project_id={p.id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    summary = body[0]
+    assert summary["id"] == ev.id
+    # No EventObservation rows in this fixture, so the only padding source
+    # is the file by max detection confidence: one file → one collage tile.
+    assert summary["collage_file_ids"] == [ev.files[0].id]
+
+
+def test_event_verify_and_count_endpoints(client, db):
+    """The Observations-page flow: read counts, verify, edit a count
+    (which clears the sign-off), and add a species the AI missed."""
+    from app.api.crud.event_observation import calculate_max_n_for_event
+    from app.models.label_taxonomy import LabelTaxonomy
+
+    p = make_project(db, counting_threshold=0.5)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev = make_event_with_files(
+        db, deployment_id=d.id, event_start_local=datetime(2024, 1, 1, 12)
+    )
+    det = make_detection(
+        db, file_id=ev.files[0].id, category="animal", label="cow",
+        confidence=0.9,
+    )
+    # Link a taxonomy so the count list resolves display names (regression
+    # guard: the row item must read scientific_name / common_name).
+    tax = LabelTaxonomy(
+        name="cow", level="species", classification_model_id="",
+        project_id=p.id, common_name="Cow", scientific_name="Bos taurus",
+    )
+    db.add(tax)
+    db.flush()
+    det.label_taxonomy_id = tax.id
+    # The session runs autoflush=False, like the app's. The MaxN rebuild
+    # groups detections by label_taxonomy_id in SQL, so the link above has
+    # to reach the database before it runs. Every production caller has
+    # committed by this point.
+    db.flush()
+    calculate_max_n_for_event(db, ev.id, 0.5)
+    db.commit()
+
+    data = client.get(f"/api/events/{ev.id}").json()
+    assert data["confirmed"] is False
+    assert len(data["observations"]) == 1
+    obs = data["observations"][0]
+    assert obs["effective_count"] == 1
+    assert obs["scientific_name"] == "Bos taurus"
+    assert obs["common_name"] == "Cow"
+    obs_id = obs["id"]
+
+    data = client.patch(
+        f"/api/events/{ev.id}/confirm", json={"confirmed": True}
+    ).json()
+    assert data["confirmed"] is True
+
+    # Bumping a count clears the sign-off.
+    data = client.patch(
+        f"/api/events/{ev.id}/observations/{obs_id}", json={"count": 3}
+    ).json()
+    assert data["observations"][0]["effective_count"] == 3
+    assert data["confirmed"] is False
+
+    # Add a species the AI never detected.
+    data = client.post(
+        f"/api/events/{ev.id}/observations",
+        json={"category": "animal", "label": "fox", "count": 2},
+    ).json()
+    by_label = {o["label"]: o for o in data["observations"]}
+    assert by_label["fox"]["effective_count"] == 2
+
+    # Reset to the AI proposal: the human-only fox row is gone, the cow
+    # override is cleared back to its MaxN, and the sign-off is cleared.
+    client.patch(f"/api/events/{ev.id}/confirm", json={"confirmed": True})
+    data = client.post(f"/api/events/{ev.id}/observations/reset").json()
+    assert data["confirmed"] is False
+    assert len(data["observations"]) == 1
+    assert data["observations"][0]["label"] == "cow"
+    assert data["observations"][0]["effective_count"] == 1
+
+
+def test_filter_options_reports_min_label_confidence(client, db):
+    """The filter bars clamp the cls range slider at the lowest
+    classification confidence that exists; the endpoint reports it."""
+    from tests.conftest import make_deployment, make_detection, make_file, make_project
+
+    p = make_project(db)
+    dep = make_deployment(db, project_id=p.id)
+    f = make_file(db, deployment_id=dep.id, observation_type="animal")
+    make_detection(
+        db, file_id=f.id, category="animal", confidence=0.9,
+        label="dog", label_confidence=0.42,
+    )
+    make_detection(
+        db, file_id=f.id, category="animal", confidence=0.8,
+        label="cat", label_confidence=0.07,
+    )
+
+    resp = client.get(f"/api/events/filter-options?project_id={p.id}")
+    assert resp.status_code == 200
+    assert resp.json()["min_label_confidence"] == 0.07
+
+
+def test_filter_options_min_label_confidence_null_when_unclassified(client, db):
+    from tests.conftest import make_project
+
+    p = make_project(db)
+    resp = client.get(f"/api/events/filter-options?project_id={p.id}")
+    assert resp.status_code == 200
+    assert resp.json()["min_label_confidence"] is None
+
+
+# ── filter-options follows the same visible surface as the label tree ──
+
+
+def _taxonomy_row(db, model_id, name, **kw):
+    from app.models.label_taxonomy import LabelTaxonomy
+
+    row = LabelTaxonomy(
+        classification_model_id=model_id,
+        name=name,
+        level="species",
+        scientific_name=name,
+        **kw,
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def test_filter_options_hides_offbestframe_video_labels(db):
+    """`filter-options` is the flat label list shown when a project has no
+    taxonomy tree, so it stands in for the tree and must match it. Left
+    ungated it offered species living only on frames the grid never
+    renders, and picking one returned nothing."""
+    from app.api.crud.event import get_filter_options
+    from app.models import File
+
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    seen = _taxonomy_row(db, "EUR-DF-v1-3", "deer", taxon_genus="cervus")
+    ghost = _taxonomy_row(db, "EUR-DF-v1-3", "chimpanzee", taxon_genus="pan")
+
+    f = File(
+        id="vid-filter-options",
+        deployment_id=d.id,
+        file_path="/fake/clip.mp4",
+        file_type="video",
+        file_format="mp4",
+        best_frame_number=10,
+    )
+    db.add(f)
+    db.flush()
+    make_detection(
+        db, file_id=f.id, confidence=0.9, label="deer",
+        label_taxonomy_id=seen.id, frame_number=10,
+    )
+    make_detection(
+        db, file_id=f.id, confidence=0.9, label="chimpanzee",
+        label_taxonomy_id=ghost.id, frame_number=150,
+    )
+    db.flush()
+
+    options = get_filter_options(db, p.id)
+    assert seen.id in options["labels"]
+    assert ghost.id not in options["labels"]
+
+
+def test_filter_options_keeps_every_image_label(db):
+    """Images have no frames, so nothing about the gate may touch them."""
+    from app.api.crud.event import get_filter_options
+    from app.models import File
+
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    tax = _taxonomy_row(db, "EUR-DF-v1-3", "fox", taxon_genus="vulpes")
+
+    f = File(
+        id="img-filter-options",
+        deployment_id=d.id,
+        file_path="/fake/a.jpg",
+        file_type="image",
+        file_format="jpg",
+    )
+    db.add(f)
+    db.flush()
+    make_detection(
+        db, file_id=f.id, confidence=0.9, label="fox",
+        label_taxonomy_id=tax.id,
+    )
+    db.flush()
+
+    assert tax.id in get_filter_options(db, p.id)["labels"]
+
+
+# ── Verification progress counts only what the grid can show ─────────
+
+
+def _video_event(db, project, frames, best_frame=10, verified_frames=()):
+    """One event holding one video with `best_frame_number=best_frame` and
+    a `deer` detection on each of `frames`. Detections whose frame is in
+    `verified_frames` are marked verified."""
+    from app.models import File
+    from app.models.event import Event
+    from app.models.event import event_files as event_files_table
+
+    s = make_site(db, project_id=project.id)
+    d = make_deployment(db, site_id=s.id)
+    tax = _taxonomy_row(db, "EUR-DF-v1-3", "deer", taxon_genus="cervus")
+
+    f = File(
+        id=f"vid-{uuid.uuid4().hex[:8]}",
+        deployment_id=d.id,
+        file_path=f"/fake/{uuid.uuid4().hex}.mp4",
+        file_type="video",
+        file_format="mp4",
+        best_frame_number=best_frame,
+    )
+    db.add(f)
+    db.flush()
+
+    for frame in frames:
+        make_detection(
+            db,
+            file_id=f.id,
+            confidence=0.9,
+            label="deer",
+            label_taxonomy_id=tax.id,
+            frame_number=frame,
+            verified=frame in verified_frames,
+        )
+
+    ev = Event(
+        id=f"ev-{uuid.uuid4().hex[:8]}",
+        deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 1, 12, 0),
+        event_end_local=datetime(2024, 1, 1, 12, 0),
+        file_count=1,
+    )
+    db.add(ev)
+    db.flush()
+    db.execute(
+        event_files_table.insert().values(
+            event_id=ev.id, file_id=f.id, sequence_number=0
+        )
+    )
+    db.flush()
+    return f, tax
+
+
+def test_verification_stats_count_only_the_best_frame(client, db):
+    """The pill's denominator has to be the population the Labels grid
+    can render. A video stores a detection per sampled frame but only the
+    best frame is renderable, so counting all of them left a video project
+    stuck at 19% with every card on screen already verified, and unable to
+    reach 100% however much work the user did."""
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    _video_event(db, p, frames=[5, 10, 20])
+
+    resp = client.get(f"/api/events/verification-stats?project_id={p.id}")
+    assert resp.status_code == 200
+    assert resp.json()["total_detections"] == 1
+
+
+def test_verification_stats_reach_100_percent_when_grid_is_done(client, db):
+    """Verifying every card the grid shows must read as fully verified."""
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    _video_event(db, p, frames=[5, 10, 20], verified_frames=(10,))
+
+    data = client.get(
+        f"/api/events/verification-stats?project_id={p.id}"
+    ).json()
+    assert data["verified_detections"] == 1
+    assert data["total_detections"] == 1
+
+
+def test_verification_stats_keep_offbestframe_verified_detections(client, db):
+    """Verified detections pass on any frame, so a species a human named
+    on some other frame stays in both halves of the ratio. Dropping it
+    from the numerator would lose the human decision; dropping it from
+    the denominator alone would push the bar above 100%."""
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    _video_event(db, p, frames=[5, 10, 20], verified_frames=(5, 10))
+
+    data = client.get(
+        f"/api/events/verification-stats?project_id={p.id}"
+    ).json()
+    assert data["total_detections"] == 2
+    assert data["verified_detections"] == 2
+
+
+def test_verification_stats_keep_every_image_detection(client, db):
+    """Images have no frames, so nothing about the gate may touch them."""
+    from app.models import File
+    from app.models.event import Event
+    from app.models.event import event_files as event_files_table
+
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+
+    f = File(
+        id="img-verification-stats",
+        deployment_id=d.id,
+        file_path="/fake/a.jpg",
+        file_type="image",
+        file_format="jpg",
+    )
+    db.add(f)
+    db.flush()
+    for _ in range(3):
+        make_detection(db, file_id=f.id, confidence=0.9)
+
+    ev = Event(
+        id="ev-img-verification-stats",
+        deployment_id=d.id,
+        event_start_local=datetime(2024, 1, 1, 12, 0),
+        event_end_local=datetime(2024, 1, 1, 12, 0),
+        file_count=1,
+    )
+    db.add(ev)
+    db.flush()
+    db.execute(
+        event_files_table.insert().values(
+            event_id=ev.id, file_id=f.id, sequence_number=0
+        )
+    )
+    db.flush()
+
+    data = client.get(
+        f"/api/events/verification-stats?project_id={p.id}"
+    ).json()
+    assert data["total_detections"] == 3
+
+
+def test_progress_by_label_counts_only_the_best_frame(client, db):
+    """The dashboard's per-species rows break down the same population as
+    the bar above them, so they carry the same gate."""
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    _f, tax = _video_event(db, p, frames=[5, 10, 20], verified_frames=(10,))
+
+    resp = client.get(
+        f"/api/statistics/verification-progress-by-label?project_id={p.id}"
+    )
+    assert resp.status_code == 200
+    rows = {r["scientific_name"]: r for r in resp.json()["rows"]}
+    assert rows[tax.scientific_name]["total"] == 1
+    assert rows[tax.scientific_name]["verified"] == 1
+
+
+def _blank_event(db, project, when=datetime(2024, 1, 2, 12, 0)):
+    """One event whose only file is blank: no detections, and the
+    observation type the ingest writes when nothing passed."""
+    from app.models.event import Event
+    from app.models.event import event_files as event_files_table
+    from tests.conftest import make_file
+
+    s = make_site(db, project_id=project.id)
+    d = make_deployment(db, site_id=s.id)
+    f = make_file(db, deployment_id=d.id, observation_type="blank")
+
+    ev = Event(
+        id=f"ev-blank-{uuid.uuid4().hex[:8]}",
+        deployment_id=d.id,
+        event_start_local=when,
+        event_end_local=when,
+        file_count=1,
+    )
+    db.add(ev)
+    db.flush()
+    db.execute(
+        event_files_table.insert().values(
+            event_id=ev.id, file_id=f.id, sequence_number=0
+        )
+    )
+    db.flush()
+    return ev
+
+
+def test_verification_stats_leave_out_the_blank_events(client, db):
+    """The Counts grid hides all-blank events, so the pill's denominator
+    must not hold them either: counting them would offer the user work
+    they are never shown and can never confirm, and an 80%-blank project
+    could never pass 20% "counts confirmed".
+
+    What delivers this is the project threshold clause, not the `empty`
+    filter: `_apply_event_filters` keeps only events holding at least one
+    detection over the floor, and a blank event has none. So the property
+    is pinned here rather than in the filter, because a change to that
+    clause is what would silently break it."""
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    _video_event(db, p, frames=[10])
+    _blank_event(db, p)
+
+    data = client.get(
+        f"/api/events/verification-stats?project_id={p.id}"
+    ).json()
+    assert data["events_total"] == 1
+
+
+def test_verification_stats_reach_100_percent_with_blanks_around(client, db):
+    """Confirming every event the grid shows must read as fully done,
+    however many blank events sit beside them."""
+    from app.models.event import Event
+
+    p = make_project(db, classification_model_id="EUR-DF-v1-3")
+    _video_event(db, p, frames=[10])
+    _blank_event(db, p)
+    db.query(Event).filter(
+        Event.id.notlike("ev-blank-%")
+    ).update({"confirmed": True}, synchronize_session=False)
+    db.flush()
+
+    data = client.get(
+        f"/api/events/verification-stats?project_id={p.id}"
+    ).json()
+    assert data["events_confirmed"] == 1
+    assert data["events_total"] == 1
+
+
+def test_observation_attributes_and_split_endpoints(client, db):
+    """The cohort flow over the wire: the four fields are on every row,
+    a demographic edit unconfirms, a note does not, a value outside the
+    vocabulary is refused, and split gives a second row of the species."""
+    from app.api.crud.event_observation import calculate_max_n_for_event
+
+    p = make_project(db, counting_threshold=0.5)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev = make_event_with_files(
+        db, deployment_id=d.id, event_start_local=datetime(2024, 1, 1, 12)
+    )
+    for _ in range(3):
+        make_detection(
+            db, file_id=ev.files[0].id, category="animal", label="cow",
+            confidence=0.9,
+        )
+    db.flush()
+    calculate_max_n_for_event(db, ev.id, 0.5)
+    db.commit()
+
+    data = client.get(f"/api/events/{ev.id}").json()
+    (obs,) = data["observations"]
+    # The wire carries the four fields, null until set (a frontend type is
+    # not evidence; see DEVELOPERS.md).
+    assert {k: obs[k] for k in ("sex", "life_stage", "behavior")} == {
+        "sex": None, "life_stage": None, "behavior": None,
+    }
+    assert data["notes"] is None
+
+    client.patch(f"/api/events/{ev.id}/confirm", json={"confirmed": True})
+    # A note is on the event and never unconfirms.
+    data = client.patch(
+        f"/api/events/{ev.id}/notes", json={"notes": "by the fence"}
+    ).json()
+    assert data["confirmed"] is True
+    assert data["notes"] == "by the fence"
+    assert client.patch("/api/events/nope/notes", json={"notes": "x"}).status_code == 404
+
+    url = f"/api/events/{ev.id}/observations/{obs['id']}/attributes"
+
+    data = client.patch(url, json={"sex": "male", "behavior": "foraging"}).json()
+    assert data["confirmed"] is False
+    assert data["observations"][0]["sex"] == "male"
+    assert data["observations"][0]["behavior"] == "foraging"
+    # Unnamed fields stay; null clears.
+    data = client.patch(url, json={"sex": None}).json()
+    assert data["observations"][0]["sex"] is None
+    assert data["observations"][0]["behavior"] == "foraging"
+
+    assert client.patch(url, json={"sex": "unknown"}).status_code == 422
+    assert client.patch(url, json={"life_stage": "calf"}).status_code == 422
+
+    data = client.post(
+        f"/api/events/{ev.id}/observations/{obs['id']}/split"
+    ).json()
+    counts = [(o["label"], o["effective_count"], o["max_n"]) for o in data["observations"]]
+    assert counts == [("cow", 2, 3), ("cow", 1, 0)]
+
+    assert client.post(
+        f"/api/events/{ev.id}/observations/nope/split"
+    ).status_code == 404
+
+
+def test_observation_endpoints_refuse_a_row_from_another_event(client, db):
+    from app.api.crud.event_observation import calculate_max_n_for_event
+
+    p = make_project(db, counting_threshold=0.5)
+    s = make_site(db, project_id=p.id)
+    d = make_deployment(db, site_id=s.id)
+    ev = make_event_with_files(
+        db, deployment_id=d.id, event_start_local=datetime(2024, 1, 1, 12)
+    )
+    other = make_event_with_files(
+        db, deployment_id=d.id, event_start_local=datetime(2024, 1, 2, 12)
+    )
+    make_detection(db, file_id=ev.files[0].id, category="animal", label="cow", confidence=0.9)
+    db.flush()
+    calculate_max_n_for_event(db, ev.id, 0.5)
+    db.commit()
+    (obs,) = client.get(f"/api/events/{ev.id}").json()["observations"]
+    base = f"/api/events/{other.id}/observations/{obs['id']}"
+    assert client.post(f"{base}/split").status_code == 404
+    assert client.patch(f"{base}/attributes", json={"sex": "male"}).status_code == 404
+    assert client.patch(base, json={"count": 4}).status_code == 404
+    assert client.delete(base).status_code == 404
+    relabel = client.patch(
+        f"{base}/relabel", json={"category": "animal", "label": "deer"}
+    )
+    assert relabel.status_code == 404
+    (unchanged,) = client.get(f"/api/events/{ev.id}").json()["observations"]
+    assert (unchanged["effective_count"], unchanged["sex"]) == (1, None)
+
+
+def test_get_event_labels_files_with_their_camera_for_paired_deployments(client, db):
+    """Each file of a paired deployment carries its subfolder name so the
+    filmstrip can show which camera it came from. Root files and files of
+    unpaired deployments get None."""
+    from app.models.event import event_files as event_files_table
+    from tests.conftest import make_file
+
+    p = make_project(db)
+    paired = make_deployment(db, project_id=p.id, folder_path="/data/station", paired_cameras=True)
+    ev = make_event_with_files(
+        db, deployment_id=paired.id, event_start_local=datetime(2024, 1, 1, 12, 0)
+    )
+    first = ev.files[0]
+    first.file_path = "/data/station/cam_a/a.jpg"
+    nested = make_file(
+        db,
+        deployment_id=paired.id,
+        file_path="/data/station/cam_b/100MEDIA/b.jpg",
+        captured_at_local=datetime(2024, 1, 1, 12, 0, 1),
+    )
+    root = make_file(
+        db,
+        deployment_id=paired.id,
+        file_path="/data/station/root.jpg",
+        captured_at_local=datetime(2024, 1, 1, 12, 0, 2),
+    )
+    for f in (nested, root):
+        db.execute(event_files_table.insert().values(event_id=ev.id, file_id=f.id))
+    db.commit()
+
+    data = client.get(f"/api/events/{ev.id}").json()
+    assert [f["camera"] for f in data["files"]] == ["cam_a", "cam_b", None]
+
+    unpaired = make_deployment(db, project_id=p.id, folder_path="/data/other")
+    ev2 = make_event_with_files(
+        db, deployment_id=unpaired.id, event_start_local=datetime(2024, 1, 1, 12, 0)
+    )
+    ev2.files[0].file_path = "/data/other/cam_a/a.jpg"
+    db.commit()
+    data = client.get(f"/api/events/{ev2.id}").json()
+    assert data["files"][0]["camera"] is None
